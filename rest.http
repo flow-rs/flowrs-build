@@ -6,48 +6,31 @@ POST http://127.0.0.1:3000/projects/ HTTP/1.1
 content-type: application/json
 
 {
-  "name": "MyFlowProject",
+  "name": "flow_project_1",
   "version": "1.0.0",
   "packages": [
-    {"name": "flowrs", "version": "1.0.0"}, 
-    {"name": "flowrs-std", "version": "1.0.0"}
+    {"name": "flowrs", "version": "1.0.0", "path": "../../../flowrs"}, 
+    {"name": "flowrs-std", "version": "1.0.0", "path": "../../../flowrs-std"}
     ],
-  "flow": {
-    "nodes": {
-      "node1": {
-        "node_type": "NodeType1",
-        "inputs": {
-          "input1": {
-            "input_type": "InputType1"
-          }
+  "flow":{        
+        "nodes": {
+            "node1": {
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": ["i32"]
+
+            },
+            "node2": {
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": ["i32"]
+            }
         },
-        "outputs": {
-          "output1": {
-            "output_type": "OutputType1"
-          }
-        }
-      },
-      "node2": {
-        "node_type": "NodeType2",
-        "inputs": {
-          "input2": {
-            "input_type": "InputType2"
-          }
-        },
-        "outputs": {
-          "output2": {
-            "output_type": "OutputType2"
-          }
-        }
-      }
-    },
-    "connections": [
-      {
-        "input_node": "node1",
-        "output_node": "node2",
-        "input": "input1",
-        "output": "output2"
-      }
-    ]
-  }
+        "connections": [
+            {
+                "input_node": "node1",
+                "output_node": "node2",
+                "input": "input",
+                "output": "output"
+            }
+        ]
+    }
 }

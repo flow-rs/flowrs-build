@@ -1,108 +1,111 @@
-use serde::{Serialize, Deserialize};
-use std::collections::{HashMap};
-use quote::quote;
 use proc_macro2::TokenStream;
+use quote::quote;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use syn::Ident;
 
-use std::process::Command;
-use std::fs::File;
-use std::io::Write;
-use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
+
+use crate::package::{Constructor, Object, Package};
+use crate::package_manager::PackageManager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct ConnectionModel {
-    input_node: String, 
+    input_node: String,
     output_node: String,
     input: String,
-    output: String, 
+    output: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct InputModel {
-    input_type: String 
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct OutputModel {
-    output_type: String 
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct NodeModel {
+pub struct NodeModel {
     node_type: String,
-    inputs: HashMap<String, InputModel>,
-    outputs: HashMap<String, OutputModel>
+    type_parameters: Vec<String>,
+    //inputs: HashMap<String, InputModel>,
+    //outputs: HashMap<String, OutputModel>
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FlowModel {
     nodes: HashMap<String, NodeModel>,
-    connections: Vec<ConnectionModel>
+    connections: Vec<ConnectionModel>,
 }
 
 pub trait CodeEmitter {
-    fn emit_flow_code(&self, flow: &FlowModel) -> String; 
+    fn emit_flow_code(&self, flow: &FlowModel, pm: &PackageManager) -> String;
 }
 
-pub struct StandardCodeEmitter {
-
-}
+pub struct StandardCodeEmitter {}
 
 impl StandardCodeEmitter {
-    
-    fn generate_function(&self, body: &TokenStream) -> TokenStream {        
+    fn emit_function(&self, body: &TokenStream) -> TokenStream {
         quote! {
             #[wasm_bindgen]
-            fn run() {
+            pub fn run() {
                 #body
             }
         }
     }
 
-    fn generate_function_body(&self, flow: &FlowModel) -> TokenStream {
+    fn emit_function_body(&self, flow: &FlowModel, pm: &PackageManager) -> TokenStream {
         let mut body = TokenStream::new();
 
-        self.generate_std_locals(&mut body);
+        self.emit_std_locals(&mut body);
 
-        self.generate_nodes(flow, &mut body);
+        self.emit_nodes(flow, &mut body, pm);
 
-        self.generate_node_connections(flow, &mut body);
+        self.emit_node_connections(flow, &mut body);
 
-        self.generate_flow(flow, &mut body);
+        self.emit_flow(flow, &mut body);
 
-        self.generate_exec_call(&mut body);
+        self.emit_exec_call(&mut body);
 
         body
     }
 
-    fn generate_nodes(&self, flow: &FlowModel, tokens: &mut TokenStream) {
+    fn emit_nodes(&self, flow: &FlowModel, tokens: &mut TokenStream, pm: &PackageManager) {
         for (node_name, node) in &flow.nodes {
-            let generated_code = self.generate_node(node_name, node);
+            let generated_code = self.emit_node(node_name, node, pm);
             tokens.extend(generated_code);
         }
     }
 
-    fn generate_node_connections(&self, flow: &FlowModel, tokens: &mut TokenStream) {
+    fn emit_node_connections(&self, flow: &FlowModel, tokens: &mut TokenStream) {
         for connection in &flow.connections {
-            let generated_code = self.generate_node_connection(connection);
+            let generated_code = self.emit_node_connection(connection);
             tokens.extend(generated_code);
         }
     }
 
-    fn generate_node(&self, node_name: &str, node: &NodeModel) -> TokenStream {
-        let node_ident = Ident::new(&node_name, proc_macro2::Span::call_site());
-        let node_type_ident = Ident::new(&node.node_type, proc_macro2::Span::call_site());
-
-        quote! {
-            //TODO: 
-            // - add Generic Types to node creation
-            // - make sure that Node::new has always the same signature.
-            let #node_ident = #node_type_ident::new(Some(&change_observer));
+    fn node_model_to_object(&self, node_name: &String, node: &NodeModel) -> Object {
+        Object {
+            name: node_name.clone(),
+            type_name: node.node_type.clone(),
+            type_parameters: node.type_parameters.clone(),
+            is_mutable: false,
         }
     }
 
-    fn generate_node_connection(&self, connection: &ConnectionModel) -> TokenStream {
+    fn emit_node(&self, node_name: &str, node: &NodeModel, pm: &PackageManager) -> TokenStream {
+        if let Some(node_type) = pm.get_type(&node.node_type) {
+            if let Ok(code) = node_type.constructor.emit_code_template(
+                &self.node_model_to_object(&node_name.to_string(), node),
+                pm,
+                &"".to_string(),
+            ) {
+                let tok: TokenStream = code.parse().unwrap();
+
+                return quote! {
+                    #tok
+                };
+            }
+        }
+
+        quote! {}
+    }
+
+    fn emit_node_connection(&self, connection: &ConnectionModel) -> TokenStream {
         let node_out_ident = Ident::new(&connection.input_node, proc_macro2::Span::call_site());
         let node_inp_ident = Ident::new(&connection.output_node, proc_macro2::Span::call_site());
         let output_ident = Ident::new(&connection.output, proc_macro2::Span::call_site());
@@ -113,160 +116,129 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn generate_std_locals(&self, tokens : &mut TokenStream)  {
-        tokens.extend(
-        quote! {
+    fn emit_std_locals(&self, tokens: &mut TokenStream) {
+        tokens.extend(quote! {
             let change_observer = ChangeObserver::new();
             let node_updater = SingleThreadedNodeUpdater::new(None);
-            let mut executor = StandardExecutor::new(&change_observer);
             let scheduler = RoundRobinScheduler::new();
         });
     }
 
-    fn generate_flow(&self, flow: &FlowModel, tokens: &mut TokenStream)  {
-        tokens.extend(
-        quote! {
-            let flow = Flow::new_empty("wasm", Version::new(0, 0, 1));
+    fn emit_flow(&self, flow: &FlowModel, tokens: &mut TokenStream) {
+        tokens.extend(quote! {
+            let mut flow = Flow::new_empty("wasm", Version::new(0, 0, 1));
         });
 
-        let mut id:u128 = 0;
+        let mut id: u128 = 0;
         for (node_name, node) in &flow.nodes {
             let node_ident = Ident::new(&node_name, proc_macro2::Span::call_site());
             let node_type = node.node_type.clone();
             tokens.extend(quote! {
                 flow.add_node_with_id_and_desc(
-                    #node_ident, 
-                    #id, 
-                    NodeDescription {name: #node_name, description: #node_name /*TODO*/, kind: #node_type});
+                    #node_ident,
+                    #id,
+                    NodeDescription {name: #node_name.into(), description: #node_name.into() /*TODO*/, kind: #node_type.into()});
             });
-            id+=1;
+            id += 1;
         }
     }
 
-    fn generate_exec_call(&self, tokens : &mut TokenStream)  {
-        tokens.extend(
+    fn emit_use_decls(&self) -> TokenStream {
         quote! {
+            use wasm_bindgen::prelude::*;
+
+            use flowrs::nodes::node_description::NodeDescription;
+            use flowrs::nodes::node::ChangeObserver;
+            use flowrs::nodes::connection::connect; 
+
+            use flowrs::flow::version::Version;
+            use flowrs::flow::flow::Flow;
+
+            use flowrs::exec::execution::{Executor, StandardExecutor};
+            use flowrs::exec::node_updater::SingleThreadedNodeUpdater;
+            use flowrs::sched::round_robin::RoundRobinScheduler;
+        }
+    }
+
+    fn emit_exec_call(&self, tokens: &mut TokenStream) {
+        tokens.extend(quote! {
+            let mut executor = StandardExecutor::new(change_observer);
             let _ = executor.run(flow, scheduler, node_updater);
         });
     }
-
 }
 
 impl CodeEmitter for StandardCodeEmitter {
-    fn emit_flow_code(&self, flow: &FlowModel) -> String {
-         
-        format!("{}", self.generate_function(
-            &self.generate_function_body(flow)))
-    }
-
-}
-
-trait WasmPackager {
-
-    fn compile_package(&self, flow: &FlowModel);
-}
-
-struct StandardWasmPackager<T> {
-    code_emitter : T,
-    package_path : PathBuf 
-}
-
-impl<T> StandardWasmPackager<T> where T : CodeEmitter {
-    fn new(code_emitter : T) -> Self {
-        Self {
-            code_emitter : code_emitter,
-            package_path: PathBuf::from("C:/Users/friedrich/Projekte/flow-rs/tmp")
-        }
-    } 
-
-     
-    fn compile(&self) {
-
-        // Replace "path/to/your/source.rs" with the actual path to your Rust source file
-        let source_file = "source.rs";
-
-        // Create a Command to compile the Rust source file
-        let output = Command::new("rustc")
-            .arg(source_file)
-            .output()
-            .expect("Failed to execute command");
-
-        // Check if the command was successful
-        if output.status.success() {
-            println!("Compilation successful!");
-        } else {
-            // Print the captured standard error
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            println!("Compilation failed. stderr: {}", stderr);
-        }
-
-        // Get the exit status code
-        let exit_code = output.status.code().unwrap_or(-1);
-        println!("Exit code: {}", exit_code);
-    }
-
-}
-
-impl<T> WasmPackager for StandardWasmPackager<T> where T : CodeEmitter {
-
-    fn compile_package(&self, flow: &FlowModel) {
-        
-        let flow_code = self.code_emitter.emit_flow_code(flow);
-        let mut path = self.package_path.clone();
-        path.push("src");
-        fs::create_dir(path.clone());
-        path.push("lib.rs");
-
-        {
-            let mut file = File::create(path).expect("error");
-            file.write_all(flow_code.as_bytes());
-        }
-
-
-        //fs::remove_file("source.rs").expect("file should exist.");
-
+    fn emit_flow_code(&self, flow: &FlowModel, pm: &PackageManager) -> String {
+        format!("{}{}", self.emit_use_decls(), self.emit_function(&self.emit_function_body(flow, pm)))
     }
 }
 
 #[test]
-fn test(){
+fn test() {
+    let package_json = r#"
+    
+    {
+        "name":"flowrs-std",
+        "version":"1.0.0",
+        "crates":{
+           "flowrs_std":{
+              "types":{
+                 
+              },
+              "modules":{
+                 "nodes":{
+                    "types":{
+                       
+                    },
+                    "modules":{
+                       "debug":{
+                          "modules":{
+                             
+                          },
+                          "types":{
+                             "DebugNode":{
+                                "inputs":[
+                                   "input"
+                                ],
+                                "outputs":[
+                                   "output"
+                                ],
+                                "type_parameters":[
+                                   "I"
+                                ],
+                                "constructor":"NewWithObserver"
+                             }
+                          }
+                       }
+                    }
+                 }
+              }
+           }
+        }
+    }
+   
+    "#;
 
     let flow_json = r#"
     {
         "nodes": {
             "node1": {
-                "node_type": "NodeType1",
-                "inputs": {
-                    "input1": {
-                        "input_type": "InputType1"
-                    }
-                },
-                "outputs": {
-                    "output1": {
-                        "output_type": "OutputType1"
-                    }
-                }
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": ["i32"]
+
             },
             "node2": {
-                "node_type": "NodeType2",
-                "inputs": {
-                    "input2": {
-                        "input_type": "InputType2"
-                    }
-                },
-                "outputs": {
-                    "output2": {
-                        "output_type": "OutputType2"
-                    }
-                }
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": ["i32"]
             }
         },
         "connections": [
             {
                 "input_node": "node1",
                 "output_node": "node2",
-                "input": "input1",
-                "output": "output2"
+                "input": "input",
+                "output": "output"
             }
         ]
     }
@@ -274,10 +246,15 @@ fn test(){
 
     let flow_model: FlowModel = serde_json::from_str(&flow_json).expect("wrong format.");
 
-    let rce = StandardCodeEmitter{};
-    //println!("{}", rce.emit_flow_code(&flow_model));
+    let mut pm = PackageManager::new();
 
-    let pack = StandardWasmPackager::new(rce);
-    pack.compile_package(&flow_model);
+    let p: Package = serde_json::from_str(package_json).expect("format wrong.");
 
+    pm.add_package(p);
+
+    let rce = StandardCodeEmitter {};
+    println!("{}", rce.emit_flow_code(&flow_model, &pm));
+
+    //let pack = StandardWasmPackager::new(rce);
+    //pack.compile_package(&flow_model);
 }

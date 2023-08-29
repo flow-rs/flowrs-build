@@ -1,18 +1,18 @@
 use serde::{Deserialize, Serialize};
 
-use crate::version::Version;
-use crate::flow_model::FlowModel; 
+use crate::flow_model::FlowModel;
+use crate::package_manager::PackageManager;
 
-use std::fs;
 use std::collections::HashMap;
+use std::fs;
 
+use std::io;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::io;
 
 use serde_json;
 
-use anyhow::{Result};
+use anyhow::Result;
 
 use crate::flow_model::{CodeEmitter, StandardCodeEmitter};
 
@@ -20,6 +20,7 @@ use crate::flow_model::{CodeEmitter, StandardCodeEmitter};
 pub struct FlowPackage {
     name: String,
     version: String,
+    path: Option<String>
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -27,21 +28,20 @@ pub struct FlowProject {
     name: String,
     version: String,
     packages: Vec<FlowPackage>,
-    flow: FlowModel
+    flow: FlowModel,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FlowProjectManager {
     project_folder: String,
-    pub projects: HashMap<String, FlowProject>
+    pub projects: HashMap<String, FlowProject>,
 }
 
 impl FlowProjectManager {
-
     pub fn new(project_folder: &str) -> Self {
         Self {
-            project_folder: project_folder.to_string(), 
-            projects: HashMap::new()
+            project_folder: project_folder.to_string(),
+            projects: HashMap::new(),
         }
     }
 
@@ -62,64 +62,139 @@ impl FlowProjectManager {
         Ok(())
     }
 
-    pub fn create_flow_project(&mut self, flow_project: FlowProject ) -> Result<(FlowProject)> { 
+    pub fn create_flow_project(
+        &mut self,
+        flow_project: FlowProject,
+        package_manager: &PackageManager,
+    ) -> Result<(FlowProject)> {
         if self.projects.contains_key(&flow_project.name) {
             return Ok(flow_project);
         }
 
-        self.projects.insert(flow_project.name.clone(), flow_project.clone());
-        
-        self.create_flow_project_folder(&flow_project)?;
+        self.projects
+            .insert(flow_project.name.clone(), flow_project.clone());
+
+        self.create_flow_project_folder(&flow_project, package_manager)?;
 
         Ok(flow_project)
     }
 
-    fn create_flow_project_folder(&self, flow_project: &FlowProject) -> Result<()> {
-        // Create the main project folder using the FlowProject's name
-        let project_folder_name = Path::new(&self.project_folder).join(&flow_project.name);
-        fs::create_dir(&project_folder_name)?;
-    
-        // Create the 'src' subfolder
-        let src_folder = project_folder_name.join("src");
-        fs::create_dir(&src_folder)?;
-    
-        // Create the 'flow-project.json' file and serialize the FlowProject object
+    fn create_project_dependencies(&self, p: &FlowPackage) -> String {
+        if let Some(path) = &p.path {
+            format!("{} = {{path = \"{}\"}}", p.name, path)
+        } else {
+            format!("{} = \"{}\"", p.name, p.version)
+        }
+    }
+
+    fn create_builtin_dependencies(&self) -> String{
+        "wasm-bindgen = \"0.2.87\"\n".to_string()
+    }
+
+    fn create_cargo_toml(&self, flow_project: &FlowProject, project_folder_name: &PathBuf) -> Result<()>{
+        let cargo_toml_path = project_folder_name.join("Cargo.toml");
+        let cargo_toml_content =
+            format!("[package]\n name = \"{}\" \n version = \"{}\"\nedition = \"2021\"\n\n[dependencies]\n{}\n{}\n\n[lib]\ncrate-type = [\"cdylib\"]", 
+            flow_project.name, 
+            flow_project.version,
+            flow_project.packages.iter().map(|x| self.create_project_dependencies(x)).collect::<Vec<String>>().join("\n"),
+            self.create_builtin_dependencies()
+        );
+
+        let mut cargo_toml_file = fs::File::create(&cargo_toml_path)?;
+        cargo_toml_file.write_all(cargo_toml_content.as_bytes())?;
+
+        Ok(())
+    }
+
+    fn create_flow_proj_json(&self, flow_project: &FlowProject, project_folder_name: &PathBuf) -> Result<()>{
         let flow_project_json_path = project_folder_name.join("flow-project.json");
         let flow_project_json_content = serde_json::to_string(&flow_project)?;
         let mut flow_project_json_file = fs::File::create(&flow_project_json_path)?;
         flow_project_json_file.write_all(flow_project_json_content.as_bytes())?;
-    
-        // Create the 'Cargo.toml' file
-        let cargo_toml_path = project_folder_name.join("Cargo.toml");
-        let cargo_toml_content = "[package]\nname = \"".to_string() + &flow_project.name + "\"\nversion = \"0.1.0\"\n";
-        let mut cargo_toml_file = fs::File::create(&cargo_toml_path)?;
-        cargo_toml_file.write_all(cargo_toml_content.as_bytes())?;
-    
-        // Create the flow as rust source
-        let emitter = StandardCodeEmitter{};
-        let flow_code = emitter.emit_flow_code(&flow_project.flow);
-        let flow_code_path = src_folder.join("flow.rs");
-        let mut flow_code_file = fs::File::create(&flow_code_path)?;
-        flow_code_file.write_all(flow_code.as_bytes())?;
-    
+
         Ok(())
     }
 
-    pub fn delete_flow_project(&mut self, name: &str) -> Result<()>{
+    fn create_lib_rs(&self, _flow_project: &FlowProject, src_folder: &PathBuf) -> Result<()>{
+      
+        let path = src_folder.join("lib.rs");
+        let mut file = fs::File::create(&path)?;
+        write!(file, "pub mod flow;").unwrap();
+       
+        Ok(())
+    }
+
+    fn create_flow_rust_code(&self, flow_project: &FlowProject, src_folder: &PathBuf, package_manager: &PackageManager) -> Result<()>{
+      
+        let emitter = StandardCodeEmitter {};
+        let flow_code = emitter.emit_flow_code(&flow_project.flow, package_manager);
+        let flow_code_path = src_folder.join("lib.rs");
+        let mut flow_code_file = fs::File::create(&flow_code_path)?;
+        flow_code_file.write_all(flow_code.as_bytes())?;
+
+        self.run_rust_fmt(&flow_code_path);
+
+        Ok(())
+    }
+
+    fn run_rust_fmt(&self, file_path: &PathBuf) {
+        
+        let mut command = std::process::Command::new("rustfmt");
+        command.arg(file_path.to_str().unwrap());
+
+        let status = command.output().unwrap();
+
+        //TODO: better error reporting. also: make fmt optional and add the possibility to change its path.
+        if status.status.code() != Some(0) {
+            println!("An error occurred while formatting {}: {}", file_path.to_string_lossy(), String::from_utf8(status.stderr).expect(""));
+        }
+    }
+    
+    fn create_flow_project_folder(
+        &self,
+        flow_project: &FlowProject,
+        package_manager: &PackageManager,
+    ) -> Result<()> {
+        
+        // Create the main project folder using the FlowProject's name
+        let project_folder_name = Path::new(&self.project_folder).join(&flow_project.name);
+        fs::create_dir(&project_folder_name)?;
+
+        // Create the 'src' subfolder
+        let src_folder = project_folder_name.join("src");
+        fs::create_dir(&src_folder)?;
+
+        // Create the 'flow-project.json' file and serialize the FlowProject object
+        self.create_flow_proj_json(flow_project, &project_folder_name)?;
+
+        // Create the 'Cargo.toml' file
+        self.create_cargo_toml(flow_project, &project_folder_name)?;
+
+        // Create the flow as rust source
+        self.create_flow_rust_code(flow_project, &src_folder, package_manager)?;
+
+        //Create lib.rs 
+        //self.create_lib_rs(flow_project, &src_folder)?;
+
+        Ok(())
+    }
+
+    pub fn delete_flow_project(&mut self, name: &str) -> Result<()> {
         if !self.projects.contains_key(name) {
             return Ok(());
         }
-    
+
         if let Err(err) = delete_folder_recursive(&PathBuf::from(&self.project_folder).join(name)) {
             return Err(err.into());
         } else {
             self.projects.remove(name);
-        }        
+        }
 
-        Ok(())   
+        Ok(())
     }
 
-    pub fn update_flow_project_flow_model(&mut self, name: &str, flow: FlowModel) -> Result<()> { 
+    pub fn update_flow_project_flow_model(&mut self, name: &str, flow: FlowModel) -> Result<()> {
         if let Some(fp) = self.projects.get_mut(name) {
             fp.flow = flow;
 
@@ -128,13 +203,13 @@ impl FlowProjectManager {
             let flow_model_json_content = serde_json::to_string(&fp)?;
             let flow_project_json_path = project_folder_name.join("flow-project.json");
             replace_file_contents(&flow_project_json_path, &flow_model_json_content)?;
-        
-            // Update Cargo.toml TODO 
 
-            // Update flow code (flow.rs)
+            // Update Cargo.toml TODO
+
+            // Update flow code (flow.rs) TODO
         }
 
-        Ok(())   
+        Ok(())
     }
 }
 
