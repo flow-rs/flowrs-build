@@ -8,7 +8,7 @@ use syn::Ident;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::package::{Constructor, Object, Namespace, Package};
+use crate::package::{Constructor, Namespace, Object, Package};
 use crate::package_manager::PackageManager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -31,7 +31,7 @@ pub struct NodeModel {
 pub struct FlowModel {
     nodes: HashMap<String, NodeModel>,
     connections: Vec<ConnectionModel>,
-    data: Value
+    data: Value,
 }
 
 pub trait CodeEmitter {
@@ -158,7 +158,7 @@ impl StandardCodeEmitter {
 
             use flowrs::nodes::node_description::NodeDescription;
             use flowrs::nodes::node::ChangeObserver;
-            use flowrs::nodes::connection::connect; 
+            use flowrs::nodes::connection::connect;
 
             use flowrs::flow::version::Version;
             use flowrs::flow::flow::Flow;
@@ -181,7 +181,11 @@ impl StandardCodeEmitter {
 
 impl CodeEmitter for StandardCodeEmitter {
     fn emit_flow_code(&self, flow: &FlowModel, pm: &PackageManager) -> String {
-        format!("{}{}", self.emit_use_decls(), self.emit_function(&self.emit_function_body(flow, pm)))
+        format!(
+            "{}{}",
+            self.emit_use_decls(),
+            self.emit_function(&self.emit_function_body(flow, pm))
+        )
     }
 }
 

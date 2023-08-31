@@ -20,7 +20,7 @@ use crate::flow_model::{CodeEmitter, StandardCodeEmitter};
 pub struct FlowPackage {
     name: String,
     version: String,
-    path: Option<String>
+    path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -87,16 +87,17 @@ impl FlowProjectManager {
         }
     }
 
-    fn create_builtin_dependencies(&self) -> String{
-        let d = vec! [        
-        "wasm-bindgen = \"0.2.87\"",
-        "serde_json = \"1.0.105\""
-        ];
+    fn create_builtin_dependencies(&self) -> String {
+        let d = vec!["wasm-bindgen = \"0.2.87\"", "serde_json = \"1.0.105\""];
 
-        d.join("\n")        
+        d.join("\n")
     }
 
-    fn create_cargo_toml(&self, flow_project: &FlowProject, project_folder_name: &PathBuf) -> Result<()>{
+    fn create_cargo_toml(
+        &self,
+        flow_project: &FlowProject,
+        project_folder_name: &PathBuf,
+    ) -> Result<()> {
         let cargo_toml_path = project_folder_name.join("Cargo.toml");
         let cargo_toml_content =
             format!("[package]\n name = \"{}\" \n version = \"{}\"\nedition = \"2021\"\n\n[dependencies]\n{}\n{}\n\n[lib]\ncrate-type = [\"cdylib\"]", 
@@ -112,7 +113,11 @@ impl FlowProjectManager {
         Ok(())
     }
 
-    fn create_flow_proj_json(&self, flow_project: &FlowProject, project_folder_name: &PathBuf) -> Result<()>{
+    fn create_flow_proj_json(
+        &self,
+        flow_project: &FlowProject,
+        project_folder_name: &PathBuf,
+    ) -> Result<()> {
         let flow_project_json_path = project_folder_name.join("flow-project.json");
         let flow_project_json_content = serde_json::to_string(&flow_project)?;
         let mut flow_project_json_file = fs::File::create(&flow_project_json_path)?;
@@ -121,17 +126,20 @@ impl FlowProjectManager {
         Ok(())
     }
 
-    fn create_lib_rs(&self, _flow_project: &FlowProject, src_folder: &PathBuf) -> Result<()>{
-      
+    fn create_lib_rs(&self, _flow_project: &FlowProject, src_folder: &PathBuf) -> Result<()> {
         let path = src_folder.join("lib.rs");
         let mut file = fs::File::create(&path)?;
         write!(file, "pub mod flow;").unwrap();
-       
+
         Ok(())
     }
 
-    fn create_flow_rust_code(&self, flow_project: &FlowProject, src_folder: &PathBuf, package_manager: &PackageManager) -> Result<()>{
-      
+    fn create_flow_rust_code(
+        &self,
+        flow_project: &FlowProject,
+        src_folder: &PathBuf,
+        package_manager: &PackageManager,
+    ) -> Result<()> {
         let emitter = StandardCodeEmitter {};
         let flow_code = emitter.emit_flow_code(&flow_project.flow, package_manager);
         let flow_code_path = src_folder.join("lib.rs");
@@ -144,7 +152,6 @@ impl FlowProjectManager {
     }
 
     fn run_rust_fmt(&self, file_path: &PathBuf) {
-        
         let mut command = std::process::Command::new("rustfmt");
         command.arg(file_path.to_str().unwrap());
 
@@ -152,16 +159,19 @@ impl FlowProjectManager {
 
         //TODO: better error reporting. also: make fmt optional and add the possibility to change its path.
         if status.status.code() != Some(0) {
-            println!("An error occurred while formatting {}: {}", file_path.to_string_lossy(), String::from_utf8(status.stderr).expect(""));
+            println!(
+                "An error occurred while formatting {}: {}",
+                file_path.to_string_lossy(),
+                String::from_utf8(status.stderr).expect("")
+            );
         }
     }
-    
+
     fn create_flow_project_folder(
         &self,
         flow_project: &FlowProject,
         package_manager: &PackageManager,
     ) -> Result<()> {
-        
         // Create the main project folder using the FlowProject's name
         let project_folder_name = Path::new(&self.project_folder).join(&flow_project.name);
         fs::create_dir(&project_folder_name)?;
@@ -179,7 +189,7 @@ impl FlowProjectManager {
         // Create the flow as rust source
         self.create_flow_rust_code(flow_project, &src_folder, package_manager)?;
 
-        //Create lib.rs 
+        //Create lib.rs
         //self.create_lib_rs(flow_project, &src_folder)?;
 
         Ok(())

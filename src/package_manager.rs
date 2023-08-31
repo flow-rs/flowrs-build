@@ -51,7 +51,7 @@ impl PackageManager {
             }
         }
         let mut pm = PackageManager { packages: packages };
-        pm.add_built_in_package(); 
+        pm.add_built_in_package();
 
         pm
     }
