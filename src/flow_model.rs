@@ -1,13 +1,14 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use syn::Ident;
 
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::package::{Constructor, Object, Package};
+use crate::package::{Constructor, Object, Namespace, Package};
 use crate::package_manager::PackageManager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -21,7 +22,7 @@ struct ConnectionModel {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NodeModel {
     node_type: String,
-    type_parameters: Vec<String>,
+    type_parameters: HashMap<String, String>,
     //inputs: HashMap<String, InputModel>,
     //outputs: HashMap<String, OutputModel>
 }
@@ -30,6 +31,7 @@ pub struct NodeModel {
 pub struct FlowModel {
     nodes: HashMap<String, NodeModel>,
     connections: Vec<ConnectionModel>,
+    data: Value
 }
 
 pub trait CodeEmitter {
@@ -92,7 +94,7 @@ impl StandardCodeEmitter {
             if let Ok(code) = node_type.constructor.emit_code_template(
                 &self.node_model_to_object(&node_name.to_string(), node),
                 pm,
-                &"".to_string(),
+                &Namespace::new(),
             ) {
                 let tok: TokenStream = code.parse().unwrap();
 
@@ -119,8 +121,11 @@ impl StandardCodeEmitter {
     fn emit_std_locals(&self, tokens: &mut TokenStream) {
         tokens.extend(quote! {
             let change_observer = ChangeObserver::new();
-            let node_updater = SingleThreadedNodeUpdater::new(None);
-            let scheduler = RoundRobinScheduler::new();
+            
+            let mut file = File::open("flow-project.json").expect("Failed to open flow project file.");
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).expect("Failed to read flow project file.");
+            let data: Value = from_reader(contents.as_bytes()).expect("Failed to parse flow project file.");
         });
     }
 
@@ -147,6 +152,10 @@ impl StandardCodeEmitter {
         quote! {
             use wasm_bindgen::prelude::*;
 
+            use serde_json::{from_reader, from_value, Value};
+            use std::fs::File;
+            use std::io::Read;
+
             use flowrs::nodes::node_description::NodeDescription;
             use flowrs::nodes::node::ChangeObserver;
             use flowrs::nodes::connection::connect; 
@@ -162,6 +171,8 @@ impl StandardCodeEmitter {
 
     fn emit_exec_call(&self, tokens: &mut TokenStream) {
         tokens.extend(quote! {
+            let node_updater = SingleThreadedNodeUpdater::new(None);
+            let scheduler = RoundRobinScheduler::new();
             let mut executor = StandardExecutor::new(change_observer);
             let _ = executor.run(flow, scheduler, node_updater);
         });
@@ -225,12 +236,12 @@ fn test() {
         "nodes": {
             "node1": {
                 "node_type": "flowrs_std::nodes::debug::DebugNode",
-                "type_parameters": ["i32"]
+                "type_parameters": {"I": "i32"}
 
             },
             "node2": {
-                "node_type": "flowrs_std::nodes::debug::DebugNode",
-                "type_parameters": ["i32"]
+                "node_type": "flowrs_std::nods::debug::DebugNode",
+                "type_parameters": {"I": "i32"}
             }
         },
         "connections": [

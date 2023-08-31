@@ -30,6 +30,58 @@
                             "constructor":"NewWithObserver"
                          }
                       }
+                   }, 
+                   "value": {
+                     "modules":{
+
+                     },
+                     "types": {
+                        "ValueType":{
+                           "constructor":"FromJson"
+                        },
+
+                        "ValueNode": {
+                           "inputs": [
+                           ],
+                           "outputs": [
+                              "output"
+                           ],
+                           "type_parameters":[
+                              "I"
+                           ],
+                           "constructor":{
+                              "NewWithArbitraryArgs":[
+                                 {
+                                    "arg_type":{
+                                       "Generic":{
+                                          "name":"I"
+                                       }
+                                    },
+                                    "name":"value",
+                                    "passing":"Move",
+                                    "existing_object":false
+                                 },
+                                 {
+                                    "arg_type":{
+                                       "Type":{
+                                          "name":"Option",
+                                          "type_parameters":[
+                                             {"Type":{
+                                                "name":"ChangeObserver",
+                                                "type_parameters":null
+                                                }
+                                             }
+                                          ]
+                                       }
+                                    },
+                                    "name":"Some(&change_observer)",
+                                    "passing":"Move",
+                                    "existing_object":true
+                                 }
+                              ]
+                           }
+                        }
+                     }
                    }
                 }
              }

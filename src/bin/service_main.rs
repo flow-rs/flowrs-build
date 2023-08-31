@@ -41,7 +41,7 @@ async fn main() {
         .route("/projects/", get(get_all_projects))
         .route("/projects/", post(create_project))
         .with_state((project_manager.clone(), package_manager.clone()));
-
+    
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)

@@ -50,7 +50,10 @@ impl PackageManager {
                 }
             }
         }
-        PackageManager { packages: packages }
+        let mut pm = PackageManager { packages: packages };
+        pm.add_built_in_package(); 
+
+        pm
     }
 
     fn add_built_in_package(&mut self) {

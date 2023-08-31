@@ -88,7 +88,12 @@ impl FlowProjectManager {
     }
 
     fn create_builtin_dependencies(&self) -> String{
-        "wasm-bindgen = \"0.2.87\"\n".to_string()
+        let d = vec! [        
+        "wasm-bindgen = \"0.2.87\"",
+        "serde_json = \"1.0.105\""
+        ];
+
+        d.join("\n")        
     }
 
     fn create_cargo_toml(&self, flow_project: &FlowProject, project_folder_name: &PathBuf) -> Result<()>{
