@@ -1,17 +1,16 @@
 use axum::{
-    body::Body,
-    extract::{Extension, Path, State},
-    http::{Request, Response, StatusCode},
+    body::{Body, StreamBody},
+    extract::{Path, State},
+    http::{header, Response, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
+use tokio_util::io::ReaderStream;
 
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::collections::HashMap;
-use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
+use std::net::SocketAddr;
+use std::{path::PathBuf, process::Command};
 
 use flowrs_build::{
     flow_project::{FlowProject, FlowProjectManager},
@@ -23,9 +22,9 @@ use flowrs_build::{
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let mut package_manager = Arc::new(Mutex::new(PackageManager::new_from_folder("packages")));
+    let package_manager = Arc::new(Mutex::new(PackageManager::new_from_folder("packages")));
 
-    let mut project_manager = Arc::new(Mutex::new(FlowProjectManager::new("flow-projects")));
+    let project_manager = Arc::new(Mutex::new(FlowProjectManager::new("flow-projects")));
 
     let res = project_manager.lock().unwrap().load_projects();
     if let Err(err) = res {
@@ -35,6 +34,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/packages/:package_name", get(get_package_by_name))
+        .route("/build/:package_name", get(build_package))
         .route("/packages/", get(get_all_packages))
         .with_state(package_manager.clone())
         //.route("/projects/:project_name", get(get_project_by_name))
@@ -48,6 +48,81 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+async fn build_package(
+    State(package_manager): State<Arc<Mutex<PackageManager>>>,
+    Path(package_name): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let package = package_manager
+        .lock()
+        .unwrap()
+        .get_package(&package_name)
+        .cloned()
+        .unwrap();
+    let project_path = PathBuf::from(format!("./flow-projects/{}", package.name));
+
+    if !project_path.exists() {
+        let error_message = "The specified project directory does not exist.";
+        eprintln!("{}", error_message);
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, error_message.to_string()));
+    }
+
+    if let Err(err) = std::env::set_current_dir(&project_path) {
+        let error_message = format!("Failed to change the working directory: {}", err);
+        eprintln!("{} {}", error_message, err);
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, error_message.to_string()));
+    }
+
+    let wasm_pack_build = Command::new("wasm-pack")
+        .args(&["build", "--target", "web"])
+        .output();
+
+    if let Err(err) = wasm_pack_build {
+        let error_message = format!("Couldn't build the project: {}", err);
+        eprintln!("{} {}", error_message, err);
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, error_message.to_string()));
+    }
+
+    let output = wasm_pack_build.unwrap();
+
+    if !output.status.success() {
+        eprintln!("Failed to build the project for WebAssembly.");
+        if let Some(stderr) = String::from_utf8_lossy(&output.stderr)
+            .trim()
+            .to_string()
+            .split('\n')
+            .next()
+        {
+            eprintln!("Error: {}", stderr);
+        }
+    }
+
+    println!("Project built successfully!");
+    let target_dir = project_path.join("pkg");
+
+    if !target_dir.exists() {
+        let error_message = "The target dir of the generated WASM file cannot be found.";
+        eprintln!("{}", error_message);
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, error_message.to_string()));
+    }
+
+    let file_name = format!("{}_bg.wasm", package.name);
+    let wasm_file_path = target_dir.join(file_name.clone());
+    let wasm_file = tokio::fs::File::open(wasm_file_path)
+        .await
+        .expect("Failed to open Wasm file");
+    let stream = ReaderStream::new(wasm_file);
+    let body = StreamBody::new(stream);
+    let headers = [
+        (header::CONTENT_TYPE, "application/wasm".to_string()),
+        (
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{:?}\"", file_name),
+        ),
+    ];
+
+    Ok((headers, body))
 }
 
 async fn get_all_packages(
