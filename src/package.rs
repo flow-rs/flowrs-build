@@ -113,12 +113,15 @@ pub enum ArgumentType {
         name: String,
         type_parameters: Option<Vec<Box<ArgumentType>>>,
     },
-    Tuple {
-        type_parameters: Vec<Box<ArgumentType>>,
-    },
+    
     Generic {
         name: String,
     },
+    //TODO: Tuple 
+    // Tuple {
+    //    type_parameters: Vec<Box<ArgumentType>>,
+    //},
+    //TODO: Enum 
 }
 
 impl ArgumentType {
@@ -160,7 +163,7 @@ impl Argument {
     fn emit_prefix_code(&self) -> String {
         match self.passing {
             ArgumentPassing::Move => "".to_string(),
-            ArgumentPassing::Clone => ".clone()".to_string(),
+            ArgumentPassing::Clone => "".to_string(),
             ArgumentPassing::MutableReference => "&mut ".to_string(),
             ArgumentPassing::Reference => "&".to_string(),
         }
@@ -180,9 +183,10 @@ impl Argument {
             arg_type: Box::new(ArgumentType::Type {
                 name: "Option".to_string(),
                 type_parameters: Some(vec![ArgumentType::simple_type("ChangeObserver")]),
+                 //Hack: TODO: Add proper enum support.
             }),
-            name: "Some(&change_observer)".to_string(), //Hack: TODO: Add proper enum support.
-            passing: ArgumentPassing::Move,
+            name: "change_observer".to_string(),
+            passing: ArgumentPassing::Clone,
             construction: ArgumentConstruction::ExistingObject(),
         }
     }
@@ -290,13 +294,7 @@ impl Constructor {
                     }
                 }
             }
-            ArgumentType::Tuple {
-                type_parameters, ..
-            } => {
-                for param in type_parameters {
-                    self.get_resolved_arg_type_parameters(param, already_resolved_tps, resolved_tps);
-                }
-            }
+            
             ArgumentType::Generic { name } => {
                 if let Some(resolved_name) = already_resolved_tps.get(name) {
                     /*
@@ -343,11 +341,7 @@ impl Constructor {
                 } else {
                     //TODO: Error Handling
                 }
-            }
-            // TODO: Implement this for Tuples support.
-            ArgumentType::Tuple { type_parameters } => {
-                todo! {}
-            }
+            }            
         }
 
         type_name.push_str(">");
@@ -462,10 +456,6 @@ impl Constructor {
                 } else {
                     Err(Error::msg("Generic type was not resolved"))
                 }
-            }
-            // TODO: Implement this for Tuples support.
-            ArgumentType::Tuple { type_parameters } => {
-                todo! {}
             }
         }
     }
@@ -650,7 +640,7 @@ fn test() {
                 "outputs": null,
                 "type_parameters": ["U", "T"],
                 "constructors": 
-                    {"Constructor1": "NewWithObserverAndContext"}
+                    {"New": "NewWithObserverAndContext"}
               }
             },
             "modules": {}
@@ -889,6 +879,25 @@ fn test() {
     println!("{}", json);
     */
 
+    let package_1: Package = serde_json::from_str(&package_json).expect("wrong format.");
+    let mut pm_1 = PackageManager::new();
+    pm_1.add_package(package_1);
+    let t_1 = pm_1.get_type("my_crate::MyType").expect("msg");
+    let c_1 = t_1.constructors.get("New").expect("");
+    let mut type_params_1 = HashMap::new();
+    type_params_1.insert("U".to_string(), "i32".to_string());
+    type_params_1.insert("T".to_string(), "i32".to_string());
+    let mut ns_1 = Namespace::new();
+
+    let obj_1 = ObjectDescription {
+        type_name: "my_crate::MyType".to_string(),
+        type_parameters: type_params_1.clone(),
+        name: "value".to_string(),
+        is_mutable: false,
+    };
+    println!("CODE: {}", c_1.emit_code_template(&obj_1, &pm_1, &ns_1).expect(""));    
+
+    /*
     let a = Argument::new_change_observer_arg();
     let json = serde_json::to_string(&a).unwrap();
     println!("ARG: {}", json);
@@ -926,6 +935,6 @@ fn test() {
                 .emit_code_template(&obj, &pm, &ns)
                 .expect("Did not work!")
         );
-    }
+    } */
      
 }

@@ -70,15 +70,14 @@
                                           "name":"Option",
                                           "type_parameters":[
                                              {"Type":{
-                                                "name":"ChangeObserver",
-                                                "type_parameters":null
+                                                "name":"ChangeObserver"
                                                 }
                                              }
                                           ]
                                        }
                                     },
-                                    "name":"Some(&change_observer)",
-                                    "passing":"Move",
+                                    "name":"change_observer",
+                                    "passing":"Clone",
                                     "construction":{"ExistingObject":[]}
                                  }
                               ]

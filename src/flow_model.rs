@@ -128,7 +128,8 @@ impl StandardCodeEmitter {
 
     fn emit_std_locals(&self, tokens: &mut TokenStream) {
         tokens.extend(quote! {
-            let change_observer = ChangeObserver::new();
+            let co = ChangeObserver::new();
+            let change_observer = Some(&co);
             let mut file = File::open("flow-project.json").expect("Failed to open flow project file.");
             let mut contents = String::new();
             file.read_to_string(&mut contents).expect("Failed to read flow project file.");
@@ -180,7 +181,7 @@ impl StandardCodeEmitter {
         tokens.extend(quote! {
             let node_updater = SingleThreadedNodeUpdater::new(None);
             let scheduler = RoundRobinScheduler::new();
-            let mut executor = StandardExecutor::new(change_observer);
+            let mut executor = StandardExecutor::new(co);
             let _ = executor.run(flow, scheduler, node_updater);
         });
     }
