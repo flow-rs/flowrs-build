@@ -47,16 +47,26 @@ pub struct Type {
 }
 
 impl Type {
-    pub fn new_simple(name: &str, constructor: Constructor) -> Self {
+    pub fn new_with_constructor(constructor_name: &str, constructor: Constructor) -> Self {
         let mut t = Self {
             inputs: Option::None,
             outputs: Option::None,
             type_parameters: Option::None,
             constructors: HashMap::new()
         };
-        t.constructors.insert(name.into(), constructor);
+        t.constructors.insert(constructor_name.into(), constructor);
         t
     }
+
+    pub fn new_simple() -> Self {
+        Self {
+            inputs: Option::None,
+            outputs: Option::None,
+            type_parameters: Option::None,
+            constructors: HashMap::new()
+        }
+    }
+
 }
 
 #[derive(Clone)]
@@ -181,9 +191,8 @@ impl Argument {
     fn new_change_observer_arg() -> Self {
         Self {
             arg_type: Box::new(ArgumentType::Type {
-                name: "Option".to_string(),
-                type_parameters: Some(vec![ArgumentType::simple_type("ChangeObserver")]),
-                 //Hack: TODO: Add proper enum support.
+                name: "()".to_string(),
+                type_parameters: None
             }),
             name: "change_observer".to_string(),
             passing: ArgumentPassing::Clone,
@@ -194,11 +203,8 @@ impl Argument {
     fn new_context_arg() -> Self {
         Self {
             arg_type: Box::new(ArgumentType::Type {
-                name: "Arc".to_string(),
-                type_parameters: Some(vec![ArgumentType::simple_type_with_simple_typ_args(
-                    "Mutex",
-                    vec!["flowrs::node::Context"],
-                )]),
+                name: "()".to_string(),
+                type_parameters: None,
             }),
             name: "context".to_string(),
             passing: ArgumentPassing::Clone,
@@ -801,18 +807,11 @@ fn test() {
                                          {
                                             "arg_type":{
                                                "Type":{
-                                                  "name":"Option",
-                                                  "type_parameters":[
-                                                     {
-                                                        "Type":{
-                                                           "name":"ChangeObserver",
-                                                           "type_parameters":null
-                                                        }
-                                                     }
-                                                  ]
+                                                  "name":"()",
+                                                  "type_parameters":[]
                                                }
                                             },
-                                            "name":"Some(&change_observer)",
+                                            "name":"change_observer",
                                             "passing":"Move",
                                             "construction":{
                                                "ExistingObject":[

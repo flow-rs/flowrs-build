@@ -66,9 +66,12 @@ impl PackageManager {
         for prim in prims {
             types.insert(
                 prim.to_string(),
-                Type::new_simple("Default".into(), Constructor::FromDefault,),
+                Type::new_with_constructor("Default".into(), Constructor::FromDefault,),
             );
         }
+
+        // the "no-type"
+        types.insert("()".to_string(), Type::new_simple());
 
         let mut crates = HashMap::new();
         crates.insert("primitives".to_string(), Crate::new_with_types(types));

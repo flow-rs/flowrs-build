@@ -67,13 +67,7 @@
                                  {
                                     "arg_type":{
                                        "Type":{
-                                          "name":"Option",
-                                          "type_parameters":[
-                                             {"Type":{
-                                                "name":"ChangeObserver"
-                                                }
-                                             }
-                                          ]
+                                          "name":"()"
                                        }
                                     },
                                     "name":"change_observer",
