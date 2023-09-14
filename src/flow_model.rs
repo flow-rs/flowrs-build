@@ -8,7 +8,7 @@ use syn::Ident;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::package::{Constructor, Namespace, Object, Package};
+use crate::package::{Constructor, Namespace, ObjectDescription, Package};
 use crate::package_manager::PackageManager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -23,6 +23,7 @@ struct ConnectionModel {
 pub struct NodeModel {
     node_type: String,
     type_parameters: HashMap<String, String>,
+    constructor: String
     //inputs: HashMap<String, InputModel>,
     //outputs: HashMap<String, OutputModel>
 }
@@ -80,8 +81,8 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn node_model_to_object(&self, node_name: &String, node: &NodeModel) -> Object {
-        Object {
+    fn node_model_to_object(&self, node_name: &String, node: &NodeModel) -> ObjectDescription {
+        ObjectDescription {
             name: node_name.clone(),
             type_name: node.node_type.clone(),
             type_parameters: node.type_parameters.clone(),
@@ -91,19 +92,26 @@ impl StandardCodeEmitter {
 
     fn emit_node(&self, node_name: &str, node: &NodeModel, pm: &PackageManager) -> TokenStream {
         if let Some(node_type) = pm.get_type(&node.node_type) {
-            if let Ok(code) = node_type.constructor.emit_code_template(
-                &self.node_model_to_object(&node_name.to_string(), node),
-                pm,
-                &Namespace::new(),
-            ) {
-                let tok: TokenStream = code.parse().unwrap();
 
-                return quote! {
-                    #tok
-                };
+            if let Some(constructor) = node_type.constructors.get(&node.constructor) {
+
+                if let Ok(code) = constructor.emit_code_template(
+                    &self.node_model_to_object(&node_name.to_string(), node),
+                    pm,
+                    &Namespace::new(),
+                ) {
+                    let tok: TokenStream = code.parse().unwrap();
+
+                    return quote! {
+                        #tok
+                    };
+                } else {
+                    //TODO: Error reporting.
+                }
+            } else {
+                // TODO: Error reporting.
             }
         }
-
         quote! {}
     }
 
@@ -121,7 +129,6 @@ impl StandardCodeEmitter {
     fn emit_std_locals(&self, tokens: &mut TokenStream) {
         tokens.extend(quote! {
             let change_observer = ChangeObserver::new();
-            
             let mut file = File::open("flow-project.json").expect("Failed to open flow project file.");
             let mut contents = String::new();
             file.read_to_string(&mut contents).expect("Failed to read flow project file.");

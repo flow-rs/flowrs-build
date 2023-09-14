@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 
-use crate::package::{Crate, DynamicConstructor, Package, Type};
+use crate::package::{Crate, Constructor, Package, Type};
 
 pub struct PackageManager {
     packages: HashMap<String, Package>,
@@ -66,7 +66,7 @@ impl PackageManager {
         for prim in prims {
             types.insert(
                 prim.to_string(),
-                Type::new_simple(DynamicConstructor::FromDefault),
+                Type::new_simple("Default".into(), Constructor::FromDefault,),
             );
         }
 

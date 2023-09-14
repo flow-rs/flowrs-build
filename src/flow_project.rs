@@ -101,7 +101,7 @@ impl FlowProjectManager {
         let cargo_toml_path = project_folder_name.join("Cargo.toml");
         let cargo_toml_content =
             format!("[package]\n name = \"{}\" \n version = \"{}\"\nedition = \"2021\"\n\n[dependencies]\n{}\n{}\n\n[lib]\ncrate-type = [\"cdylib\"]", 
-            flow_project.name, 
+            flow_project.name,
             flow_project.version,
             flow_project.packages.iter().map(|x| self.create_project_dependencies(x)).collect::<Vec<String>>().join("\n"),
             self.create_builtin_dependencies()

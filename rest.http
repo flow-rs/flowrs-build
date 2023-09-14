@@ -21,7 +21,7 @@ POST http://127.0.0.1:3000/projects/ HTTP/1.1
 content-type: application/json
 
 {
-  "name": "flow_project_6",
+  "name": "flow_project_7",
   "version": "1.0.0",
   "packages": [
     {"name": "flowrs", "version": "1.0.0", "path": "../../../flowrs"}, 
@@ -31,12 +31,15 @@ content-type: application/json
         "nodes": {
             "node1": {
                 "node_type": "flowrs_std::nodes::debug::DebugNode",
-                "type_parameters": {"I": "i32"}
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
 
             },
             "node2": {
                 "node_type": "flowrs_std::nodes::value::ValueNode",
-                "type_parameters": {"I": "i32"}
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
             }
         },
         "connections": [
