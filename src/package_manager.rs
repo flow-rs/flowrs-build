@@ -57,6 +57,8 @@ impl PackageManager {
     }
 
     fn add_built_in_package(&mut self) {
+
+        // primitive types.
         let prims: [&str; 16] = [
             "i8", "i16", "i32", "i64", "i128", "u8", "u16", "u32", "u64", "u128", "isize", "usize",
             "f32", "f64", "bool", "char",
@@ -66,11 +68,11 @@ impl PackageManager {
         for prim in prims {
             types.insert(
                 prim.to_string(),
-                Type::new_with_constructor("Default".into(), Constructor::FromDefault,),
+                Type::new_primitive_type(),
             );
         }
 
-        // the "no-type"
+        // the "no-type".
         types.insert("()".to_string(), Type::new_simple());
 
         let mut crates = HashMap::new();

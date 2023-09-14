@@ -58,6 +58,19 @@ impl Type {
         t
     }
 
+    pub fn new_primitive_type() -> Self {
+        let mut t = Self {
+            inputs: Option::None,
+            outputs: Option::None,
+            type_parameters: Option::None,
+            constructors: HashMap::new()
+        };
+        t.constructors.insert("Default".into(), Constructor::FromDefault);
+        t.constructors.insert("Json".into(), Constructor::FromJson);
+
+        t
+    }
+
     pub fn new_simple() -> Self {
         Self {
             inputs: Option::None,
@@ -576,18 +589,18 @@ impl Constructor {
     fn emit_new_from_json(
         &self,
         od: &ObjectDescription,
-        pack_man: &PackageManager,
         current_namespace: &Namespace,
     ) -> Result<String, Error> {
         let full_object_name = self.get_fully_qualified_name(&od.name, current_namespace, false);
 
         Ok(format!(
-            "let{} {}: {}{} = serde_json::from_value(data{}.clone());",
+            "let{} {}: {}{} = serde_json::from_value(data{}.clone()).expect(\"Could not create {} from Json.\");",
             self.emit_mutable(od.is_mutable),
             full_object_name,
             od.type_name,
             self.emit_type_parameters(&od.type_parameters.values().cloned().collect(), false),
-            self.emit_json_path(current_namespace, od)
+            self.emit_json_path(current_namespace, od),
+            full_object_name
         ))
     }
 }
@@ -624,7 +637,7 @@ impl Constructor  {
                 self.emit_new_with_args(obj_desc, pack_man, args, namespace)
             }
 
-            Self::FromJson => self.emit_new_from_json(obj_desc, pack_man, namespace),
+            Self::FromJson => self.emit_new_from_json(obj_desc, namespace),
 
             Self::FromDefault => self.emit_default(obj_desc, pack_man, namespace),
             

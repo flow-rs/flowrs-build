@@ -37,7 +37,7 @@
                      },
                      "types": {
                         "ValueType":{
-                           "constructors": {"FromJson": "FromJson"}
+                           "constructors": {"Json": "FromJson"}
                         },
 
                         "ValueNode": {
@@ -62,7 +62,7 @@
                                     },
                                     "name":"value",
                                     "passing":"Move",
-                                    "construction":{"Constructor": "Default"}
+                                    "construction":{"Constructor": "Json"}
                                  },
                                  {
                                     "arg_type":{
