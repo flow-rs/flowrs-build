@@ -44,7 +44,19 @@ pub struct StandardCodeEmitter {}
 impl StandardCodeEmitter {
     fn emit_function(&self, body: &TokenStream) -> TokenStream {
         quote! {
+
+            #[cfg(target_arch = "wasm32")]
             #[wasm_bindgen]
+            pub fn wasm_run() {
+                run();
+            }
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            #[no_mangle]
+            pub extern "C" fn native_run() {
+                run();
+            }
+
             pub fn run() {
                 #body
             }
@@ -54,7 +66,7 @@ impl StandardCodeEmitter {
     fn emit_function_body(&self, flow: &FlowModel, pm: &PackageManager) -> TokenStream {
         let mut body = TokenStream::new();
 
-        self.emit_std_locals(&mut body);
+        self.emit_std_locals(&mut body, flow);
 
         self.emit_nodes(flow, &mut body, pm);
 
@@ -126,14 +138,15 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn emit_std_locals(&self, tokens: &mut TokenStream) {
+    fn emit_std_locals(&self, tokens: &mut TokenStream, flow: &FlowModel) {
+
+        let data_str = serde_json::to_string(&flow.data).unwrap();
+
         tokens.extend(quote! {
             let co = ChangeObserver::new();
             let change_observer = Some(&co);
-            let mut file = File::open("flow-project.json").expect("Failed to open flow project file.");
-            let mut contents = String::new();
-            file.read_to_string(&mut contents).expect("Failed to read flow project file.");
-            let data: Value = from_reader(contents.as_bytes()).expect("Failed to parse flow project file.");
+            let data_str = #data_str;
+            let data: Value = serde_json::from_str(&data_str).expect("Failed to parse flow project data.");
         });
     }
 

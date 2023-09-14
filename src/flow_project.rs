@@ -189,9 +189,6 @@ impl FlowProjectManager {
         // Create the flow as rust source
         self.create_flow_rust_code(flow_project, &src_folder, package_manager)?;
 
-        //Create lib.rs
-        //self.create_lib_rs(flow_project, &src_folder)?;
-
         Ok(())
     }
 

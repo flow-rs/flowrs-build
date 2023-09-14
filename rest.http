@@ -21,7 +21,7 @@ POST http://127.0.0.1:3000/projects/ HTTP/1.1
 content-type: application/json
 
 {
-  "name": "flow_project_7",
+  "name": "flow_project_10",
   "version": "1.0.0",
   "packages": [
     {"name": "flowrs", "version": "1.0.0", "path": "../../../flowrs"}, 
