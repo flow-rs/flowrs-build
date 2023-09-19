@@ -13,10 +13,10 @@ use crate::package_manager::PackageManager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct ConnectionModel {
-    input_node: String,
-    output_node: String,
-    input: String,
-    output: String,
+    from_node: String,
+    to_node: String,
+    to_input: String,
+    from_output: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -44,6 +44,21 @@ pub struct StandardCodeEmitter {}
 impl StandardCodeEmitter {
     fn emit_function(&self, body: &TokenStream) -> TokenStream {
         quote! {
+
+            //println replacement.
+            #[cfg(target_arch = "wasm32")]
+            #[wasm_bindgen]
+            extern "C" {
+                #[wasm_bindgen(js_namespace = console)]
+                fn log(s: &str);
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            macro_rules! println {
+                ( $( $t:tt )* ) => {
+                    log(format!( $( $t )* ).as_str());
+                }
+            }
 
             #[cfg(target_arch = "wasm32")]
             #[wasm_bindgen]
@@ -93,12 +108,45 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn node_model_to_object(&self, node_name: &String, node: &NodeModel) -> ObjectDescription {
+    fn node_model_to_object(&self, node_name: &String, node: &NodeModel, pm: &PackageManager) -> ObjectDescription {
         ObjectDescription {
             name: node_name.clone(),
             type_name: node.node_type.clone(),
-            type_parameters: node.type_parameters.clone(),
+            type_parameter_part: self.emit_type_parameter_part(&node, pm),
             is_mutable: false,
+        }
+    }
+
+    fn emit_type_parameter_part(&self, node: &NodeModel, pm: &PackageManager) -> String {
+        let mut tp_part = "".to_string();
+        self.emit_type_parameter_part_rec(&node.type_parameters.keys().cloned().collect(), &node.type_parameters, pm, &mut tp_part);
+        tp_part 
+    }
+
+    fn emit_type_parameter_part_rec(&self, type_parameters: &Vec<String>, resolved_type_parameters: &HashMap<String, String>, pm: &PackageManager, tp_part: &mut String) {
+        
+        if !type_parameters.is_empty() {
+            tp_part.push_str("<");
+        }
+
+        for type_parameter in type_parameters {
+
+            if let Some(type_name) = resolved_type_parameters.get(type_parameter) {
+
+                tp_part.push_str(type_name);
+                if let Some(t) = pm.get_type(type_name) {
+                    if let Some(tps) = &t.type_parameters {
+                        self.emit_type_parameter_part_rec(tps, resolved_type_parameters, pm, tp_part);  
+                    }      
+                } 
+                tp_part.push_str(",");
+            } else {
+                //TODO: Error Reporting. 
+            }
+        }
+        if !type_parameters.is_empty() {
+            //tp_part.pop(); // pop last ,
+            tp_part.push_str(">");
         }
     }
 
@@ -108,7 +156,8 @@ impl StandardCodeEmitter {
             if let Some(constructor) = node_type.constructors.get(&node.constructor) {
 
                 if let Ok(code) = constructor.emit_code_template(
-                    &self.node_model_to_object(&node_name.to_string(), node),
+                    &self.node_model_to_object(&node_name.to_string(), node, pm),
+                    &node.type_parameters,
                     pm,
                     &Namespace::new(),
                 ) {
@@ -128,10 +177,10 @@ impl StandardCodeEmitter {
     }
 
     fn emit_node_connection(&self, connection: &ConnectionModel) -> TokenStream {
-        let node_out_ident = Ident::new(&connection.input_node, proc_macro2::Span::call_site());
-        let node_inp_ident = Ident::new(&connection.output_node, proc_macro2::Span::call_site());
-        let output_ident = Ident::new(&connection.output, proc_macro2::Span::call_site());
-        let input_ident = Ident::new(&connection.input, proc_macro2::Span::call_site());
+        let node_out_ident = Ident::new(&connection.from_node, proc_macro2::Span::call_site());
+        let node_inp_ident = Ident::new(&connection.to_node, proc_macro2::Span::call_site());
+        let output_ident = Ident::new(&connection.from_output, proc_macro2::Span::call_site());
+        let input_ident = Ident::new(&connection.to_input, proc_macro2::Span::call_site());
 
         quote! {
             connect(#node_out_ident.#output_ident.clone(), #node_inp_ident.#input_ident.clone());

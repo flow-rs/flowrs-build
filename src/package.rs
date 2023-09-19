@@ -134,11 +134,14 @@ impl Modifier {
 pub enum ArgumentType {
     Type {
         name: String,
-        type_parameters: Option<Vec<Box<ArgumentType>>>,
+        #[serde(rename = "type_parameters")]
+        arg_type_parameters: Option<Vec<Box<ArgumentType>>>,
     },
     
     Generic {
         name: String,
+        #[serde(rename = "type_parameters")]
+        arg_type_parameters: Option<Vec<Box<ArgumentType>>>,
     },
     //TODO: Tuple 
     // Tuple {
@@ -151,14 +154,14 @@ impl ArgumentType {
     fn simple_type(name: &str) -> Box<ArgumentType> {
         Box::new(ArgumentType::Type {
             name: name.to_string(),
-            type_parameters: None,
+            arg_type_parameters: None,
         })
     }
 
     fn simple_type_with_simple_typ_args(name: &str, tp_names: Vec<&str>) -> Box<ArgumentType> {
         Box::new(ArgumentType::Type {
             name: name.to_string(),
-            type_parameters: Some(
+            arg_type_parameters: Some(
                 tp_names
                     .iter()
                     .map(|name| ArgumentType::simple_type(name))
@@ -176,6 +179,7 @@ pub enum ArgumentConstruction {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Argument {
+    #[serde(rename = "type")]
     arg_type: Box<ArgumentType>,
     name: String,
     passing: ArgumentPassing,
@@ -205,7 +209,7 @@ impl Argument {
         Self {
             arg_type: Box::new(ArgumentType::Type {
                 name: "()".to_string(),
-                type_parameters: None
+                arg_type_parameters: None
             }),
             name: "change_observer".to_string(),
             passing: ArgumentPassing::Clone,
@@ -217,7 +221,7 @@ impl Argument {
         Self {
             arg_type: Box::new(ArgumentType::Type {
                 name: "()".to_string(),
-                type_parameters: None,
+                arg_type_parameters: None,
             }),
             name: "context".to_string(),
             passing: ArgumentPassing::Clone,
@@ -225,12 +229,17 @@ impl Argument {
         }
     }
 
-    fn into_object(&self, type_name: &String, is_mutable: bool) -> ObjectDescription {
+    fn into_object_description(&self, type_name: &String , type_parameter_part: &String) -> ObjectDescription {
         ObjectDescription {
             type_name: type_name.clone(),
-            type_parameters: HashMap::new(),
+            type_parameter_part: type_parameter_part.clone(),
+            //type_parameters: HashMap::new(),
             name: self.name.clone(),
-            is_mutable: is_mutable,
+            is_mutable: if let ArgumentPassing::MutableReference { .. } = self.passing {
+                true
+            } else {
+                false
+            },
         }
     }
 }
@@ -238,40 +247,25 @@ impl Argument {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ObjectDescription {
     pub type_name: String,
-    pub type_parameters: HashMap<String, String>,
+    pub type_parameter_part: String,
+    //pub type_parameters: HashMap<String, String>,
     pub name: String,
     pub is_mutable: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum Constructor {
-    New,
-    NewWithObserver,
-    NewWithObserverAndContext,
-    NewWithArbitraryArgs(Vec<Argument>),
+    New{function_name: Option<String>},
+    NewWithObserver{function_name: Option<String>},
+    NewWithObserverAndContext{function_name: Option<String>},
+    NewWithArbitraryArgs{function_name: Option<String>, arguments: Vec<Argument>},
     FromJson,
     FromDefault,
 }
 
 impl Constructor {
-    
-    fn emit_type_parameters(&self, type_parameters: &Vec<String>, with_colons: bool) -> String {
-        if type_parameters.is_empty() {
-            return "".to_string();
-        }
-
-        format!(
-            "<{}>{}",
-            type_parameters
-                .iter()
-                .map(|t| format!("{}", t))
-                .collect::<Vec<String>>()
-                .join(", "),
-            if with_colons { "::" } else { "" }
-        )
-    }
-
-    fn get_fully_qualified_name(&self, name: &String, namespace: &Namespace, ignore: bool) -> String {
+   
+    fn emit_fully_qualified_name(&self, name: &String, namespace: &Namespace, ignore: bool) -> String {
         if namespace.is_empty() || ignore {
             name.clone()
         } else {
@@ -285,7 +279,7 @@ impl Constructor {
                 format!(
                     "{}{}{}",
                     arg.emit_prefix_code(),
-                    self.get_fully_qualified_name(&arg.name, current_namespace, matches!(arg.construction,ArgumentConstruction::ExistingObject())),
+                    self.emit_fully_qualified_name(&arg.name, current_namespace, matches!(arg.construction,ArgumentConstruction::ExistingObject())),
                     arg.emit_postfix_code()
                 )
             })
@@ -299,96 +293,97 @@ impl Constructor {
         already_resolved_tps: &HashMap<String, String>,
         resolved_tps: &mut HashMap<String, String>,
     ) {
+
+        let mut type_params: &Option<Vec<Box<ArgumentType>>> = &None;
+
         match arg_type.as_ref() {
-            ArgumentType::Type {
-                type_parameters, ..
-            } => {
-                if let Some(type_params) = type_parameters {
-                    for param in type_params {
-                        self.get_resolved_arg_type_parameters(
-                            param,
-                            already_resolved_tps,
-                            resolved_tps,
-                        );
-                    }
-                }
+            ArgumentType::Type { arg_type_parameters: type_parameters, ..} => {
+                type_params = type_parameters;
             }
             
-            ArgumentType::Generic { name } => {
+            ArgumentType::Generic { arg_type_parameters: type_parameters, name } => {
                 if let Some(resolved_name) = already_resolved_tps.get(name) {
-                    /*
-                    *arg_type = Box::new(ArgumentType::Type {
-                        name: resolved_name.clone(),
-                        modifier: modifier.clone(),
-                        type_parameters: None,
-                    });
-                     */
                     resolved_tps.insert(name.clone(), resolved_name.clone());
                 }
+                type_params = type_parameters; 
             }
         }
+
+        if let Some(params) = type_params {
+            for param in params {
+                self.get_resolved_arg_type_parameters(
+                    &param,
+                    already_resolved_tps,
+                    resolved_tps,
+                );
+            }
+        }
+
     }
 
-    fn generate_arg_typename_rec(
+    fn emit_arg_type_parameters_part_rec(
         &self,
-        type_name: &mut String,
+        tp_part: &mut String,
         argument_type: &Box<ArgumentType>,
         resolved_type_parameters: &HashMap<String, String>,
     ) {
+        let mut arg_type_params: &Option<Vec<Box<ArgumentType>>> = &None;
+
         match argument_type.as_ref() {
-            ArgumentType::Type {
-                name,
-                type_parameters,
-            } => {
-                type_name.push_str(name);
 
-                if let Some(type_params) = type_parameters {
-                    type_name.push_str("<");
-
-                    for tp in type_params {
-                        self.generate_arg_typename_rec(type_name, tp, resolved_type_parameters);
-                        type_name.push_str(",")
-                    }
-
-                    type_name.pop(); // pop last ,
-                    type_name.push_str(">");
-                }
+            ArgumentType::Type { name, arg_type_parameters: type_parameters} => {
+                tp_part.push_str(name);
+                arg_type_params = type_parameters;
             }
-            ArgumentType::Generic { name } => {
+
+            ArgumentType::Generic { name, arg_type_parameters: type_parameters} => {
                 if let Some(tn) = resolved_type_parameters.get(name) {
-                    type_name.push_str(tn);
+                    tp_part.push_str(tn);
                 } else {
                     //TODO: Error Handling
                 }
+                arg_type_params = type_parameters;
             }            
         }
 
-        type_name.push_str(">");
+        if let Some(params) = arg_type_params {
+            if !params.is_empty() {
+                tp_part.push_str("<");
+
+                for tp in params {
+                    self.emit_arg_type_parameters_part_rec(tp_part, &tp, resolved_type_parameters);
+                    tp_part.push_str(",")
+                }
+
+                tp_part.pop(); // pop last ,
+                tp_part.push_str(">");
+            }
+        }
     }
 
-    fn generate_arg_typename(
+    fn emit_arg_type_parameters_part(
         &self,
-        type_name: &String,
-        type_parameters: &Option<Vec<Box<ArgumentType>>>,
-        resolved_type_parameters: &HashMap<String, String>,
+        arg_type_parameters: &Option<Vec<Box<ArgumentType>>>,
+        type_parameters: &HashMap<String, String>,
     ) -> String {
-        if let Some(type_params) = type_parameters {
-            let mut res_type_name = type_name.clone();
+                
+        if let Some(arg_type_params) = arg_type_parameters {
+           
+            if !arg_type_params.is_empty() { 
+                let mut tp_part = "<".to_string();
 
-            res_type_name.push_str("<");
+                for tp in arg_type_params {
+                    self.emit_arg_type_parameters_part_rec(&mut tp_part, tp, type_parameters);
+                    tp_part.push_str(",")
+                }
 
-            for tp in type_params {
-                self.generate_arg_typename_rec(&mut res_type_name, tp, resolved_type_parameters);
-                res_type_name.push_str(",")
+                //tp_part.pop(); // pop last ,
+                tp_part.push_str(">");
+                return tp_part
             }
-
-            res_type_name.pop(); // pop last ,
-            res_type_name.push_str(">");
-
-            res_type_name
-        } else {
-            type_name.clone()
         }
+        
+        "".to_string()        
     }
 
     fn emit_arg_construction_code(
@@ -397,28 +392,28 @@ impl Constructor {
         arg_constructor_name: String,
         pack_man: &PackageManager,
         current_namespace: &Namespace,
-        resolved_type_parameters: &HashMap<String, String>,
+        type_parameters: &HashMap<String, String>,
     ) -> Result<String, Error> {
+
+
         match arg.arg_type.as_ref() {
 
             ArgumentType::Type {
                 name,
-                type_parameters,
+                arg_type_parameters,
             } => {
                 if let Some(type_desc) = pack_man.get_type(name) {
                     
                     if let Some(arg_constructor) = type_desc.constructors.get(&arg_constructor_name) {
-
-                        let object = arg.into_object(
-                            &self.generate_arg_typename(name, type_parameters, resolved_type_parameters),
-                            if let ArgumentPassing::MutableReference { .. } = arg.passing {
-                                true
-                            } else {
-                                false
-                            }, 
+   
+                        let object_desc = arg.into_object_description(
+                            &name, 
+                            &self.emit_arg_type_parameters_part(arg_type_parameters, type_parameters), 
                         );
 
-                        arg_constructor.emit_code_template(&object, pack_man, current_namespace)
+                        println!("TYPE Typename: {}, part: {}", object_desc.type_name, object_desc.type_parameter_part );
+
+                        arg_constructor.emit_code_template(&object_desc, type_parameters, pack_man, current_namespace)
                     } else {
                         Err(Error::msg(format!(
                             "Constructor '{}' for type '{}' not found.", arg_constructor_name, name 
@@ -431,33 +426,36 @@ impl Constructor {
                 }
             }
 
-            ArgumentType::Generic { name } => {
+            ArgumentType::Generic { name , arg_type_parameters }=> {
+
                 // get resolved type parameters.
-                let mut resolved_tps = HashMap::<String, String>::new();
+                
+                /*
+                let mut type_parameters_for_arg_type = HashMap::<String, String>::new();
                 self.get_resolved_arg_type_parameters(
                     &arg.arg_type,
-                    resolved_type_parameters,
-                    &mut resolved_tps,
+                    type_parameters,
+                    &mut type_parameters_for_arg_type,
                 );
+                 */
+                
 
                 // check if generic was already resolved. if so, try to get type and emit constructor code.
                 // TODO: Think about what should happen if it is not yet resolved.
-                if let Some(type_name) = resolved_tps.get(name) {
-                    if let Some(type_desc) = pack_man.get_type(&type_name) {
-                        
+                if let Some(type_name) = type_parameters.get(name) {
+                    if let Some(type_desc) = pack_man.get_type(&type_name) {    
                         if let Some(arg_constructor) = type_desc.constructors.get(&arg_constructor_name) {
 
-                            let object = arg.into_object(
-                                &type_name,
-                                if let ArgumentPassing::MutableReference { .. } = arg.passing {
-                                    true
-                                } else {
-                                    false
-                                },
+                            let object_desc = arg.into_object_description(
+                                &type_name, 
+                                &self.emit_arg_type_parameters_part(arg_type_parameters, &type_parameters),
                             );
 
+                            println!("GENERIC Typename: {}, part: {}", object_desc.type_name, object_desc.type_parameter_part );
+
                             arg_constructor.emit_code_template(
-                                &object,
+                                &object_desc,
+                                &type_parameters,
                                 pack_man,
                                 current_namespace,
                             )
@@ -484,7 +482,7 @@ impl Constructor {
         pack_man: &PackageManager,
         args: &Vec<Argument>,
         current_namespace: &Namespace,
-        resolved_type_parameters: &mut HashMap<String, String>,
+        type_parameters: &HashMap<String, String>,
     ) -> Result<String, Error> {
         let mut construction_blocks = Vec::<String>::new();
         
@@ -498,7 +496,7 @@ impl Constructor {
                     constructor_name.clone(),
                     pack_man,
                     current_namespace,
-                    resolved_type_parameters,
+                    type_parameters,
                 ) {
                     Ok(code) => construction_blocks.push(code),
                     Err(err) => return Err(err),
@@ -517,42 +515,47 @@ impl Constructor {
         }
     }
 
+    fn emit_function_name(&self, function_name: &Option<String>) -> String {
+        if let Some(func_name) = function_name {
+            func_name.clone()
+        } else {
+            "new".into()
+        }
+    }
+
     fn emit_new_with_args(
         &self,
         od: &ObjectDescription,
+        type_parameters: &HashMap<String, String>,
+        function_name: &Option<String>,
         pack_man: &PackageManager,
         args: &Vec<Argument>,
         current_namespace: &Namespace,
     ) -> Result<String, Error> {
-        if let Some(_) = pack_man.get_type(&od.type_name) {
+            
             let mut new_namespace = current_namespace.clone();
             new_namespace.add_part(&od.name);
-
-            let mut resolved_type_parameters = od.type_parameters.clone();
 
             let args_construction_code = self.emit_args_construction_code(
                 pack_man,
                 args,
                 &new_namespace,
-                &mut resolved_type_parameters,
+                type_parameters,
             )?;
 
             Ok(format!(
-                "{}\n let{} {} = {}::{}new({});",
+                "{}\n let{} {} = {}::{}{}({});",
                 args_construction_code,
                 self.emit_mutable(od.is_mutable),
-                self.get_fully_qualified_name(&od.name, current_namespace, false),
+                self.emit_fully_qualified_name(&od.name, current_namespace, false),
                 od.type_name,
-                self.emit_type_parameters(&od.type_parameters.values().cloned().collect(), true),
+                if od.type_parameter_part.is_empty() {"".to_string() } else {od.type_parameter_part.clone() + "::"} ,
+                self.emit_function_name(function_name),
                 self.emit_args(args, &new_namespace)
             ))
-        } else {
-            Err(Error::msg(format!(
-                "Type description for type '{}' not found",
-                od.type_name
-            )))
-        }
+        
     }
+    
 
     fn emit_default(
         &self,
@@ -560,18 +563,14 @@ impl Constructor {
         pack_man: &PackageManager,
         current_namespace: &Namespace,
     ) -> Result<String, Error> {
-        if let Some(_) = pack_man.get_type(&od.type_name) {
-            let full_object_name = self.get_fully_qualified_name(&od.name, current_namespace, false);
 
-            Ok(format!(
-                "let{} {}:{} = Default::default();",
-                self.emit_mutable(od.is_mutable),
-                full_object_name,
-                od.type_name
-            ))
-        } else {
-            Err(Error::msg("Type description not found"))
-        }
+        Ok(format!(
+            "let{} {}:{}{} = Default::default();",
+            self.emit_mutable(od.is_mutable),
+            self.emit_fully_qualified_name(&od.name, current_namespace, false),
+            od.type_name,
+            od.type_parameter_part
+        ))       
     }
 
     fn emit_json_path(&self, cn: &Namespace, od: &ObjectDescription) -> String {
@@ -591,14 +590,14 @@ impl Constructor {
         od: &ObjectDescription,
         current_namespace: &Namespace,
     ) -> Result<String, Error> {
-        let full_object_name = self.get_fully_qualified_name(&od.name, current_namespace, false);
+        let full_object_name = self.emit_fully_qualified_name(&od.name, current_namespace, false);
 
         Ok(format!(
-            "let{} {}: {}{} = serde_json::from_value(data{}.clone()).expect(\"Could not create {} from Json.\");",
+            "let{} {}: {}{} = serde_json::from_value(data{}.clone()).expect(\"Could not create '{}' from Json.\");",
             self.emit_mutable(od.is_mutable),
             full_object_name,
             od.type_name,
-            self.emit_type_parameters(&od.type_parameters.values().cloned().collect(), false),
+            od.type_parameter_part,
             self.emit_json_path(current_namespace, od),
             full_object_name
         ))
@@ -609,22 +608,30 @@ impl Constructor  {
     pub fn emit_code_template(
         &self,
         obj_desc: &ObjectDescription,
+        type_parameters: &HashMap<String, String>,
         pack_man: &PackageManager,
         namespace: &Namespace,
     ) -> Result<String, Error> {
+
+        
+
         match self {
 
-            Self::New => self.emit_new_with_args(obj_desc, pack_man, &vec![], namespace),
+            Self::New {function_name} => self.emit_new_with_args(obj_desc, type_parameters, function_name, pack_man, &vec![], namespace),
 
-            Self::NewWithObserver => self.emit_new_with_args(
+            Self::NewWithObserver{function_name} => self.emit_new_with_args(
                 obj_desc,
+                type_parameters,
+                function_name,
                 pack_man,
                 &vec![Argument::new_change_observer_arg()],
                 namespace,
             ),
 
-            Self::NewWithObserverAndContext => self.emit_new_with_args(
+            Self::NewWithObserverAndContext{function_name} => self.emit_new_with_args(
                 obj_desc,
+                type_parameters,
+                function_name,
                 pack_man,
                 &vec![
                     Argument::new_change_observer_arg(),
@@ -633,8 +640,8 @@ impl Constructor  {
                 namespace,
             ),
 
-            Self::NewWithArbitraryArgs(args) => {
-                self.emit_new_with_args(obj_desc, pack_man, args, namespace)
+            Self::NewWithArbitraryArgs{function_name, arguments} => {
+                self.emit_new_with_args(obj_desc, type_parameters, function_name, pack_man, arguments, namespace)
             }
 
             Self::FromJson => self.emit_new_from_json(obj_desc, namespace),
@@ -659,8 +666,8 @@ fn test() {
                 "outputs": null,
                 "type_parameters": ["U", "T"],
                 "constructors": 
-                    {"New": "NewWithObserverAndContext"}
-              }
+                    "New":{"NewWithObserverAndContext": {}}
+            }
             },
             "modules": {}
           }
@@ -681,7 +688,9 @@ fn test() {
                     ],
                     "constructors":{
                        "New": 
-                       {"NewWithArbitraryArgs":[
+                       {"NewWithArbitraryArgs":
+                       { "arguments":
+                       [
                           {
                              "arg_type":{
                                 "Generic":{
@@ -693,6 +702,7 @@ fn test() {
                              "construction":{"ExistingObject":[]}
                           }
                        ]
+                        }
                     }
                     }
                  },
@@ -777,7 +787,7 @@ fn test() {
                                    "I"
                                 ],
                                 "constructors":{
-                                   "New":"NewWithObserver"
+                                   "New":{"NewWithObserver": {}}
                                 }
                              }
                           }
@@ -789,7 +799,7 @@ fn test() {
                           "types":{
                              "ValueType":{
                                 "constructors":{
-                                   "FromJson":"FromJson"
+                                   "Json":"FromJson"
                                 }
                              },
                              "ValueNode":{
@@ -804,35 +814,36 @@ fn test() {
                                 ],
                                 "constructors":{
                                    "New":{
-                                      "NewWithArbitraryArgs":[
-                                         {
-                                            "arg_type":{
-                                               "Generic":{
-                                                  "name":"I"
+                                      "NewWithArbitraryArgs":{
+                                         "arguments":[
+                                            {
+                                               "type":{
+                                                  "Generic":{
+                                                     "name":"I"
+                                                  }
+                                               },
+                                               "name":"value",
+                                               "passing":"Move",
+                                               "construction":{
+                                                  "Constructor":"Json"
                                                }
                                             },
-                                            "name":"value",
-                                            "passing":"Move",
-                                            "construction":{
-                                               "Constructor":"Default"
-                                            }
-                                         },
-                                         {
-                                            "arg_type":{
-                                               "Type":{
-                                                  "name":"()",
-                                                  "type_parameters":[]
+                                            {
+                                               "type":{
+                                                  "Type":{
+                                                     "name":"()"
+                                                  }
+                                               },
+                                               "name":"change_observer",
+                                               "passing":"Clone",
+                                               "construction":{
+                                                  "ExistingObject":[
+                                                     
+                                                  ]
                                                }
-                                            },
-                                            "name":"change_observer",
-                                            "passing":"Move",
-                                            "construction":{
-                                               "ExistingObject":[
-                                                  
-                                               ]
                                             }
-                                         }
-                                      ]
+                                         ]
+                                      }
                                    }
                                 }
                              }
@@ -903,11 +914,11 @@ fn test() {
 
     let obj_1 = ObjectDescription {
         type_name: "my_crate::MyType".to_string(),
-        type_parameters: type_params_1.clone(),
+        type_parameter_part: "".to_string(),
         name: "value".to_string(),
         is_mutable: false,
     };
-    println!("CODE: {}", c_1.emit_code_template(&obj_1, &pm_1, &ns_1).expect(""));    
+    println!("CODE: {}", c_1.emit_code_template(&obj_1, &type_params_1, &pm_1, &ns_1).expect(""));    
 
     /*
     let a = Argument::new_change_observer_arg();
