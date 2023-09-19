@@ -194,6 +194,7 @@ impl StandardCodeEmitter {
         tokens.extend(quote! {
             let co = ChangeObserver::new();
             let change_observer = Some(&co);
+            let context = Arc::new(Mutex::new(Context::new()));
             let data_str = #data_str;
             let data: Value = serde_json::from_str(&data_str).expect("Failed to parse flow project data.");
         });
@@ -201,7 +202,7 @@ impl StandardCodeEmitter {
 
     fn emit_flow(&self, flow: &FlowModel, tokens: &mut TokenStream) {
         tokens.extend(quote! {
-            let mut flow = Flow::new_empty("wasm", Version::new(0, 0, 1));
+            let mut flow = Flow::new_empty();
         });
 
         let mut id: u128 = 0;
@@ -212,7 +213,7 @@ impl StandardCodeEmitter {
                 flow.add_node_with_id_and_desc(
                     #node_ident,
                     #id,
-                    NodeDescription {name: #node_name.into(), description: #node_name.into() /*TODO*/, kind: #node_type.into()});
+                    NodeDescription {name: #node_name.into(), description: #node_name.into() /*TODO: get a node desc.*/, kind: #node_type.into()});
             });
             id += 1;
         }
@@ -225,12 +226,12 @@ impl StandardCodeEmitter {
             use serde_json::{from_reader, from_value, Value};
             use std::fs::File;
             use std::io::Read;
+            use std::sync::{Arc, Mutex};
 
             use flowrs::nodes::node_description::NodeDescription;
-            use flowrs::nodes::node::ChangeObserver;
+            use flowrs::nodes::node::{Context, ChangeObserver};
             use flowrs::nodes::connection::connect;
 
-            use flowrs::flow::version::Version;
             use flowrs::flow::flow::Flow;
 
             use flowrs::exec::execution::{Executor, StandardExecutor};
@@ -245,7 +246,7 @@ impl StandardCodeEmitter {
             let scheduler = RoundRobinScheduler::new();
             let mut executor = StandardExecutor::new(co);
             let res = executor.run(flow, scheduler, node_updater);
-            println("Result: {:?}", res);
+            println!("Result: {:?}", res);
         });
     }
 }
