@@ -8,8 +8,8 @@ use axum::{
 };
 use tokio_util::io::ReaderStream;
 
-use std::sync::{Arc, Mutex};
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 use std::{path::PathBuf, process::Command};
 
 use flowrs_build::{
@@ -33,8 +33,10 @@ async fn main() {
     }
 
     let app = Router::new()
+        .route("/build/:project_name", get(build_package))
+        .route("/file/:project_name/:file_name", get(get_file))
+        .with_state(project_manager.clone())
         .route("/packages/:package_name", get(get_package_by_name))
-        .route("/build/:package_name", get(build_package))
         .route("/packages/", get(get_all_packages))
         .with_state(package_manager.clone())
         //.route("/projects/:project_name", get(get_project_by_name))
@@ -50,17 +52,82 @@ async fn main() {
         .unwrap();
 }
 
-async fn build_package(
-    State(package_manager): State<Arc<Mutex<PackageManager>>>,
-    Path(package_name): Path<String>,
+async fn get_file(
+    Path(project_name): Path<String>,
+    Path(file_name): Path<String>,
+    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let package = package_manager
+    let project = project_manager
         .lock()
         .unwrap()
-        .get_package(&package_name)
-        .cloned()
-        .unwrap();
-    let project_path = PathBuf::from(format!("./flow-projects/{}", package.name));
+        .projects
+        .get(&project_name)
+        .cloned();
+    if let None = project {
+        let error_message = format!(
+            "The Project {} does not exist in the Project Manager",
+            project_name
+        );
+        eprintln!("{}", error_message);
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, error_message.to_string()));
+    }
+    let project_path = PathBuf::from(format!("./flow-projects/{}", project_name));
+    let target_dir = project_path.join("pkg");
+
+    if !target_dir.exists() {
+        let error_message = "The target dir of the generated WASM file cannot be found.";
+        eprintln!("{}", error_message);
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, error_message.to_string()));
+    }
+
+    let file_name = file_name;
+    let file_path = target_dir.join(file_name.clone());
+    let file = tokio::fs::File::open(file_path.clone())
+        .await
+        .expect("Failed to open Wasm file");
+    let stream = ReaderStream::new(file);
+    let body = StreamBody::new(stream);
+    let content_type = match mime_guess::from_path(file_path).first_raw() {
+        Some(mime) => mime,
+        None => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "MIME Type couldn't be determined".to_string(),
+            ))
+        }
+    };
+    let headers = [
+        (header::CONTENT_TYPE, content_type.to_string()),
+        (
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{:?}\"", file_name),
+        ),
+    ];
+
+    Ok((headers, body))
+}
+
+async fn build_package(
+    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
+    Path(project_name): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let project = project_manager
+        .lock()
+        .unwrap()
+        .projects
+        .get(&project_name)
+        .cloned();
+
+    if let None = project {
+        let error_message = format!(
+            "The Project {} does not exist in the Project Manager",
+            project_name
+        );
+        eprintln!("{}", error_message);
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, error_message.to_string()));
+    }
+
+    let project_path = PathBuf::from(format!("./flow-projects/{}", project_name));
 
     if !project_path.exists() {
         let error_message = "The specified project directory does not exist.";
@@ -107,7 +174,7 @@ async fn build_package(
         return Err((StatusCode::INTERNAL_SERVER_ERROR, error_message.to_string()));
     }
 
-    let file_name = format!("{}_bg.wasm", package.name);
+    let file_name = format!("{}_bg.wasm", project_name);
     let wasm_file_path = target_dir.join(file_name.clone());
     let wasm_file = tokio::fs::File::open(wasm_file_path)
         .await
