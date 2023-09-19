@@ -244,7 +244,8 @@ impl StandardCodeEmitter {
             let node_updater = SingleThreadedNodeUpdater::new(None);
             let scheduler = RoundRobinScheduler::new();
             let mut executor = StandardExecutor::new(co);
-            let _ = executor.run(flow, scheduler, node_updater);
+            let res = executor.run(flow, scheduler, node_updater);
+            println("Result: {:?}", res);
         });
     }
 }
