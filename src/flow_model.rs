@@ -11,6 +11,8 @@ use std::process::Command;
 use crate::package::{Constructor, Namespace, ObjectDescription, Package};
 use crate::package_manager::PackageManager;
 
+use anyhow::{Error, Result};
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct ConnectionModel {
     from_node: String,
@@ -36,7 +38,7 @@ pub struct FlowModel {
 }
 
 pub trait CodeEmitter {
-    fn emit_flow_code(&self, flow: &FlowModel, pm: &PackageManager) -> String;
+    fn emit_flow_code(&self, flow: &FlowModel, pm: &PackageManager) -> Result<String, Error>;
 }
 
 pub struct StandardCodeEmitter {}
@@ -103,12 +105,12 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn emit_init_function_body(&self, flow: &FlowModel, pm: &PackageManager) -> TokenStream {
+    fn emit_init_function_body(&self, flow: &FlowModel, pm: &PackageManager) -> Result<TokenStream, Error> {
         let mut body = TokenStream::new();
 
         self.emit_std_locals(&mut body, flow);
 
-        self.emit_nodes(flow, &mut body, pm);
+        self.emit_nodes(flow, &mut body, pm)?;
 
         self.emit_node_connections(flow, &mut body);
 
@@ -116,14 +118,15 @@ impl StandardCodeEmitter {
 
         self.emit_context_creation(&mut body);
 
-        body
+        Ok(body)
     }
 
-    fn emit_nodes(&self, flow: &FlowModel, tokens: &mut TokenStream, pm: &PackageManager) {
+    fn emit_nodes(&self, flow: &FlowModel, tokens: &mut TokenStream, pm: &PackageManager) -> Result<(), Error> {
         for (node_name, node) in &flow.nodes {
-            let generated_code = self.emit_node(node_name, node, pm);
+            let generated_code = self.emit_node(node_name, node, pm)?;
             tokens.extend(generated_code);
         }
+        Ok(())
     }
 
     fn emit_node_connections(&self, flow: &FlowModel, tokens: &mut TokenStream) {
@@ -179,30 +182,36 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn emit_node(&self, node_name: &str, node: &NodeModel, pm: &PackageManager) -> TokenStream {
+    fn emit_node(&self, node_name: &str, node: &NodeModel, pm: &PackageManager) -> Result<TokenStream, Error>  {
         if let Some(node_type) = pm.get_type(&node.node_type) {
 
             if let Some(constructor) = node_type.constructors.get(&node.constructor) {
-
-                if let Ok(code) = constructor.emit_code_template(
+                
+                let res = constructor.emit_code_template(
                     &self.node_model_to_object(&node_name.to_string(), node, pm),
                     &node.type_parameters,
                     pm,
                     &Namespace::new(),
-                ) {
-                    let tok: TokenStream = code.parse().unwrap();
+                );
 
-                    return quote! {
-                        #tok
-                    };
-                } else {
-                    //TODO: Error reporting.
+                match res {
+                    Ok(code)=> { 
+                        let tok: TokenStream = code.parse().unwrap();
+                        Ok(quote! {
+                            #tok
+                        }) 
+                    },
+                    Err(err) => {
+                        Err(err)
+                    }
                 }
             } else {
-                // TODO: Error reporting.
+                Err(anyhow::Error::msg(format!("Cannot find constructor '{}' for node '{}' with type '{}'", node.constructor, node_name, node.node_type)))
             }
+        } else {
+            Err(anyhow::Error::msg(format!("Cannot find type '{}' for node '{}'.", node.node_type, node_name)))
         }
-        quote! {}
+       
     }
 
     fn emit_node_connection(&self, connection: &ConnectionModel) -> TokenStream {
@@ -274,12 +283,15 @@ impl StandardCodeEmitter {
 }
 
 impl CodeEmitter for StandardCodeEmitter {
-    fn emit_flow_code(&self, flow: &FlowModel, pm: &PackageManager) -> String {
-        format!(
+    fn emit_flow_code(&self, flow: &FlowModel, pm: &PackageManager) -> Result<String, Error> {
+        
+        let init_function_body = self.emit_init_function_body(flow, pm)?;
+        
+        Ok(format!(
             "{}{}",
             self.emit_use_decls(),
-            self.emit_functions(&self.emit_init_function_body(flow, pm))
-        )
+            self.emit_functions(&init_function_body)
+        ))
     }
 }
 
@@ -362,7 +374,7 @@ fn test() {
     pm.add_package(p);
 
     let rce = StandardCodeEmitter {};
-    println!("{}", rce.emit_flow_code(&flow_model, &pm));
+    println!("{}", rce.emit_flow_code(&flow_model, &pm).expect("flow code wrong."));
 
     //let pack = StandardWasmPackager::new(rce);
     //pack.compile_package(&flow_model);

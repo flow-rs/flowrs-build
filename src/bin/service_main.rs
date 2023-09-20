@@ -75,10 +75,7 @@ fn load_config(config_path: &str) -> ServiceConfig {
     } else {
         // If the file doesn't exist, create a new FlowProjectManagerConfig with default values.
         println!("-> Could not read config file '{}'. Creating default config.", config_path);
-        let a = ServiceConfig::default();
-        let json_string = serde_json::to_string(&a).expect("Failed to serialize to JSON");
-        println!("{}", json_string);
-        a
+        ServiceConfig::default()
     }
 }
 

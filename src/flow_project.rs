@@ -119,7 +119,7 @@ impl FlowProjectManager {
         &mut self,
         flow_project: FlowProject,
         package_manager: &PackageManager,
-    ) -> Result<(FlowProject)> {
+    ) -> Result<FlowProject, anyhow::Error> {
         if self.projects.contains_key(&flow_project.name) {
             return Ok(flow_project);
         }
@@ -166,7 +166,8 @@ impl FlowProjectManager {
         folder_name: &PathBuf,
         file_name: &String, 
         content: &String
-    ) -> Result<()> {
+    ) -> Result<(), anyhow::Error> {
+       
         let file_path = folder_name.join(file_name);
         let mut file = fs::File::create(&file_path)?;
         file.write_all(content.as_bytes())?;
@@ -178,7 +179,7 @@ impl FlowProjectManager {
         &self,
         flow_project: &FlowProject,
         project_folder_name: &PathBuf,
-    ) -> Result<()> {
+    ) -> Result<(), anyhow::Error> {
         
         let content = serde_json::to_string(&flow_project)?;
         self.create_project_file(project_folder_name, &self.config.project_json_file_name, &content)
@@ -188,7 +189,7 @@ impl FlowProjectManager {
         &self,
         flow_project: &FlowProject,
         project_folder_name: &PathBuf,
-    ) -> Result<()> {
+    ) -> Result<(), anyhow::Error> {
         
         let mut handlebars = Handlebars::new();
         let source = r#"
@@ -229,10 +230,12 @@ impl FlowProjectManager {
         flow_project: &FlowProject,
         src_folder: &PathBuf,
         package_manager: &PackageManager,
-    ) -> Result<()> {
+    ) -> Result<(), anyhow::Error> {
 
         let emitter = StandardCodeEmitter {};
-        self.create_project_file(src_folder, &"lib.rs".to_string(), &emitter.emit_flow_code(&flow_project.flow, package_manager))?;
+        let content = &emitter.emit_flow_code(&flow_project.flow, package_manager)?;
+
+        self.create_project_file(src_folder, &"lib.rs".to_string(), &content)?;
         if self.config.do_formatting {
             self.run_rust_fmt(&src_folder.join("lib.rs"));
         }
@@ -259,7 +262,7 @@ impl FlowProjectManager {
         &self,
         flow_project: &FlowProject,
         package_manager: &PackageManager,
-    ) -> Result<()> {
+    ) -> Result<(), anyhow::Error> {
 
         // Create the main project folder using the FlowProject's name
         let project_folder_name = Path::new(&self.config.project_folder).join(&flow_project.name);
@@ -280,7 +283,7 @@ impl FlowProjectManager {
         Ok(())
     }
 
-    pub fn delete_flow_project(&mut self, name: &str) -> Result<()> {
+    pub fn delete_flow_project(&mut self, name: &str) -> Result<(), anyhow::Error>  {
         if !self.projects.contains_key(name) {
             return Ok(());
         }
@@ -294,7 +297,7 @@ impl FlowProjectManager {
         Ok(())
     }
 
-    pub fn update_flow_project_flow_model(&mut self, name: &str, flow: FlowModel) -> Result<()> {
+    pub fn update_flow_project_flow_model(&mut self, name: &str, flow: FlowModel) -> Result<(), anyhow::Error> {
         if let Some(fp) = self.projects.get_mut(name) {
             fp.flow = flow;
 

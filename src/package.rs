@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
-use serde_json;
 
 use anyhow::{Error, Result};
 use std::collections::HashMap;
-use std::fs;
 
 use crate::package_manager::PackageManager;
 
