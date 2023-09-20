@@ -28,7 +28,88 @@ All fields are not mandatory. However, it is important that `flow_package_folder
  .\service_main.exe --config-file config.json
 ```
 Runs the service with a config file named "config.json". 
+### Endpoints
 
+- /packages/[package_name]: GET (get description of package [package_name])  
+- /packages/: GET (get all package descriptions)
+- /projects/: GET (get all project descriptions), POST (create a new project)
+
+
+**Example** (minimal package description)
+```json
+{
+    "name":"flowrs",
+    "version":"1.0.0",
+    "crates":{
+    }
+}
+```
+**Example** (project description: A timer node regularly triggers a debug node that outputs the number 42)
+```json
+{
+  "name": "flow_project_79",
+  "version": "1.0.0",
+  "packages": [
+    {"name": "flowrs", "version": "1.0.0", "path": "../../../flowrs"}, 
+    {"name": "flowrs-std", "version": "1.0.0", "path": "../../../flowrs-std"}
+    ],
+  "flow":{        
+        "nodes": {
+            "debug_node": {
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+            "timer_config_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "flowrs_std::nodes::timer::TimerNodeConfig"},
+                "constructor": "New"
+
+            },
+            "timer_token_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+             "timer_node": {
+                "node_type": "flowrs_std::nodes::timer::TimerNode",
+                "type_parameters": {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"},
+                "constructor": "New"
+            }
+        },
+        "connections": [
+            {
+                "from_node": "timer_config_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "config_input"
+            },
+            {
+                "from_node": "timer_token_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "token_input"
+            },
+            {
+                "from_node": "timer_node",
+                "from_output": "token_output",
+                "to_node": "debug_node",
+                "to_input": "input"
+            }
+        ], 
+        "data" : {
+            "timer_config_node": {
+                "value": {"duration": {"secs": 1, "nanos": 0}}
+            },
+             "timer_token_node": {
+                "value": 42
+            }
+        }
+    }
+}
+```
 ## Runner 
 Console application to run flows compiled to shared objects. 
 Code is located in src/bin/runner_main.rs. 
