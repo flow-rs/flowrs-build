@@ -10,21 +10,68 @@ use tokio_util::io::ReaderStream;
 
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::{path::PathBuf, process::Command};
+use std::{path::{PathBuf}, process::Command};
+use std::fs::File;
+use std::io::Read;
+
 
 use flowrs_build::{
-    flow_project::{FlowProject, FlowProjectManager},
+    flow_project::{FlowProject, FlowProjectManager, FlowProjectManagerConfig},
     package::Package,
     package_manager::PackageManager,
 };
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct ServiceConfig {
+    #[serde(default = "flow_project_manager_config_default")]
+    flow_project_manager_config: FlowProjectManagerConfig,
+
+    #[serde(default = "flow_packages_folder_default")]
+    flow_packages_folder: String,  
+}
+
+fn flow_project_manager_config_default() -> FlowProjectManagerConfig {
+    FlowProjectManagerConfig::default()
+}
+
+fn flow_packages_folder_default() -> String {
+    "flow-packages".to_string()
+}
+
+impl Default for ServiceConfig {
+    fn default() -> Self {
+        Self {
+            flow_project_manager_config: flow_project_manager_config_default(),
+            flow_packages_folder: flow_packages_folder_default()
+        }
+    }
+}
+
+fn load_config(config_path: &str) -> ServiceConfig {
+    
+    if std::path::Path::new(config_path).exists() {
+        // Read and deserialize the existing config.json file
+        let mut file = File::open(config_path).expect("Failed to open config.json");
+        let mut config_content = String::new();
+        file.read_to_string(&mut config_content)
+            .expect("Failed to read config.json");
+        serde_json::from_str(&config_content).expect("Failed to deserialize config.json")
+    } else {
+        // If the file doesn't exist, create a new FlowProjectManagerConfig with default values
+        ServiceConfig::default()
+    }
+}
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let package_manager = Arc::new(Mutex::new(PackageManager::new_from_folder("packages")));
+    let config = load_config("config.json");
 
-    let project_manager = Arc::new(Mutex::new(FlowProjectManager::new("flow-projects")));
+    let package_manager = Arc::new(Mutex::new(PackageManager::new_from_folder(&config.flow_packages_folder)));
+
+    let project_manager = Arc::new(Mutex::new(FlowProjectManager::new(config.flow_project_manager_config)));
 
     let res = project_manager.lock().unwrap().load_projects();
     if let Err(err) = res {

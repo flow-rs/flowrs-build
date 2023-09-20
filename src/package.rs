@@ -411,8 +411,6 @@ impl Constructor {
                             &self.emit_arg_type_parameters_part(arg_type_parameters, type_parameters), 
                         );
 
-                        println!("TYPE Typename: {}, part: {}", object_desc.type_name, object_desc.type_parameter_part );
-
                         arg_constructor.emit_code_template(&object_desc, type_parameters, pack_man, current_namespace)
                     } else {
                         Err(Error::msg(format!(
@@ -450,8 +448,6 @@ impl Constructor {
                                 &type_name, 
                                 &self.emit_arg_type_parameters_part(arg_type_parameters, &type_parameters),
                             );
-
-                            println!("GENERIC Typename: {}, part: {}", object_desc.type_name, object_desc.type_parameter_part );
 
                             arg_constructor.emit_code_template(
                                 &object_desc,
