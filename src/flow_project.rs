@@ -36,19 +36,19 @@ pub struct FlowProject {
 pub struct FlowProjectManagerConfig{
     
     #[serde(default = "project_folder_default")]
-    project_folder: String,
+    pub project_folder: String,
     
     #[serde(default = "project_json_file_name_default")]
-    project_json_file_name: String,
+    pub project_json_file_name: String,
     
     #[serde(default = "builtin_dependencies_default")] 
-    builtin_dependencies: Vec<String>,
+    pub builtin_dependencies: Vec<String>,
     
     #[serde(default = "rust_fmt_path_default")] 
-    rust_fmt_path: String,
+    pub rust_fmt_path: String,
 
     #[serde(default = "do_formatting_default")] 
-    do_formatting: bool
+    pub do_formatting: bool
 }
 
 impl Default for FlowProjectManagerConfig {

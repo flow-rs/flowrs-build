@@ -21,26 +21,29 @@ impl PackageManager {
     pub fn new_from_folder(directory_path: &str) -> Self {
         let mut packages: HashMap<String, Package> = HashMap::new();
 
-        if let Ok(entries) = fs::read_dir(directory_path) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    if let Some(extension) = entry.path().extension() {
-                        if extension == "json" {
-                            if let Some(file_name) = entry.path().file_stem() {
-                                let package_name = file_name.to_string_lossy().to_string();
+        let entries = fs::read_dir(directory_path);
+        match entries {
+            Ok(es) => {
+                for entry in es {
+                    if let Ok(entry) = entry {
+                        if let Some(extension) = entry.path().extension() {
+                            if extension == "json" {
+                                if let Some(file_name) = entry.path().file_stem() {
+                                    let package_name = file_name.to_string_lossy().to_string();
 
-                                if let Ok(contents) = fs::read_to_string(entry.path()) {
-                                    let package = serde_json::from_str::<Package>(&contents);
-                                    match package {
-                                        Ok(p) => {
-                                            packages.insert(package_name.clone(), p);
-                                        }
-                                        Err(e) => {
-                                            eprintln!(
-                                                "Failed to deserialize package: {}. Reason: {}",
-                                                package_name,
-                                                e.to_string()
-                                            );
+                                    if let Ok(contents) = fs::read_to_string(entry.path()) {
+                                        let package = serde_json::from_str::<Package>(&contents);
+                                        match package {
+                                            Ok(p) => {
+                                                packages.insert(package_name.clone(), p);
+                                            }
+                                            Err(e) => {
+                                                eprintln!(
+                                                    "-> Failed to deserialize package: {}. Reason: {}",
+                                                    package_name,
+                                                    e.to_string()
+                                                );
+                                            }
                                         }
                                     }
                                 }
@@ -48,8 +51,17 @@ impl PackageManager {
                         }
                     }
                 }
+            },
+            Err(e) => {
+                eprintln!(
+                    "-> Failed to read package folder '{}'. Reason: {}",
+                    directory_path,
+                    e.to_string()
+                );
             }
         }
+
+        
         let mut pm = PackageManager { packages: packages };
         pm.add_built_in_package();
 

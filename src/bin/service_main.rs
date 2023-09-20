@@ -7,13 +7,16 @@ use axum::{
     Json, Router,
 };
 use tokio_util::io::ReaderStream;
+use tokio::sync::broadcast;
 
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::{path::{PathBuf}, process::Command};
 use std::fs::File;
 use std::io::Read;
+use std::fs;
 
+use clap::Parser;
 
 use flowrs_build::{
     flow_project::{FlowProject, FlowProjectManager, FlowProjectManagerConfig},
@@ -21,6 +24,18 @@ use flowrs_build::{
     package_manager::PackageManager,
 };
 use serde::{Deserialize, Serialize};
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Arguments {
+    /// Json config file.
+    #[arg(short, long, default_value_t = f("config.json"))]
+    config_file: String,
+}
+
+fn f(str: &str) -> String {
+    str.to_string()
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct ServiceConfig {
@@ -52,31 +67,56 @@ fn load_config(config_path: &str) -> ServiceConfig {
     
     if std::path::Path::new(config_path).exists() {
         // Read and deserialize the existing config.json file
-        let mut file = File::open(config_path).expect("Failed to open config.json");
+        let mut file = File::open(config_path).expect(&format!("Failed to open {}", config_path).as_str());
         let mut config_content = String::new();
         file.read_to_string(&mut config_content)
-            .expect("Failed to read config.json");
-        serde_json::from_str(&config_content).expect("Failed to deserialize config.json")
+            .expect(&format!("Failed to read {}", config_path).as_str());
+        serde_json::from_str(&config_content).expect(&format!("Failed to deserialize from {}", config_path).as_str())
     } else {
-        // If the file doesn't exist, create a new FlowProjectManagerConfig with default values
-        ServiceConfig::default()
+        // If the file doesn't exist, create a new FlowProjectManagerConfig with default values.
+        println!("-> Could not read config file '{}'. Creating default config.", config_path);
+        let a = ServiceConfig::default();
+        let json_string = serde_json::to_string(&a).expect("Failed to serialize to JSON");
+        println!("{}", json_string);
+        a
     }
+}
+
+async fn handle_shutdown_signal(
+    stopper: tokio::sync::broadcast::Sender<()>,
+) -> std::io::Result<()> {
+    tokio::signal::ctrl_c().await.expect("Failed to set up Ctrl+C handler");
+    println!("-> Shutdown requested.");
+    let _ = stopper.send(()); 
+    Ok(())
 }
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
 
-    let config = load_config("config.json");
+    let (stopper_sender, _) = broadcast::channel::<()>(1);
+    let stopper_sender_clone = stopper_sender.clone();
+    tokio::spawn(handle_shutdown_signal(stopper_sender_clone));
 
+    let args = Arguments::parse();
+
+    let config = load_config(&args.config_file.as_str());
+
+    // Setup package manager
     let package_manager = Arc::new(Mutex::new(PackageManager::new_from_folder(&config.flow_packages_folder)));
 
+    // Setup project manager. 
+    let project_folder = config.flow_project_manager_config.project_folder.clone();
     let project_manager = Arc::new(Mutex::new(FlowProjectManager::new(config.flow_project_manager_config)));
-
     let res = project_manager.lock().unwrap().load_projects();
     if let Err(err) = res {
-        eprintln!("Could not load projects. Reason: {}", err);
-        return;
+        println!("-> Failed to read project folder '{}'. Reason: {}", project_folder, err);
+        println!("-> Create new project folder"); 
+        if let Err(err) = fs::create_dir(&project_folder) 
+        {
+            println!("-> Failed to create new project folder '{}'. Reason: {}", project_folder, err);
+            return;
+        }
     }
 
     let app = Router::new()
@@ -92,11 +132,18 @@ async fn main() {
         .with_state((project_manager.clone(), package_manager.clone()));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    println!("-> Listening on {}", addr);
+    
+    let server = axum::Server::bind(&addr)
+    .serve(app.into_make_service())
+    .with_graceful_shutdown(async {
+        stopper_sender.subscribe().recv().await.ok();
+    });
+
+    // Run the server until it's gracefully shut down
+    let _ = server.await;
+
+    println!("-> Service shut down.");
 }
 
 async fn get_file(

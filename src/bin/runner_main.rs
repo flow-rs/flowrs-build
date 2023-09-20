@@ -5,7 +5,6 @@ use flowrs::exec::execution::{Executor, ExecutionContextHandle, ExecutionContext
 use std::sync::{Arc, Mutex};
 use std::ffi::{ CStr, c_char};
 
-/// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Arguments {
@@ -14,7 +13,7 @@ struct Arguments {
     flow: String,
 
     /// Number of workers to use.
-    #[arg(short, long, default_value_t = 2)]
+    #[arg(short, long, default_value_t = 1)]
     workers: usize,
 }
 
