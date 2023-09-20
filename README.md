@@ -1,5 +1,5 @@
 # flowrs-build
-Tools for flow development. Two different tools: 
+Tools for flow development. Following tools: 
 
 ## Service 
 REST service to create and maintain new flow projects and flow packages.
@@ -110,13 +110,21 @@ Runs the service with a config file named "config.json".
     }
 }
 ```
-## Runner 
+## Desktop Runner 
 Console application to run flows compiled to shared objects. 
 Code is located in src/bin/runner_main.rs. 
-Call ./runner_main[.exe] --help for instructions. 
-
-**Example** (Windows Powershell):
-```bash
- .\runner_main.exe  --flow ..\..\..\flow_project_78\target\debug\flow_project_78.dll --workers 4
-```
-Runs a flow flow_project_78[.dll] with 4 worker threads.
+Call ``./runner_main[.exe] --help` for instructions. 
+To compile a flow for execution on the desktop, execute the following steps 
+1. Goto the flow-project folder [flow-project].
+2. run `cargo build` which will generate a the shared object file (*.dll or *.so) in target/[debug|release] (in this case debug).
+3. run `.\runner_main.exe  --flow [flow-project]\target\[debug|release]\[flow-project].[dll|so] --workers [number of worker threads]`
+4. stop flow execution with `ctrl+C`.
+   
+## Browser Runner
+Flow projects also run in the browser. 
+To compile a flow for execution in the browser, execute the following steps: 
+1. Goto the flow-project folder [flow-project].
+2. run `wasm-pack build --release --target web` which will generate a the shared object file (*.dll or *.so) in target/[debug|release] (in this case: release).
+3. run `python -m http.server` in the very same directory (or any other webserver)
+4. Open your browser and browse to `localhost:8000`
+5. Open your browser's console viewer. 
