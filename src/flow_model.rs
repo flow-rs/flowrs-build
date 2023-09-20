@@ -42,43 +42,68 @@ pub trait CodeEmitter {
 pub struct StandardCodeEmitter {}
 
 impl StandardCodeEmitter {
-    fn emit_function(&self, body: &TokenStream) -> TokenStream {
+    fn emit_functions(&self, init_function_body: &TokenStream) -> TokenStream {
         quote! {
 
-            //println replacement.
             #[cfg(target_arch = "wasm32")]
             #[wasm_bindgen]
             extern "C" {
-                #[wasm_bindgen(js_namespace = console)]
+                # [wasm_bindgen (js_namespace = console)]
                 fn log(s: &str);
             }
-
             #[cfg(target_arch = "wasm32")]
-            macro_rules! println {
-                ( $( $t:tt )* ) => {
-                    log(format!( $( $t )* ).as_str());
-                }
-            }
-
+            macro_rules ! println { ($ ($ t : tt) *) => { log (format ! ($ ($ t) *) . as_str ()) ; } }
             #[cfg(target_arch = "wasm32")]
             #[wasm_bindgen]
             pub fn wasm_run() {
-                run();
-            }
-            
-            #[cfg(not(target_arch = "wasm32"))]
-            #[no_mangle]
-            pub extern "C" fn native_run() {
-                run();
+                
+                let mut ctx = Box::new(init());
+
+                let node_updater = SingleThreadedNodeUpdater::new(None);
+                let scheduler = RoundRobinScheduler::new();
+
+                let res = ctx.executor.run(ctx.flow, scheduler, node_updater);
             }
 
-            pub fn run() {
-                #body
+            #[cfg(not(target_arch = "wasm32"))]
+            #[no_mangle]
+            pub extern "C" fn native_init() -> *mut ExecutionContextHandle {
+                let ctx = Box::new(init());
+                Box::into_raw(ctx).cast()
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            #[no_mangle]
+            pub extern "C" fn native_run(num_workers: usize, ctx_handle: *mut ExecutionContextHandle) -> *const c_char {
+                let mut ctx = unsafe { Box::from_raw(ctx_handle.cast::<ExecutionContext>()) };
+                
+                let node_updater = MultiThreadedNodeUpdater::new(num_workers);
+                let scheduler = RoundRobinScheduler::new();
+
+                let res = ctx.executor.run(ctx.flow, scheduler, node_updater);
+
+                CString::new(format!("{:?}", res)).expect("Cannot convert result to a C-String.").into_raw()
+            }
+            #[no_mangle]
+            pub unsafe extern fn native_free_string(ptr: *const c_char) {
+                let _ = CString::from_raw(ptr as *mut _);
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            #[no_mangle]
+            pub extern "C" fn native_cancel(ctx_handle: *mut ExecutionContextHandle) {
+                let ctx = unsafe { Box::from_raw(ctx_handle.cast::<ExecutionContext>()) };
+                ctx.executor.controller().lock().unwrap().cancel()
+            }
+
+
+            pub fn init() -> ExecutionContext {
+                #init_function_body
             }
         }
     }
 
-    fn emit_function_body(&self, flow: &FlowModel, pm: &PackageManager) -> TokenStream {
+    fn emit_init_function_body(&self, flow: &FlowModel, pm: &PackageManager) -> TokenStream {
         let mut body = TokenStream::new();
 
         self.emit_std_locals(&mut body, flow);
@@ -89,7 +114,7 @@ impl StandardCodeEmitter {
 
         self.emit_flow(flow, &mut body);
 
-        self.emit_exec_call(&mut body);
+        self.emit_context_creation(&mut body);
 
         body
     }
@@ -225,30 +250,25 @@ impl StandardCodeEmitter {
 
     fn emit_use_decls(&self) -> TokenStream {
         quote! {
-            use wasm_bindgen::prelude::*;
-
-            use serde_json::{Value};
-            use std::sync::{Arc, Mutex};
-
-            use flowrs::nodes::node_description::NodeDescription;
-            use flowrs::nodes::node::{Context, ChangeObserver};
-            use flowrs::nodes::connection::connect;
-
+            use flowrs::exec::execution::{Executor, StandardExecutor, ExecutionContext, ExecutionContextHandle};
+            use flowrs::exec::node_updater::{NodeUpdater, SingleThreadedNodeUpdater, MultiThreadedNodeUpdater};
             use flowrs::flow::flow::Flow;
-
-            use flowrs::exec::execution::{Executor, StandardExecutor};
-            use flowrs::exec::node_updater::SingleThreadedNodeUpdater;
-            use flowrs::sched::round_robin::RoundRobinScheduler;
+            use flowrs::nodes::connection::connect;
+            use flowrs::nodes::node::{ChangeObserver, Context};
+            use flowrs::nodes::node_description::NodeDescription;
+            use flowrs::sched::{scheduler::Scheduler, round_robin::RoundRobinScheduler};
+            use serde_json::Value;
+            use std::sync::{Arc, Mutex};
+            use std::ffi::{CString, CStr};
+            use std::os::raw::c_char;
+            use wasm_bindgen::prelude::*;
         }
     }
 
-    fn emit_exec_call(&self, tokens: &mut TokenStream) {
+    fn emit_context_creation(&self, tokens: &mut TokenStream) {
         tokens.extend(quote! {
-            let node_updater = SingleThreadedNodeUpdater::new(None);
-            let scheduler = RoundRobinScheduler::new();
-            let mut executor = StandardExecutor::new(co);
-            let res = executor.run(flow, scheduler, node_updater);
-            println!("Result: {:?}", res);
+            let executor = StandardExecutor::new(co);
+            ExecutionContext::new(executor, flow)
         });
     }
 }
@@ -258,7 +278,7 @@ impl CodeEmitter for StandardCodeEmitter {
         format!(
             "{}{}",
             self.emit_use_decls(),
-            self.emit_function(&self.emit_function_body(flow, pm))
+            self.emit_functions(&self.emit_init_function_body(flow, pm))
         )
     }
 }

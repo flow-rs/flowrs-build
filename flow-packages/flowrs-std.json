@@ -112,6 +112,15 @@
                            }
                         },
 
+                        "SelectedTimer":{
+                           "type_parameters":[
+                              "U"
+                           ],
+                           "constructors":{
+                              "New":{"New": {}}
+                           }
+                        },
+
                         "TimerNode":{
                            "inputs":[
                               "config_input",

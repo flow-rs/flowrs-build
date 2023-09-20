@@ -11,6 +11,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde_json;
+use handlebars::Handlebars;
 
 use anyhow::Result;
 
@@ -148,8 +149,8 @@ impl FlowProjectManager {
         flow_project: &FlowProject,
         project_folder_name: &PathBuf,
     ) -> Result<()> {
-        let cargo_toml_path = project_folder_name.join("Cargo.toml");
-        let cargo_toml_content =
+        
+        let content =
             format!("[package]\n name = \"{}\" \n version = \"{}\"\nedition = \"2021\"\n\n[dependencies]\n{}\n{}\n\n[lib]\ncrate-type = [\"cdylib\"]", 
             flow_project.name,
             flow_project.version,
@@ -157,8 +158,18 @@ impl FlowProjectManager {
             self.create_builtin_dependencies()
         );
 
-        let mut cargo_toml_file = fs::File::create(&cargo_toml_path)?;
-        cargo_toml_file.write_all(cargo_toml_content.as_bytes())?;
+        self.create_project_file(project_folder_name, &"Cargo.toml".to_string(), &content)
+    }
+
+    fn create_project_file(
+        &self,        
+        folder_name: &PathBuf,
+        file_name: &String, 
+        content: &String
+    ) -> Result<()> {
+        let file_path = folder_name.join(file_name);
+        let mut file = fs::File::create(&file_path)?;
+        file.write_all(content.as_bytes())?;
 
         Ok(())
     }
@@ -168,12 +179,49 @@ impl FlowProjectManager {
         flow_project: &FlowProject,
         project_folder_name: &PathBuf,
     ) -> Result<()> {
-        let flow_project_json_path = project_folder_name.join(&self.config.project_json_file_name);
-        let flow_project_json_content = serde_json::to_string(&flow_project)?;
-        let mut flow_project_json_file = fs::File::create(&flow_project_json_path)?;
-        flow_project_json_file.write_all(flow_project_json_content.as_bytes())?;
+        
+        let content = serde_json::to_string(&flow_project)?;
+        self.create_project_file(project_folder_name, &self.config.project_json_file_name, &content)
+    }
 
-        Ok(())
+    fn create_index_html(
+        &self,
+        flow_project: &FlowProject,
+        project_folder_name: &PathBuf,
+    ) -> Result<()> {
+        
+        let mut handlebars = Handlebars::new();
+        let source = r#"
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8" />
+            <title>{{project_name}} {{project_version}} </title>
+          </head>
+          <body>
+            <script type="module">
+              import init, {wasm_run} from '/pkg/{{project_name}}.js'
+        
+              // Always required for wasm.
+              await init();
+
+              // Running flow.
+              wasm_run();
+              
+            </script>
+          </body>
+        </html>
+        "#;
+
+        handlebars.register_template_string("index", source)?;
+
+        let mut data = HashMap::new();
+        data.insert("project_name", &flow_project.name);
+        data.insert("project_version", &flow_project.version);
+
+        let content = handlebars.render("index", &data)?;
+
+        self.create_project_file(project_folder_name, &"index.html".to_string(), &content)
     }
 
     fn create_flow_rust_code(
@@ -182,14 +230,12 @@ impl FlowProjectManager {
         src_folder: &PathBuf,
         package_manager: &PackageManager,
     ) -> Result<()> {
+
         let emitter = StandardCodeEmitter {};
-        let flow_code = emitter.emit_flow_code(&flow_project.flow, package_manager);
-        let flow_code_path = src_folder.join("lib.rs");
-        let mut flow_code_file = fs::File::create(&flow_code_path)?;
-        flow_code_file.write_all(flow_code.as_bytes())?;
-
-        self.run_rust_fmt(&flow_code_path);
-
+        self.create_project_file(src_folder, &"lib.rs".to_string(), &emitter.emit_flow_code(&flow_project.flow, package_manager))?;
+        if self.config.do_formatting {
+            self.run_rust_fmt(&src_folder.join("lib.rs"));
+        }
         Ok(())
     }
 
@@ -214,6 +260,7 @@ impl FlowProjectManager {
         flow_project: &FlowProject,
         package_manager: &PackageManager,
     ) -> Result<()> {
+
         // Create the main project folder using the FlowProject's name
         let project_folder_name = Path::new(&self.config.project_folder).join(&flow_project.name);
         fs::create_dir(&project_folder_name)?;
@@ -222,13 +269,12 @@ impl FlowProjectManager {
         let src_folder = project_folder_name.join("src");
         fs::create_dir(&src_folder)?;
 
-        // Create the 'flow-project.json' file and serialize the FlowProject object
         self.create_flow_proj_json(flow_project, &project_folder_name)?;
 
-        // Create the 'Cargo.toml' file
         self.create_cargo_toml(flow_project, &project_folder_name)?;
 
-        // Create the flow as rust source
+        self.create_index_html(flow_project, &project_folder_name)?;
+
         self.create_flow_rust_code(flow_project, &src_folder, package_manager)?;
 
         Ok(())

@@ -16,55 +16,11 @@ Response:
 
 ###
 
-
 POST http://127.0.0.1:3000/projects/ HTTP/1.1
 content-type: application/json
 
 {
-  "name": "flow_project_18",
-  "version": "1.0.0",
-  "packages": [
-    {"name": "flowrs", "version": "1.0.0", "path": "../../../flowrs"}, 
-    {"name": "flowrs-std", "version": "1.0.0", "path": "../../../flowrs-std"}
-    ],
-  "flow":{        
-        "nodes": {
-            "node1": {
-                "node_type": "flowrs_std::nodes::debug::DebugNode",
-                "type_parameters": {"I": "i32"},
-                "constructor": "New"
-
-            },
-            "node2": {
-                "node_type": "flowrs_std::nodes::value::ValueNode",
-                "type_parameters": {"I": "i32"},
-                "constructor": "New"
-
-            }
-        },
-        "connections": [
-            {
-                "from_node": "node2",
-                "to_node": "node1",
-                "to_input": "input",
-                "from_output": "output"
-            }
-        ], 
-        "data" : {
-            "node2": {
-                "value": 23
-            }
-        }
-    }
-}
-
-###
-
-POST http://127.0.0.1:3000/projects/ HTTP/1.1
-content-type: application/json
-
-{
-  "name": "flow_project_70",
+  "name": "flow_project_79",
   "version": "1.0.0",
   "packages": [
     {"name": "flowrs", "version": "1.0.0", "path": "../../../flowrs"}, 
@@ -92,7 +48,7 @@ content-type: application/json
             },
              "timer_node": {
                 "node_type": "flowrs_std::nodes::timer::TimerNode",
-                "type_parameters": {"T": "flowrs_std::nodes::timer::PollTimer", "U": "i32"},
+                "type_parameters": {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"},
                 "constructor": "New"
             }
         },
