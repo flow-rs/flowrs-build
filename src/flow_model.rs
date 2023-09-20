@@ -119,7 +119,11 @@ impl StandardCodeEmitter {
 
     fn emit_type_parameter_part(&self, node: &NodeModel, pm: &PackageManager) -> String {
         let mut tp_part = "".to_string();
-        self.emit_type_parameter_part_rec(&node.type_parameters.keys().cloned().collect(), &node.type_parameters, pm, &mut tp_part);
+        if let Some(t) = pm.get_type(&node.node_type) {
+            if let Some(tp) = &t.type_parameters {
+                self.emit_type_parameter_part_rec(&tp, &node.type_parameters, pm, &mut tp_part);
+            }
+        }
         tp_part 
     }
 
@@ -223,9 +227,7 @@ impl StandardCodeEmitter {
         quote! {
             use wasm_bindgen::prelude::*;
 
-            use serde_json::{from_reader, from_value, Value};
-            use std::fs::File;
-            use std::io::Read;
+            use serde_json::{Value};
             use std::sync::{Arc, Mutex};
 
             use flowrs::nodes::node_description::NodeDescription;
