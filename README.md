@@ -4,7 +4,7 @@ Tools for flow development. Following tools:
 ## Service 
 REST service to create and maintain new flow projects and flow packages.
 Code is located in src/bin/service_main.rs. 
-Call ./service_main[.exe] --help for instructions. 
+Call ./service_main[.exe] --help for instructions. The executable is located in target/{debug|release}.
 The config file has the following format: 
 ```json
 {
@@ -12,8 +12,8 @@ The config file has the following format:
       "project_folder":"flow-projects",
       "project_json_file_name":"flow-project.json",
       "builtin_dependencies":[
-         "wasm-bindgen = "0.2.87",
-         "serde_json = "1.0.105"
+         "wasm-bindgen = \"0.2.87\"",
+         "serde_json = \"1.0.105\""
       ],
       "rust_fmt_path":"rustfmt",
       "do_formatting":true
