@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use anyhow::{Error, Result};
 use std::collections::HashMap;
+use handlebars::Handlebars;
 
 use crate::package_manager::PackageManager;
 
@@ -259,6 +260,7 @@ pub enum Constructor {
     NewWithArbitraryArgs{function_name: Option<String>, arguments: Vec<Argument>},
     FromJson,
     FromDefault,
+    FromCode{code_template: String} 
 }
 
 impl Constructor {
@@ -584,18 +586,46 @@ impl Constructor {
         od: &ObjectDescription,
         current_namespace: &Namespace,
     ) -> Result<String, Error> {
-        let full_object_name = self.emit_fully_qualified_name(&od.name, current_namespace, false);
+        let emit_fully_qualified_name = self.emit_fully_qualified_name(&od.name, current_namespace, false);
 
         Ok(format!(
             "let{} {}: {}{} = serde_json::from_value(data{}.clone()).expect(\"Could not create '{}' from Json.\");",
             self.emit_mutable(od.is_mutable),
-            full_object_name,
+            emit_fully_qualified_name,
             od.type_name,
             od.type_parameter_part,
             self.emit_json_path(current_namespace, od),
-            full_object_name
+            emit_fully_qualified_name
         ))
     }
+
+    fn emit_constructor_from_code(
+        &self,
+        od: &ObjectDescription,
+        current_namespace: &Namespace,
+        code_template: &String,
+        type_parameters: &HashMap<String, String>,
+    ) -> Result<String, Error> {
+
+        let mut handlebars = Handlebars::new();
+      
+        handlebars.register_template_string("code", code_template)?;
+
+        let mut data = HashMap::new();
+        data.insert("fully_qualified_name".to_string(), self.emit_fully_qualified_name(&od.name, current_namespace, false));
+        data.insert("type_name".to_string(), od.type_name.clone());
+        data.insert("type_parameter_part".to_string(), od.type_parameter_part.clone());
+        data.insert("mutable".to_string(), self.emit_mutable(od.is_mutable));
+        for (param, resolved_param) in type_parameters {
+            data.insert(format!("type_parameter_{}", param), resolved_param.clone());
+        }
+
+        match handlebars.render("code", &data) {
+            Ok(res) => Ok(res),
+            Err(err) => Err(err.into()) 
+        }
+    }
+
 }
 
 impl Constructor  {
@@ -641,6 +671,8 @@ impl Constructor  {
             Self::FromJson => self.emit_new_from_json(obj_desc, namespace),
 
             Self::FromDefault => self.emit_default(obj_desc, pack_man, namespace),
+
+            Self::FromCode{code_template} => self.emit_constructor_from_code(obj_desc, namespace, code_template, type_parameters)
             
         }
     }
@@ -659,8 +691,10 @@ fn test() {
                 "inputs": null,
                 "outputs": null,
                 "type_parameters": ["U", "T"],
-                "constructors": 
-                    "New":{"NewWithObserverAndContext": {}}
+                "constructors":{
+                    "New":{"NewWithObserver": {}},
+                    "FromCode":{"FromCode":{"code_template": "let {{fully_qualified_name}}:{{type_parameter_U}} = 5;"}}
+                 }
             }
             },
             "modules": {}
@@ -900,7 +934,7 @@ fn test() {
     let mut pm_1 = PackageManager::new();
     pm_1.add_package(package_1);
     let t_1 = pm_1.get_type("my_crate::MyType").expect("msg");
-    let c_1 = t_1.constructors.get("New").expect("");
+    let c_1 = t_1.constructors.get("FromCode").expect("");
     let mut type_params_1 = HashMap::new();
     type_params_1.insert("U".to_string(), "i32".to_string());
     type_params_1.insert("T".to_string(), "i32".to_string());
