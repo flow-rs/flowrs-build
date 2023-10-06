@@ -211,13 +211,14 @@ impl StandardCodeEmitter {
     }
 
     fn emit_node_connection(&self, connection: &ConnectionModel) -> TokenStream {
-        let node_out_ident = Ident::new(&connection.from_node, proc_macro2::Span::call_site());
+        // TODO: does quote require the variables to be mutable?
+        let mut node_out_ident = Ident::new(&connection.from_node, proc_macro2::Span::call_site());
         let node_inp_ident = Ident::new(&connection.to_node, proc_macro2::Span::call_site());
         let output_ident = Ident::new(&connection.from_output, proc_macro2::Span::call_site());
         let input_ident = Ident::new(&connection.to_input, proc_macro2::Span::call_site());
 
         quote! {
-            connect(#node_out_ident.#output_ident.clone(), #node_inp_ident.#input_ident.clone());
+            connect(&mut #node_out_ident.#output_ident, #node_inp_ident.#input_ident.clone());
         }
     }
 
