@@ -5,7 +5,7 @@ services:
       - 3000:3000
     volumes:
       - "./flow-projects:/flowrs-build/flow-projects"
-      - "./flow-projects:/flowrs-build/flow-packages"
+      - "./flow-packages:/flowrs-build/flow-packages"
     environment:
       - HOST_IP_1=0
       - HOST_IP_2=0
