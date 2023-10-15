@@ -128,7 +128,7 @@ async fn main() {
         .route("/processes/:process_id/logs", get(get_process_logs))
         .with_state(project_manager.clone());
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     println!("-> Listening on {}", addr);
     
     let server = axum::Server::bind(&addr)
