@@ -3,6 +3,28 @@ Tools for flow development. Following tools:
 
 ## Service 
 REST service to create and maintain new flow projects and flow packages.
+
+### Easy initial setup using docker
+
+The easiest way to setup the repository and all dependencies is to use the provided ```initial-setup`` Skript and and docker compose:
+
+#### on *nix
+```
+    ./initial-setup.sh
+```
+
+#### on windows
+```
+    .\initial-setup.bat
+```
+
+After the initial setup, the service can be started with 
+```
+    docker compose up
+```
+
+### manual setup
+
 Code is located in src/bin/service_main.rs. 
 Call ./service_main[.exe] --help for instructions. The executable is located in target/{debug|release}.
 The config file has the following format: 
