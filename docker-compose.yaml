@@ -6,6 +6,7 @@ services:
     volumes:
       - "./flow-projects:/flowrs-build/flow-projects"
       - "./flow-packages:/flowrs-build/flow-packages"
+      - "./target:/flowrs-build/target"
     environment:
       - HOST_IP_1=0
       - HOST_IP_2=0
