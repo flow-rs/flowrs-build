@@ -17,4 +17,4 @@ RUN cargo build
 
 WORKDIR /../
 COPY config.json config.json
-ENTRYPOINT ["./flowrs-build/target/debug/service_main", "--config-file", "./config.json"]
+ENTRYPOINT ["./flowrs-build/target2/debug/service_main", "--config-file", "./config.json"]
