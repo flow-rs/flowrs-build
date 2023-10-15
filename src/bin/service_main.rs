@@ -128,7 +128,7 @@ async fn main() {
         .route("/projects/", post(create_project))
         .with_state((project_manager.clone(), package_manager.clone()));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     println!("-> Listening on {}", addr);
     
     let server = axum::Server::bind(&addr)
