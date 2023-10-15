@@ -6,7 +6,7 @@ REST service to create and maintain new flow projects and flow packages.
 
 ### Easy initial setup using docker
 
-The easiest way to setup the repository and all dependencies is to use the provided ```initial-setup`` Skript and and docker compose:
+The easiest way to setup the repository and all dependencies is to use the provided ```initial-setup``` Skript and and docker compose:
 
 #### on *nix
 ```
