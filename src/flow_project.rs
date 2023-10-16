@@ -48,6 +48,8 @@ pub struct BuildType {
 pub struct FlowProcess {
     process: Child,
     outputs: Arc<Mutex<VecDeque<String>>>,
+pub struct FlowProjectName {
+    project_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -157,6 +159,21 @@ impl FlowProjectManager {
             return Err(anyhow::anyhow!("{build_type} is not an allowed build_type"));
         }
 
+        flow_project_name: FlowProjectName,
+    ) -> Result<String, anyhow::Error> {
+        println!("Compiling...");
+
+        let option_project = self.projects.get(&flow_project_name.project_name);
+        if option_project.is_none() {
+            return Err(anyhow::anyhow!(flow_project_name.project_name + " does not exist!"));
+        }
+        let project_path = self.config.project_folder.clone() + "/" + &*option_project.unwrap().name;
+        println!("Path: {}", project_path);
+        let output = Command::new("cargo")
+            .current_dir(project_path)
+            .arg("build")
+            .output()
+            .expect("Fehler beim Ausführen von cargo build");
 
         return if output.status.success() {
             Ok("Das Rust-Projekt wurde erfolgreich kompiliert.".parse()?)
@@ -381,6 +398,31 @@ impl FlowProjectManager {
             return Err(anyhow::anyhow!(msg));
         }
         Ok(process.unwrap())
+            Err(anyhow::anyhow!("Das Rust-Projekt wurde nicht erfolgreich kompiliert."))
+        };
+    }
+
+    pub fn run_flow_project(
+        &mut self,
+        flow_project_name: FlowProjectName,
+    ) -> Result<String, anyhow::Error> {
+        let project_name = flow_project_name.project_name;
+        let option_project = self.projects.get(&project_name);
+        if option_project.is_none() {
+            return Err(anyhow::anyhow!(project_name + " does not exist!"));
+        }
+
+        // runner_main.exe --flow [flow-project]\target\[debug|release]\[flow-project].dll|so]
+        let path_to_executable = self.config.project_folder.clone() + "/" + &*project_name + "/target/debug/" + &*project_name + ".dll";
+        println!("Starting: {} at {}", project_name, path_to_executable);
+
+        Command::new("./target/debug/runner_main.exe")
+            .arg("--flow")
+            .arg(path_to_executable)
+            .spawn()
+            .expect("Fehler beim Ausführen");
+
+        Ok("Das Rust-Projekt wurde ausgeführt.".parse()?)
     }
 
     pub fn create_flow_project(
