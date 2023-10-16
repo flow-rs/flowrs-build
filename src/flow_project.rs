@@ -6,7 +6,7 @@ use crate::package_manager::PackageManager;
 use std::collections::{HashMap, VecDeque};
 use std::{fs, thread};
 use std::io;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 use std::sync::{Arc, Mutex};
@@ -424,12 +424,12 @@ impl FlowProjectManager {
         project_folder_name: &PathBuf,
     ) -> Result<()> {
         let content =
-            format!("[package]\nname = \"{}\" \nversion = \"{}\"\nedition = \"2021\"\n\n[dependencies]\n{}\n{}\n\n[lib]\ncrate-type = [\"cdylib\"]", 
-            flow_project.name,
-            flow_project.version,
-            flow_project.packages.iter().map(|x| self.create_project_dependencies(x)).collect::<Vec<String>>().join("\n"),
-            self.create_builtin_dependencies()
-        );
+            format!("[package]\n name = \"{}\" \n version = \"{}\"\nedition = \"2021\"\n\n[dependencies]\n{}\n{}\n\n[lib]\ncrate-type = [\"cdylib\"]",
+                    flow_project.name,
+                    flow_project.version,
+                    flow_project.packages.iter().map(|x| self.create_project_dependencies(x)).collect::<Vec<String>>().join("\n"),
+                    self.create_builtin_dependencies()
+            );
 
         self.create_project_file(project_folder_name, &"Cargo.toml".to_string(), &content)
     }

@@ -23,7 +23,7 @@ use flowrs_build::{
     package_manager::PackageManager,
 };
 use serde::{Deserialize, Serialize};
-use flowrs_build::flow_project::BuildType;
+use flowrs_build::flow_project::FlowProjectName;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -138,11 +138,8 @@ async fn main() {
         //.route("/projects/:project_name", get(get_project_by_name))
         .route("/projects/", post(create_project))
         .with_state((project_manager.clone(), package_manager.clone()))
-        .route("/projects/", get(get_all_projects))
-        .route("/projects/:project_name/compile", post(compile_project)) // TODO query for wasm and cargo
-        .route("/projects/:project_name/run", post(run_project))// TODO query for wasm and cargo
-        .route("/processes/:process_id/stop", post(stop_process))
-        .route("/processes/:process_id/logs", get(get_process_logs))
+        .route("/compile_jobs/", post(compile_project))
+        .route("/run_jobs/", post(run_project))
         .with_state(project_manager.clone());
 
 
@@ -225,20 +222,21 @@ async fn create_project(
 }
 
 async fn compile_project(
-    Path(project_name): Path<String>,
-    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
-    build_type:Query<BuildType>,
+    State((project_manager)): State<(
+        Arc<Mutex<FlowProjectManager>>
+    )>,
+    Json(flow_project_name): Json<FlowProjectName>,
 ) -> Result<Response<Body>, StatusCode> {
     match project_manager
         .lock()
         .unwrap()
-        .compile_flow_project(project_name.as_str(), build_type.0.build_type)
+        .compile_flow_project(flow_project_name)
     {
-        Ok(result) => {
+        Ok(flow_project_name) => {
             // Return a success response with the created object in the body
             let response = Response::builder()
-                .status(StatusCode::OK)
-                .body(Body::from(result))
+                .status(StatusCode::CREATED)
+                .body(Body::from(flow_project_name))
                 .unwrap();
 
             Ok(response)
@@ -256,80 +254,21 @@ async fn compile_project(
 }
 
 async fn run_project(
-    Path(project_name): Path<String>,
-    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
-    build_type:Query<BuildType>,
+    State((project_manager)): State<(
+        Arc<Mutex<FlowProjectManager>>
+    )>,
+    Json(flow_project_name): Json<FlowProjectName>,
 ) -> Result<Response<Body>, StatusCode> {
     match project_manager
         .lock()
         .unwrap()
-        .run_flow_project(project_name.as_str(), build_type.0.build_type)
+        .run_flow_project(flow_project_name)
     {
-        Ok(process) => {
+        Ok(flow_project_name) => {
             // Return a success response with the created object in the body
             let response = Response::builder()
                 .status(StatusCode::CREATED)
-                .body(Body::from(serde_json::to_string(&process).unwrap()))
-                .unwrap();
-
-            Ok(response)
-        }
-        Err(err) => {
-            // Return an error response with status code and error message in the body
-            let response = Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(err.to_string()))
-                .unwrap();
-
-            Ok(response)
-        }
-    }
-}
-
-async fn stop_process(
-    Path(process_id): Path<String>,
-    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
-) -> Result<Response<Body>, StatusCode> {
-    match project_manager
-        .lock()
-        .unwrap()
-        .stop_process(process_id)
-    {
-        Ok(result) => {
-            // Return a success response with the created object in the body
-            let response = Response::builder()
-                .status(StatusCode::CREATED)
-                .body(Body::from(result))
-                .unwrap();
-
-            Ok(response)
-        }
-        Err(err) => {
-            // Return an error response with status code and error message in the body
-            let response = Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(err.to_string()))
-                .unwrap();
-
-            Ok(response)
-        }
-    }
-}
-
-async fn get_process_logs(
-    Path(process_id): Path<String>,
-    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
-) -> Result<Response<Body>, StatusCode> {
-    match project_manager
-        .lock()
-        .unwrap()
-        .get_process_logs(process_id)
-    {
-        Ok(result) => {
-            // Return a success response with the created object in the body
-            let response = Response::builder()
-                .status(StatusCode::CREATED)
-                .body(Body::from(serde_json::to_string(&result).unwrap()))
+                .body(Body::from(flow_project_name))
                 .unwrap();
 
             Ok(response)
