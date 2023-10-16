@@ -24,6 +24,7 @@ use flowrs_build::{
     package_manager::PackageManager,
 };
 use serde::{Deserialize, Serialize};
+use flowrs_build::flow_project::FlowProjectName;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -126,7 +127,10 @@ async fn main() {
         //.route("/projects/:project_name", get(get_project_by_name))
         .route("/projects/", get(get_all_projects))
         .route("/projects/", post(create_project))
-        .with_state((project_manager.clone(), package_manager.clone()));
+        .with_state((project_manager.clone(), package_manager.clone()))
+        .route("/compile_jobs/", post(compile_project))
+        .route("/run_jobs/", post(run_project))
+        .with_state(project_manager.clone());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("-> Listening on {}", addr);
@@ -333,6 +337,70 @@ async fn create_project(
             let response = Response::builder()
                 .status(StatusCode::CREATED)
                 .body(Body::from(serde_json::to_string(&flow_project).unwrap()))
+                .unwrap();
+
+            Ok(response)
+        }
+        Err(err) => {
+            // Return an error response with status code and error message in the body
+            let response = Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(err.to_string()))
+                .unwrap();
+
+            Ok(response)
+        }
+    }
+}
+
+async fn compile_project(
+    State((project_manager)): State<(
+        Arc<Mutex<FlowProjectManager>>
+    )>,
+    Json(flow_project_name): Json<FlowProjectName>,
+) -> Result<Response<Body>, StatusCode> {
+    match project_manager
+        .lock()
+        .unwrap()
+        .compile_flow_project(flow_project_name)
+    {
+        Ok(flow_project_name) => {
+            // Return a success response with the created object in the body
+            let response = Response::builder()
+                .status(StatusCode::CREATED)
+                .body(Body::from(flow_project_name))
+                .unwrap();
+
+            Ok(response)
+        }
+        Err(err) => {
+            // Return an error response with status code and error message in the body
+            let response = Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(err.to_string()))
+                .unwrap();
+
+            Ok(response)
+        }
+    }
+}
+
+async fn run_project(
+    State((project_manager)): State<(
+        Arc<Mutex<FlowProjectManager>>
+    )>,
+    Json(flow_project_name): Json<FlowProjectName>,
+) -> Result<Response<Body>, StatusCode> {
+    match project_manager
+        .lock()
+        .unwrap()
+        .run_flow_project(flow_project_name)
+    {
+        Ok(flow_project_name) => {
+            // Return a success response with the created object in the body
+            let response = Response::builder()
+                .status(StatusCode::CREATED)
+                .body(Body::from(flow_project_name))
                 .unwrap();
 
             Ok(response)
