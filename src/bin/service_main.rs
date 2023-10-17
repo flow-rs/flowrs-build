@@ -7,9 +7,7 @@ use axum::{
 };
 use tokio::sync::broadcast;
 
-use dotenv::dotenv;
-
-use std::net::{SocketAddr, IpAddr, Ipv4Addr};
+use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::fs::File;
 use std::io::Read;
@@ -90,21 +88,6 @@ async fn handle_shutdown_signal(
 #[tokio::main]
 async fn main() {
 
-    // Read Environment Variables
-    dotenv().ok();
-    let host_ip_1:String = std::env::var("HOST_IP_1").expect("HOST_IP must be set correctly");
-    let host_ip_2:String = std::env::var("HOST_IP_2").expect("HOST_IP must be set correctly");
-    let host_ip_3:String = std::env::var("HOST_IP_3").expect("HOST_IP must be set correctly");
-    let host_ip_4:String = std::env::var("HOST_IP_4").expect("HOST_IP must be set correctly");
-    let host_port:String = std::env::var("HOST_PORT").expect("HOST_PORT must be set correctly");
-
-    let host_ip_1_u8:u8 = host_ip_1.parse::<u8>().unwrap();
-    let host_ip_2_u8:u8 = host_ip_2.parse::<u8>().unwrap();
-    let host_ip_3_u8:u8 = host_ip_3.parse::<u8>().unwrap();
-    let host_ip_4_u8:u8 = host_ip_4.parse::<u8>().unwrap();
-    let host_port_u16:u16 = host_port.parse::<u16>().unwrap();
-
-
     let (stopper_sender, _) = broadcast::channel::<()>(1);
     let stopper_sender_clone = stopper_sender.clone();
     tokio::spawn(handle_shutdown_signal(stopper_sender_clone));
@@ -147,8 +130,7 @@ async fn main() {
         .route("/processes/:process_id/logs", get(get_process_logs))
         .with_state(project_manager.clone());
 
-
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(host_ip_1_u8, host_ip_2_u8, host_ip_3_u8, host_ip_4_u8)), host_port_u16);
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("-> Listening on {}", addr);
     
     let server = axum::Server::bind(&addr)
