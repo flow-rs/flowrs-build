@@ -7,7 +7,7 @@ POST http://127.0.0.1:3000/compile_jobs/ HTTP/1.1
 content-type: application/json
 
 {
-    "project-name": "flow_project_80"
+    "project_name": "flow_project_80"
 }
 
 Response: {"job-id": "1234"}
