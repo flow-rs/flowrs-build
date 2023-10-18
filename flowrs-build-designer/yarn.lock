@@ -4659,6 +4659,13 @@ rete-engine@^2.0.0:
   dependencies:
     "@babel/runtime" "^7.21.0"
 
+rete-history-plugin@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/rete-history-plugin/-/rete-history-plugin-2.0.0.tgz#d4655876f2f6b6eef1386ef43d8eacc250f85bba"
+  integrity sha512-F2n5iacIthf0v83LRmrp4VPx1Q1QnRZ3Wu/pFzeecaNqstps07+D8O32p1yFUqj4Bsp/t6WtBxSYl1VcDuw56A==
+  dependencies:
+    "@babel/runtime" "^7.21.0"
+
 rete-minimap-plugin@^2.0.1:
   version "2.0.1"
   resolved "https://registry.npmjs.org/rete-minimap-plugin/-/rete-minimap-plugin-2.0.1.tgz"

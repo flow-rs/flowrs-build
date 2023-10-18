@@ -25,6 +25,13 @@ import {
   RerouteExtra,
   RerouteExtensions,
 } from 'rete-connection-reroute-plugin';
+import { 
+  HistoryPlugin,
+  HistoryActions,
+  HistoryExtensions,
+  Presets 
+} from "rete-history-plugin";
+
 
 type Node = NumberNode | AddNode;
 type Conn =
@@ -112,6 +119,9 @@ export async function createEditor(container: HTMLElement) {
   });
   const minimap = new MinimapPlugin<Schemes>();
   const reroutePlugin = new ReroutePlugin<Schemes>();
+  const history = new HistoryPlugin<Schemes, HistoryActions<Schemes>>();
+  history.addPreset(Presets.classic.setup())
+  HistoryExtensions.keyboard(history);
 
   editor.use(area);
 
@@ -120,6 +130,7 @@ export async function createEditor(container: HTMLElement) {
   area.use(connection);
   area.use(contextMenu);
   area.use(minimap);
+  area.use(history);
 
   vueRender.use(reroutePlugin);
 
