@@ -6,31 +6,17 @@ http://127.0.0.1:3000/packages/
 
 ####
 
-POST http://127.0.0.1:3000/projects/flow_project_79/compile?build_type=cargo
-
-####
-
-POST http://127.0.0.1:3000/projects/flow_project_79/compile?build_type=wasm
+POST http://127.0.0.1:3000/projects/flow_project_79/compile
 
 ###
 
-POST http://127.0.0.1:3000/projects/flow_project_79/run?build_type=cargo
+POST http://127.0.0.1:3000/projects/flow_project_79/run
 
 Response: {"process_id":18940}
 
 ###
 
-POST http://127.0.0.1:3000/projects/flow_project_79/run?build_type=wasm
-
-Response: {"process_id":18940}
-
-###
-
-POST http://127.0.0.1:3000/processes/18940/stop
-
-###
-
-GET http://127.0.0.1:3000/processes/18940/logs
+POST http://127.0.0.1:3000/stop/20140
 
 ###
 
