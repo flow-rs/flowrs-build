@@ -23,7 +23,6 @@ use flowrs_build::{
     package_manager::PackageManager,
 };
 use serde::{Deserialize, Serialize};
-use flowrs_build::flow_project::FlowProjectName;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -141,8 +140,10 @@ async fn main() {
         //.route("/projects/:project_name", get(get_project_by_name))
         .route("/projects/", post(create_project))
         .with_state((project_manager.clone(), package_manager.clone()))
-        .route("/compile_jobs/", post(compile_project))
-        .route("/run_jobs/", post(run_project))
+        .route("/projects/", get(get_all_projects))
+        .route("/projects/:project_name/compile", post(compile_project))
+        .route("/projects/:project_name/run", post(run_project))
+        .route("/stop/:process_id", post(stop_project))
         .with_state(project_manager.clone());
 
 
@@ -225,21 +226,19 @@ async fn create_project(
 }
 
 async fn compile_project(
-    State((project_manager)): State<(
-        Arc<Mutex<FlowProjectManager>>
-    )>,
-    Json(flow_project_name): Json<FlowProjectName>,
+    Path(project_name): Path<String>,
+    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
 ) -> Result<Response<Body>, StatusCode> {
     match project_manager
         .lock()
         .unwrap()
-        .compile_flow_project(flow_project_name)
+        .compile_flow_project(project_name.as_str())
     {
-        Ok(flow_project_name) => {
+        Ok(result) => {
             // Return a success response with the created object in the body
             let response = Response::builder()
-                .status(StatusCode::CREATED)
-                .body(Body::from(flow_project_name))
+                .status(StatusCode::OK)
+                .body(Body::from(result))
                 .unwrap();
 
             Ok(response)
@@ -257,21 +256,49 @@ async fn compile_project(
 }
 
 async fn run_project(
-    State((project_manager)): State<(
-        Arc<Mutex<FlowProjectManager>>
-    )>,
-    Json(flow_project_name): Json<FlowProjectName>,
+    Path(project_name): Path<String>,
+    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
 ) -> Result<Response<Body>, StatusCode> {
     match project_manager
         .lock()
         .unwrap()
-        .run_flow_project(flow_project_name)
+        .run_flow_project(project_name.as_str())
     {
-        Ok(flow_project_name) => {
+        Ok(process) => {
             // Return a success response with the created object in the body
             let response = Response::builder()
                 .status(StatusCode::CREATED)
-                .body(Body::from(flow_project_name))
+                .body(Body::from(serde_json::to_string(&process).unwrap()))
+                .unwrap();
+
+            Ok(response)
+        }
+        Err(err) => {
+            // Return an error response with status code and error message in the body
+            let response = Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(err.to_string()))
+                .unwrap();
+
+            Ok(response)
+        }
+    }
+}
+
+async fn stop_project(
+    Path(process_id): Path<String>,
+    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
+) -> Result<Response<Body>, StatusCode> {
+    match project_manager
+        .lock()
+        .unwrap()
+        .stop_process_flow_project(process_id)
+    {
+        Ok(process) => {
+            // Return a success response with the created object in the body
+            let response = Response::builder()
+                .status(StatusCode::CREATED)
+                .body(Body::from(serde_json::to_string(&process).unwrap()))
                 .unwrap();
 
             Ok(response)
