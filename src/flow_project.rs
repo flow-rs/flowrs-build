@@ -9,13 +9,13 @@ use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Child, Command};
 
 use serde_json;
 use handlebars::Handlebars;
 
 use anyhow::Result;
-
+use serde_json::from_str;
 use crate::flow_model::{CodeEmitter, StandardCodeEmitter};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -34,8 +34,8 @@ pub struct FlowProject {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct FlowProjectName {
-    project_name: String,
+pub struct Process {
+    process_id: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -89,10 +89,10 @@ const fn do_formatting_default() -> bool {
     true
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FlowProjectManager {
     config: FlowProjectManagerConfig,
     pub projects: HashMap<String, FlowProject>,
+    processes: HashMap<u32, Child>,
 }
 
 impl FlowProjectManager {
@@ -100,6 +100,7 @@ impl FlowProjectManager {
         Self {
             config: config,
             projects: HashMap::new(),
+            processes: HashMap::new(),
         }
     }
 
@@ -122,18 +123,18 @@ impl FlowProjectManager {
 
     pub fn compile_flow_project(
         &mut self,
-        flow_project_name: FlowProjectName,
+        project_name: &str,
     ) -> Result<String, anyhow::Error> {
-        println!("Compiling...");
-
-        let option_project = self.projects.get(&flow_project_name.project_name);
+        let option_project = self.projects.get(project_name);
         if option_project.is_none() {
-            return Err(anyhow::anyhow!(flow_project_name.project_name + " does not exist!"));
+            return Err(anyhow::anyhow!("{project_name} does not exist!"));
         }
-        let project_path = self.config.project_folder.clone() + "/" + &*option_project.unwrap().name;
-        println!("Path: {}", project_path);
+
+        let project_folder_path = self.config.project_folder.clone();
+        let flow_project_path = format!("{project_folder_path}/{project_name}");
+
         let output = Command::new("cargo")
-            .current_dir(project_path)
+            .current_dir(flow_project_path)
             .arg("build")
             .output()
             .expect("Fehler beim Ausführen von cargo build");
@@ -147,25 +148,63 @@ impl FlowProjectManager {
 
     pub fn run_flow_project(
         &mut self,
-        flow_project_name: FlowProjectName,
-    ) -> Result<String, anyhow::Error> {
-        let project_name = flow_project_name.project_name;
-        let option_project = self.projects.get(&project_name);
-        if option_project.is_none() {
-            return Err(anyhow::anyhow!(project_name + " does not exist!"));
+        project_name: &str,
+    ) -> Result<Process, anyhow::Error> {
+        let option_path_to_executable = self.get_path_to_executable(project_name);
+        if option_path_to_executable.is_none() {
+            return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name}"));
         }
 
-        // runner_main.exe --flow [flow-project]\target\[debug|release]\[flow-project].dll|so]
-        let path_to_executable = self.config.project_folder.clone() + "/" + &*project_name + "/target/debug/" + &*project_name + ".dll";
-        println!("Starting: {} at {}", project_name, path_to_executable);
-
-        Command::new("./target/debug/runner_main.exe")
+        // execute runner_main.exe --flow [flow-project]\target\[debug|release]\[flow-project].dll|so|dylib]
+        let child = Command::new("target/debug/runner_main.exe")
             .arg("--flow")
-            .arg(path_to_executable)
+            .arg(option_path_to_executable.unwrap())
             .spawn()
             .expect("Fehler beim Ausführen");
 
-        Ok("Das Rust-Projekt wurde ausgeführt.".parse()?)
+        let id = child.id().clone();
+        self.processes.insert(id, child);
+
+        Ok(Process { process_id: id })
+    }
+
+    fn get_path_to_executable(&mut self, project_name: &str) -> Option<String> {
+        let project_folder_path = self.config.project_folder.clone();
+        let path_without_file_ending = format!("{project_folder_path}/{project_name}/target/debug/{project_name}");
+
+        // endings for windows, mac and linux
+        let possible_file_endings = [".dll", ".dylib", ".so"];
+        for possible_file_ending in possible_file_endings {
+            let formatted_path = format!("{path_without_file_ending}{possible_file_ending}");
+            let possible_path_to_executable = Path::new(formatted_path.as_str());
+            if possible_path_to_executable.exists() && possible_path_to_executable.to_str().is_some() {
+                let string = possible_path_to_executable.to_str().unwrap().to_string();
+                return Some(string);
+            }
+        }
+
+        return None;
+    }
+
+    pub fn stop_process_flow_project(
+        &mut self,
+        process_id: String,
+    ) -> Result<String, anyhow::Error> {
+        let result = from_str::<u32>(process_id.as_str());
+        if result.is_err() {
+            return Err(anyhow::anyhow!("supplied process_id wasn't of type u32"));
+        }
+
+        let id = result.unwrap();
+        if let Some(mut child) = self.processes.remove(&id) {
+            // Kill the child process.
+            child.kill()?;
+        } else {
+            let msg = format!("No registered process found with id {}", id);
+            return Err(anyhow::anyhow!(msg));
+        }
+
+        Ok("Process killed".parse()?)
     }
 
     pub fn create_flow_project(
