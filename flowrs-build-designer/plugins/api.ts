@@ -5,9 +5,11 @@ import PackagesModule from "~/repository/modules/packages";
 // import Packages from "~/repository/modules/packages";
 import axios from "axios";
 import {$fetch, FetchOptions} from "ofetch";
+import ProjectsModule from "~/repository/modules/projects";
 
 interface IApiInstance {
     packages: PackagesModule;
+    projects: ProjectsModule
 }
 
 export default defineNuxtPlugin((nuxtApp) => {
@@ -19,11 +21,12 @@ export default defineNuxtPlugin((nuxtApp) => {
     };
 
     // Create a new instance of $fecther with custom option
-    const apiFecther = $fetch.create(fetchOptions);
+    const apiFetcher = $fetch.create(fetchOptions);
 
     // An object containing all repositories we need to expose
     const modules: IApiInstance = {
-        packages: new PackagesModule(apiFecther),
+        packages: new PackagesModule(apiFetcher),
+        projects: new ProjectsModule(apiFetcher),
     };
 
     return {

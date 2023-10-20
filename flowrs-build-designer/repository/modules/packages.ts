@@ -1,8 +1,4 @@
 
-import { FetchOptions } from 'ofetch';
-import { AsyncDataOptions } from '#app';
-
-
 import FetchFactory from '../factory';
 
 type Crate = {
@@ -29,34 +25,15 @@ type ModuleDefinition = {
 }
 
 
-class PackagesModule extends FetchFactory<Crate[]> {
+class PackagesModule extends FetchFactory {
     private RESOURCE = '/packages/';
 
-    /**
-     * Return the packages as array
-     * @param asyncDataOptions options for `useAsyncData`
-     * @returns
-     */
-    async getPackages(
-        asyncDataOptions?: AsyncDataOptions<Crate[]>
-    ) {
+    async getFlowrsPackages() : Promise<Crate[]> {
+        return await this.call<Crate[]>('GET', `${this.RESOURCE}`)
+    }
 
-        return useAsyncData(
-            () => {
-                const fetchOptions: FetchOptions<'json'> = {
-                    headers: {
-                        'Accept-Language': 'en-US'
-                    }
-                };
-                return this.call(
-                    'GET',
-                    `${this.RESOURCE}`,
-                    undefined, // body
-                    fetchOptions
-                )
-            },
-            asyncDataOptions
-        )
+    async getFlowrsPackageByName(packageName : string) : Promise<Crate> {
+        return await this.call<Crate>('GET', `${this.RESOURCE}${packageName}`)
     }
 }
 

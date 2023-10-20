@@ -1,7 +1,6 @@
+import {$Fetch, FetchOptions} from 'ofetch';
 
-import { $Fetch, FetchOptions } from 'ofetch';
-
-class FetchFactory<T> {
+class FetchFactory {
     private readonly $fetch: $Fetch;
 
     constructor(fetcher: $Fetch) {
@@ -16,20 +15,20 @@ class FetchFactory<T> {
      * @param fetchOptions fetch options
      * @returns
      */
-    async call(
+    async call<T>(
         method: string,
         url: string,
         data?: object,
         fetchOptions?: FetchOptions<'json'>
     ): Promise<T> {
-        return this.$fetch<T>(
+        return this.$fetch(
             url,
             {
                 method,
                 body: data,
                 ...fetchOptions
             }
-        )
+        );
     }
 }
 

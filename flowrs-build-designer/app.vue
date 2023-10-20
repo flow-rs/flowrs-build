@@ -12,7 +12,7 @@
   >
 
     <div
-        v-for="fpac in flowrsPackages"
+        v-for="fpac in flowrPackages"
         class="card"
     >
       <div class="title">Package Name: {{ fpac.name }}</div>
@@ -23,36 +23,66 @@
         <div>Crate Modules: {{ crate.modules }}</div>
 
       </div>
-<!--      <div class="thumbnail"><img :src="product.image"></div>-->
-<!--      <div class="description">{{ product.description }}</div>-->
-<!--      <div class="wrapper-meta">-->
-<!--        <span class="price">${{ product.price }}</span>-->
-<!--        <span class="rate">☆ {{ product.rating.rate }}</span>-->
-<!--      </div>-->
     </div>
+    <h1>Single Package</h1>
+    <div>{{flowrPackage}}</div>
   </div>
 </template>
 
 <script setup lang="ts">
 import Rete from './components/Rete.vue'
+import {FlowProject} from "~/repository/modules/projects";
+import api from "~/plugins/api";
 
-// const axios = useNuxtApp();
-// const {
-//   data: flowrspackages,
-//     pending,
-//     error
-// } = await $api.packages.getPackages({server: false});
 const { $api } = useNuxtApp();
 
-const {
-  data: flowrsPackages,
-  pending,
-  error
-} = await $api.packages.getPackages();
+const flowrPackages = await $api.packages.getFlowrsPackages();
 
-console.log(flowrsPackages)
+const flowrPackage = await $api.packages.getFlowrsPackageByName("flowrs-std");
 
-// const {data: p } = await useFetch('http://127.0.0.1:3000/packages/')
+const flowrProjects = await $api.projects.getProjects();
+
+// Example of creating a new FlowProject
+const newFlowProject: FlowProject = {
+  name: 'flow_project_81',
+  version: '1.0.0',
+  packages: [
+    {
+      name: 'flowrs',
+      version: '1.0.0',
+      path: '../../../flowrs',
+    },
+    {
+      name: 'flowrs-std',
+      version: '1.0.0',
+      path: '../../../flowrs-std',
+    },
+  ],
+  flow: {
+    nodes: {
+      // Define other nodes here
+    },
+    connections: [
+      {
+        from_node: 'timer_config_node',
+        to_node: 'timer_node',
+        to_input: 'config_input',
+        from_output: 'output',
+      },
+      // Define other connections here
+    ],
+    data: {
+        timer_config_node: null,
+        timer_token_node: null,
+    },
+  },
+};
+
+const createdflowProject = await $api.projects.createProject(newFlowProject);
+
+const buildProject = await $api.projects.buildProject("flow_project_81");
+
+console.log(JSON.stringify(createdflowProject, null, 2))
 
 </script>
 
