@@ -1,15 +1,5 @@
 <template>
   <h1>Packages list</h1>
-  <div
-      v-if="pending"
-      class="spinner-wrapper"
-  >
-    <span class="loader"></span>
-  </div>
-  <div
-      v-else
-      class="product-wrapper"
-  >
 
     <div
         v-for="fpac in flowrPackages"
@@ -26,21 +16,36 @@
     </div>
     <h1>Single Package</h1>
     <div>{{flowrPackage}}</div>
+    <h1>Projects</h1>
+    <div
+        v-for="fpro in flowrProjects"
+        class="card"
+    >
+      <div class="title">Project Name: {{ fpro.name }}</div>
+
   </div>
 </template>
 
 <script setup lang="ts">
 import Rete from './components/Rete.vue'
-import {FlowProject} from "~/repository/modules/projects";
+import {CompileProjectData, FlowProject, ProjectIdentifier} from "~/repository/modules/projects";
 import api from "~/plugins/api";
 
 const { $api } = useNuxtApp();
 
-const flowrPackages = await $api.packages.getFlowrsPackages();
+//TODO: Build project : request not working on backend
+// const buildProject = await $api.projects.buildProject("flow_project_81");
 
-const flowrPackage = await $api.packages.getFlowrsPackageByName("flowrs-std");
+// TODO: GET file of project
 
-const flowrProjects = await $api.projects.getProjects();
+// GET Flowr package by name
+// const flowrPackage = await $api.packages.getFlowrsPackageByName("flowrs-std");
+
+// GET Flowr packages
+// const flowrPackages = await $api.packages.getFlowrsPackages();
+
+//GET Flowr projects
+// const flowrProjects = await $api.projects.getProjects();
 
 // Example of creating a new FlowProject
 const newFlowProject: FlowProject = {
@@ -78,11 +83,21 @@ const newFlowProject: FlowProject = {
   },
 };
 
-const createdflowProject = await $api.projects.createProject(newFlowProject);
+// POST create flow project
+// const createdflowProject = await $api.projects.createProject(newFlowProject);
 
-const buildProject = await $api.projects.buildProject("flow_project_81");
+const data : ProjectIdentifier = {
+  project_name: "flow_project_81"
+}
 
-console.log(JSON.stringify(createdflowProject, null, 2))
+// POST compile project TODO: return type
+// const status = await $api.projects.compileProject(data);
+
+// POST run project TODO: return type
+const run_status = await $api.projects.runProject(data);
+
+
+// console.log(JSON.stringify(createdflowProject, null, 2))
 
 </script>
 

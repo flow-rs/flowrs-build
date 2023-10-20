@@ -12,6 +12,10 @@ type TimerConfigNode = {
     };
 };
 
+export type ProjectIdentifier = {
+    project_name : string;
+}
+
 type TimerTokenNode = {
     value : number
 };
@@ -50,9 +54,10 @@ export type FlowProject = {
 };
 
 class ProjectsModule extends FetchFactory {
-    private RESOURCE = '/projects/';
+    private RESOURCE: string = '/projects/';
     private BUILD_PATH: string = '/build/';
-    // "/build/:project_name"
+    private COMPILE_PATH: string = '/compile_jobs/';
+    private RUN_JOBS: string = '/run_jobs/';
 
     async getProjects() : Promise<FlowProject[]> {
         return await this.call<FlowProject[]>('GET', `${this.RESOURCE}`)
@@ -65,6 +70,24 @@ class ProjectsModule extends FetchFactory {
             }
         }
         return await this.call<FlowProject>('POST', `${this.RESOURCE}`, project, fetchOptions)
+    }
+
+    async compileProject(project : ProjectIdentifier) : Promise<FlowProject> {
+        const fetchOptions: FetchOptions<'json'> = {
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }
+        return await this.call<FlowProject>('POST', `${this.COMPILE_PATH}`, project, fetchOptions)
+    }
+
+    async runProject(project : ProjectIdentifier) : Promise<FlowProject> {
+        const fetchOptions: FetchOptions<'json'> = {
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }
+        return await this.call<FlowProject>('POST', `${this.RUN_JOBS}`, project, fetchOptions)
     }
 
     async buildProject(projectName : string) : Promise<FlowProject> {

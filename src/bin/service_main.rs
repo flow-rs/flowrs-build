@@ -223,7 +223,7 @@ async fn build_package(
     }
 
     let project_path = PathBuf::from(format!("./flow-projects/{}", project_name));
-
+    eprintln!("{}", project_path.to_str().unwrap_or_default());
     if !project_path.exists() {
         let error_message = "The specified project directory does not exist.";
         eprintln!("{}", error_message);
@@ -374,6 +374,7 @@ async fn compile_project(
             Ok(response)
         }
         Err(err) => {
+            eprintln!("{}", err.to_string());
             // Return an error response with status code and error message in the body
             let response = Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
