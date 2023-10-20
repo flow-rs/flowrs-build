@@ -125,17 +125,22 @@ impl FlowProjectManager {
         &mut self,
         project_name: &str,
     ) -> Result<String, anyhow::Error> {
-        let option_project = self.projects.get(project_name);
-        if option_project.is_none() {
-            return Err(anyhow::anyhow!("{project_name} does not exist!"));
-        }
-
+        // construct path to folder
         let project_folder_path = self.config.project_folder.clone();
         let flow_project_path = format!("{project_folder_path}/{project_name}");
 
-        let output = Command::new("cargo")
+        // construct command for cargo build
+        let mut binding = Command::new("cargo");
+        let command = binding
             .current_dir(flow_project_path)
-            .arg("build")
+            .arg("build");
+
+        // add release option if this rest-service is executed in release mode
+        if !cfg!(debug_assertions) {
+            command.arg("--release");
+        }
+
+        let output = command
             .output()
             .expect("Fehler beim Ausführen von cargo build");
 
@@ -150,36 +155,49 @@ impl FlowProjectManager {
         &mut self,
         project_name: &str,
     ) -> Result<Process, anyhow::Error> {
+        // get path to the projects executable
         let option_path_to_executable = self.get_path_to_executable(project_name);
         if option_path_to_executable.is_none() {
             return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name}"));
         }
 
-        // execute runner_main.exe --flow [flow-project]\target\[debug|release]\[flow-project].dll|so|dylib]
-        let child = Command::new("target/debug/runner_main.exe")
+        // execute runner_main.exe --flow
+        let runner_main_path = if cfg!(debug_assertions) {
+            "target/debug/runner_main.exe"
+        } else {
+            "target/release/runner_main.exe"
+        };
+
+        let child = Command::new(runner_main_path)
             .arg("--flow")
             .arg(option_path_to_executable.unwrap())
             .spawn()
             .expect("Fehler beim Ausführen");
 
         let id = child.id().clone();
+        // save the new child process for later to be killed on request
         self.processes.insert(id, child);
-
         Ok(Process { process_id: id })
     }
 
     fn get_path_to_executable(&mut self, project_name: &str) -> Option<String> {
         let project_folder_path = self.config.project_folder.clone();
-        let path_without_file_ending = format!("{project_folder_path}/{project_name}/target/debug/{project_name}");
+        let build_type = if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        };
+        let path_without_file_ending = format!("{project_folder_path}/{project_name}/target/{build_type}/{project_name}");
 
         // endings for windows, mac and linux
         let possible_file_endings = [".dll", ".dylib", ".so"];
+        // find correct ending
         for possible_file_ending in possible_file_endings {
             let formatted_path = format!("{path_without_file_ending}{possible_file_ending}");
             let possible_path_to_executable = Path::new(formatted_path.as_str());
             if possible_path_to_executable.exists() && possible_path_to_executable.to_str().is_some() {
-                let string = possible_path_to_executable.to_str().unwrap().to_string();
-                return Some(string);
+                let correct_path_to_executable = possible_path_to_executable.to_str().unwrap().to_string();
+                return Some(correct_path_to_executable);
             }
         }
 
