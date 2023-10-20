@@ -9,6 +9,7 @@ use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use serde_json;
 use handlebars::Handlebars;
@@ -33,22 +34,26 @@ pub struct FlowProject {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct FlowProjectManagerConfig{
-    
+pub struct FlowProjectName {
+    project_name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FlowProjectManagerConfig {
     #[serde(default = "project_folder_default")]
     pub project_folder: String,
-    
+
     #[serde(default = "project_json_file_name_default")]
     pub project_json_file_name: String,
-    
-    #[serde(default = "builtin_dependencies_default")] 
+
+    #[serde(default = "builtin_dependencies_default")]
     pub builtin_dependencies: Vec<String>,
-    
-    #[serde(default = "rust_fmt_path_default")] 
+
+    #[serde(default = "rust_fmt_path_default")]
     pub rust_fmt_path: String,
 
-    #[serde(default = "do_formatting_default")] 
-    pub do_formatting: bool
+    #[serde(default = "do_formatting_default")]
+    pub do_formatting: bool,
 }
 
 impl Default for FlowProjectManagerConfig {
@@ -58,7 +63,7 @@ impl Default for FlowProjectManagerConfig {
             project_json_file_name: project_json_file_name_default(),
             builtin_dependencies: builtin_dependencies_default(),
             rust_fmt_path: rust_fmt_path_default(),
-            do_formatting: do_formatting_default()
+            do_formatting: do_formatting_default(),
         }
     }
 }
@@ -115,6 +120,54 @@ impl FlowProjectManager {
         Ok(())
     }
 
+    pub fn compile_flow_project(
+        &mut self,
+        flow_project_name: FlowProjectName,
+    ) -> Result<String, anyhow::Error> {
+        println!("Compiling...");
+
+        let option_project = self.projects.get(&flow_project_name.project_name);
+        if option_project.is_none() {
+            return Err(anyhow::anyhow!(flow_project_name.project_name + " does not exist!"));
+        }
+        let project_path = self.config.project_folder.clone() + "/" + &*option_project.unwrap().name;
+        println!("Path: {}", project_path);
+        let output = Command::new("cargo")
+            .current_dir(project_path)
+            .arg("build")
+            .output()
+            .expect("Fehler beim Ausführen von cargo build");
+
+        return if output.status.success() {
+            Ok("Das Rust-Projekt wurde erfolgreich kompiliert.".parse()?)
+        } else {
+            Err(anyhow::anyhow!("Das Rust-Projekt wurde nicht erfolgreich kompiliert."))
+        };
+    }
+
+    pub fn run_flow_project(
+        &mut self,
+        flow_project_name: FlowProjectName,
+    ) -> Result<String, anyhow::Error> {
+        let project_name = flow_project_name.project_name;
+        let option_project = self.projects.get(&project_name);
+        if option_project.is_none() {
+            return Err(anyhow::anyhow!(project_name + " does not exist!"));
+        }
+
+        // runner_main.exe --flow [flow-project]\target\[debug|release]\[flow-project].dll|so]
+        let path_to_executable = self.config.project_folder.clone() + "/" + &*project_name + "/target/debug/" + &*project_name + ".dll";
+        println!("Starting: {} at {}", project_name, path_to_executable);
+
+        Command::new("./target/debug/runner_main.exe")
+            .arg("--flow")
+            .arg(path_to_executable)
+            .spawn()
+            .expect("Fehler beim Ausführen");
+
+        Ok("Das Rust-Projekt wurde ausgeführt.".parse()?)
+    }
+
     pub fn create_flow_project(
         &mut self,
         flow_project: FlowProject,
@@ -149,25 +202,23 @@ impl FlowProjectManager {
         flow_project: &FlowProject,
         project_folder_name: &PathBuf,
     ) -> Result<()> {
-        
         let content =
-            format!("[package]\n name = \"{}\" \n version = \"{}\"\nedition = \"2021\"\n\n[dependencies]\n{}\n{}\n\n[lib]\ncrate-type = [\"cdylib\"]", 
-            flow_project.name,
-            flow_project.version,
-            flow_project.packages.iter().map(|x| self.create_project_dependencies(x)).collect::<Vec<String>>().join("\n"),
-            self.create_builtin_dependencies()
-        );
+            format!("[package]\n name = \"{}\" \n version = \"{}\"\nedition = \"2021\"\n\n[dependencies]\n{}\n{}\n\n[lib]\ncrate-type = [\"cdylib\"]",
+                    flow_project.name,
+                    flow_project.version,
+                    flow_project.packages.iter().map(|x| self.create_project_dependencies(x)).collect::<Vec<String>>().join("\n"),
+                    self.create_builtin_dependencies()
+            );
 
         self.create_project_file(project_folder_name, &"Cargo.toml".to_string(), &content)
     }
 
     fn create_project_file(
-        &self,        
+        &self,
         folder_name: &PathBuf,
-        file_name: &String, 
-        content: &String
+        file_name: &String,
+        content: &String,
     ) -> Result<(), anyhow::Error> {
-       
         let file_path = folder_name.join(file_name);
         let mut file = fs::File::create(&file_path)?;
         file.write_all(content.as_bytes())?;
@@ -180,7 +231,6 @@ impl FlowProjectManager {
         flow_project: &FlowProject,
         project_folder_name: &PathBuf,
     ) -> Result<(), anyhow::Error> {
-        
         let content = serde_json::to_string(&flow_project)?;
         self.create_project_file(project_folder_name, &self.config.project_json_file_name, &content)
     }
@@ -190,7 +240,6 @@ impl FlowProjectManager {
         flow_project: &FlowProject,
         project_folder_name: &PathBuf,
     ) -> Result<(), anyhow::Error> {
-        
         let mut handlebars = Handlebars::new();
         let source = r#"
         <!DOCTYPE html>
@@ -231,7 +280,6 @@ impl FlowProjectManager {
         src_folder: &PathBuf,
         package_manager: &PackageManager,
     ) -> Result<(), anyhow::Error> {
-
         let emitter = StandardCodeEmitter {};
         let content = &emitter.emit_flow_code(&flow_project.flow, package_manager)?;
 
@@ -283,7 +331,7 @@ impl FlowProjectManager {
         Ok(())
     }
 
-    pub fn delete_flow_project(&mut self, name: &str) -> Result<(), anyhow::Error>  {
+    pub fn delete_flow_project(&mut self, name: &str) -> Result<(), anyhow::Error> {
         if !self.projects.contains_key(name) {
             return Ok(());
         }

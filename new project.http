@@ -1,18 +1,32 @@
 http://127.0.0.1:3000/packages/
 
 ###
+# TODO fix response
 
 POST http://127.0.0.1:3000/compile_jobs/ HTTP/1.1
 content-type: application/json
+
 {
-    "project-name": "flow_project_1"
+    "project_name": "flow_project_80"
 }
 
 Response: {"job-id": "1234"}
 
+###
+# TODO implement this logic
 http://127.0.0.1:3000/compile_jobs/1234/state
 
-Response: 
+Response:
+
+###
+
+POST http://127.0.0.1:3000/run_jobs/ HTTP/1.1
+content-type: application/json
+
+{
+    "project_name": "flow_project_80"
+}
+
 
 ###
 
