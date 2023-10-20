@@ -208,14 +208,15 @@ impl FlowProjectManager {
         &mut self,
         process_id: String,
     ) -> Result<String, anyhow::Error> {
+        // convert to u32 type
         let result = from_str::<u32>(process_id.as_str());
         if result.is_err() {
             return Err(anyhow::anyhow!("supplied process_id wasn't of type u32"));
         }
-
         let id = result.unwrap();
+
+        // get child process and kill it
         if let Some(mut child) = self.processes.remove(&id) {
-            // Kill the child process.
             child.kill()?;
         } else {
             let msg = format!("No registered process found with id {}", id);
