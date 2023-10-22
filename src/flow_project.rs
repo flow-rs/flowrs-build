@@ -9,13 +9,13 @@ use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Child, Command};
 
 use serde_json;
 use handlebars::Handlebars;
 
 use anyhow::Result;
-
+use serde_json::from_str;
 use crate::flow_model::{CodeEmitter, StandardCodeEmitter};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -34,8 +34,8 @@ pub struct FlowProject {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct FlowProjectName {
-    project_name: String,
+pub struct Process {
+    process_id: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -89,10 +89,10 @@ const fn do_formatting_default() -> bool {
     true
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FlowProjectManager {
     config: FlowProjectManagerConfig,
     pub projects: HashMap<String, FlowProject>,
+    processes: HashMap<u32, Child>,
 }
 
 impl FlowProjectManager {
@@ -100,6 +100,7 @@ impl FlowProjectManager {
         Self {
             config: config,
             projects: HashMap::new(),
+            processes: HashMap::new(),
         }
     }
 
@@ -122,19 +123,24 @@ impl FlowProjectManager {
 
     pub fn compile_flow_project(
         &mut self,
-        flow_project_name: FlowProjectName,
+        project_name: &str,
     ) -> Result<String, anyhow::Error> {
-        println!("Compiling...");
+        // construct path to folder
+        let project_folder_path = self.config.project_folder.clone();
+        let flow_project_path = format!("{project_folder_path}/{project_name}");
 
-        let option_project = self.projects.get(&flow_project_name.project_name);
-        if option_project.is_none() {
-            return Err(anyhow::anyhow!(flow_project_name.project_name + " does not exist!"));
+        // construct command for cargo build
+        let mut binding = Command::new("cargo");
+        let command = binding
+            .current_dir(flow_project_path)
+            .arg("build");
+
+        // add release option if this rest-service is executed in release mode
+        if !cfg!(debug_assertions) {
+            command.arg("--release");
         }
-        let project_path = self.config.project_folder.clone() + "/" + &*option_project.unwrap().name;
-        println!("Path: {}", project_path);
-        let output = Command::new("cargo")
-            .current_dir(project_path)
-            .arg("build")
+
+        let output = command
             .output()
             .expect("Fehler beim Ausführen von cargo build");
 
@@ -147,25 +153,77 @@ impl FlowProjectManager {
 
     pub fn run_flow_project(
         &mut self,
-        flow_project_name: FlowProjectName,
-    ) -> Result<String, anyhow::Error> {
-        let project_name = flow_project_name.project_name;
-        let option_project = self.projects.get(&project_name);
-        if option_project.is_none() {
-            return Err(anyhow::anyhow!(project_name + " does not exist!"));
+        project_name: &str,
+    ) -> Result<Process, anyhow::Error> {
+        // get path to the projects executable
+        let option_path_to_executable = self.get_path_to_executable(project_name);
+        if option_path_to_executable.is_none() {
+            return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name}"));
         }
 
-        // runner_main.exe --flow [flow-project]\target\[debug|release]\[flow-project].dll|so]
-        let path_to_executable = self.config.project_folder.clone() + "/" + &*project_name + "/target/debug/" + &*project_name + ".dll";
-        println!("Starting: {} at {}", project_name, path_to_executable);
+        // execute runner_main.exe --flow
+        let runner_main_path = if cfg!(debug_assertions) {
+            "target/debug/runner_main.exe"
+        } else {
+            "target/release/runner_main.exe"
+        };
 
-        Command::new("./target/debug/runner_main.exe")
+        let child = Command::new(runner_main_path)
             .arg("--flow")
-            .arg(path_to_executable)
+            .arg(option_path_to_executable.unwrap())
             .spawn()
             .expect("Fehler beim Ausführen");
 
-        Ok("Das Rust-Projekt wurde ausgeführt.".parse()?)
+        let id = child.id().clone();
+        // save the new child process for later to be killed on request
+        self.processes.insert(id, child);
+        Ok(Process { process_id: id })
+    }
+
+    fn get_path_to_executable(&mut self, project_name: &str) -> Option<String> {
+        let project_folder_path = self.config.project_folder.clone();
+        let build_type = if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        };
+        let path_without_file_ending = format!("{project_folder_path}/{project_name}/target/{build_type}/{project_name}");
+
+        // endings for windows, mac and linux
+        let possible_file_endings = [".dll", ".dylib", ".so"];
+        // find correct ending
+        for possible_file_ending in possible_file_endings {
+            let formatted_path = format!("{path_without_file_ending}{possible_file_ending}");
+            let possible_path_to_executable = Path::new(formatted_path.as_str());
+            if possible_path_to_executable.exists() && possible_path_to_executable.to_str().is_some() {
+                let correct_path_to_executable = possible_path_to_executable.to_str().unwrap().to_string();
+                return Some(correct_path_to_executable);
+            }
+        }
+
+        return None;
+    }
+
+    pub fn stop_process_flow_project(
+        &mut self,
+        process_id: String,
+    ) -> Result<String, anyhow::Error> {
+        // convert to u32 type
+        let result = from_str::<u32>(process_id.as_str());
+        if result.is_err() {
+            return Err(anyhow::anyhow!("supplied process_id wasn't of type u32"));
+        }
+        let id = result.unwrap();
+
+        // get child process and kill it
+        if let Some(mut child) = self.processes.remove(&id) {
+            child.kill()?;
+        } else {
+            let msg = format!("No registered process found with id {}", id);
+            return Err(anyhow::anyhow!(msg));
+        }
+
+        Ok("Process killed".parse()?)
     }
 
     pub fn create_flow_project(
