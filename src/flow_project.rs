@@ -143,7 +143,9 @@ impl FlowProjectManager {
         let output = command
             .output()
             .expect("Fehler beim Ausführen von cargo build");
-
+        println!("status: {}", output.status);
+        println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+        println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
         return if output.status.success() {
             Ok("Das Rust-Projekt wurde erfolgreich kompiliert.".parse()?)
         } else {
