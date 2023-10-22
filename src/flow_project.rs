@@ -161,6 +161,12 @@ impl FlowProjectManager {
 
         flow_project_name: FlowProjectName,
     ) -> Result<String, anyhow::Error> {
+        // check if project exists
+        let option_project = self.projects.get(project_name);
+        if option_project.is_none() {
+            return Err(anyhow::anyhow!("{project_name} does not exist!"));
+        }
+
         // construct path to folder
         let project_folder_path = self.config.project_folder.clone();
         let flow_project_path = format!("{project_folder_path}/{project_name}");
