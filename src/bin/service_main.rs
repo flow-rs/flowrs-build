@@ -5,12 +5,10 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use tokio_util::io::ReaderStream;
 use tokio::sync::broadcast;
 
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::{path::{PathBuf}, process::Command};
 use std::fs::File;
 use std::io::Read;
 use std::fs;
@@ -80,7 +78,7 @@ fn load_config(config_path: &str) -> ServiceConfig {
 }
 
 async fn handle_shutdown_signal(
-    stopper: tokio::sync::broadcast::Sender<()>,
+    stopper: broadcast::Sender<()>,
 ) -> std::io::Result<()> {
     tokio::signal::ctrl_c().await.expect("Failed to set up Ctrl+C handler");
     println!("-> Shutdown requested.");
