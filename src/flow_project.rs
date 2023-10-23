@@ -281,7 +281,7 @@ impl FlowProjectManager {
         if is_wasm {
             return Some(project_dir_path);
         }
-        let base_path = format!("{project_dir_path}/target/{build_type}/");
+        let base_path = format!("{project_dir_path}/target/{build_type}");
 
         // name and ending combinations for windows, mac and linux
         let binding = format!("lib{project_name}");
