@@ -220,7 +220,7 @@ impl FlowProjectManager {
         }
 
         // Create a VecDeque to store the combined output lines
-        let outputs_mutex = std::sync::Arc::new(std::sync::Mutex::new(VecDeque::new()));
+        let outputs_mutex = Arc::new(Mutex::new(VecDeque::new()));
 
         Self::start_logs_export_thread(&mut child, outputs_mutex.clone());
 
@@ -237,11 +237,11 @@ impl FlowProjectManager {
             return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name}"));
         }
 
-        // execute runner_main.exe --flow
+        // execute runner_main --flow
         let runner_executable_path = if cfg!(debug_assertions) {
-            "target/debug/runner_main.exe"
+            "target/debug/runner_main"
         } else {
-            "target/release/runner_main.exe"
+            "target/release/runner_main"
         };
 
         Ok(Command::new(runner_executable_path)
@@ -281,17 +281,20 @@ impl FlowProjectManager {
         if is_wasm {
             return Some(project_dir_path);
         }
-        let path_without_file_ending = format!("{project_dir_path}/target/{build_type}/{project_name}");
+        let base_path = format!("{project_dir_path}/target/{build_type}/");
 
-        // endings for windows, mac and linux
+        // name and ending combinations for windows, mac and linux
+        let possible_file_names = [project_name, format!("lib{project_name}")];
         let possible_file_endings = [".dll", ".dylib", ".so"];
-        // find correct ending
-        for possible_file_ending in possible_file_endings {
-            let formatted_path = format!("{path_without_file_ending}{possible_file_ending}");
-            let possible_path_to_executable = Path::new(formatted_path.as_str());
-            if possible_path_to_executable.exists() && possible_path_to_executable.to_str().is_some() {
-                let correct_path_to_executable = possible_path_to_executable.to_str().unwrap().to_string();
-                return Some(correct_path_to_executable);
+        // find correct executable
+        for possible_file_name in possible_file_names {
+            for possible_file_ending in possible_file_endings {
+                let formatted_path = format!("{base_path}/{possible_file_name}{possible_file_ending}");
+                let possible_path_to_executable = Path::new(formatted_path.as_str());
+                if possible_path_to_executable.exists() && possible_path_to_executable.to_str().is_some() {
+                    let correct_path_to_executable = possible_path_to_executable.to_str().unwrap().to_string();
+                    return Some(correct_path_to_executable);
+                }
             }
         }
 
