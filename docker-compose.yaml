@@ -1,0 +1,11 @@
+services:
+  service-main:
+    build: .
+    ports:
+      - 3000:3000
+    volumes:
+      - "./flow-projects:/flowrs-build/flow-projects"
+      - "./flow-packages:/flowrs-build/flow-packages"
+      - ${DOCKER_SOCKET}:/docker-socket
+    env_file:
+      - ./.env
