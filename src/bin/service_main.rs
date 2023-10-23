@@ -8,14 +8,15 @@ use axum::{
 };
 use tokio_util::io::ReaderStream;
 use tokio::sync::broadcast;
-
+use tower::{ServiceBuilder, ServiceExt, Service, Layer};
+use tower_http::cors::{Any, CorsLayer};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::{path::{PathBuf}, process::Command};
 use std::fs::File;
 use std::io::Read;
 use std::fs;
-
+use axum::handler::{Handler, HandlerWithoutStateExt};
 use clap::Parser;
 
 use flowrs_build::{
@@ -24,6 +25,7 @@ use flowrs_build::{
     package_manager::PackageManager,
 };
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::fmt::layer;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -116,7 +118,12 @@ async fn main() {
         }
     }
 
-    let app = Router::new()
+   let cors = CorsLayer::new()
+       .allow_origin(Any)
+       .allow_methods(Any)
+       .allow_headers(Any);
+
+    let api_app = Router::new()
         .route("/build/:project_name", get(build_package))
         .route("/file/:project_name/:file_name", get(get_file))
         .with_state(project_manager.clone())
@@ -132,6 +139,9 @@ async fn main() {
         .route("/stop/:process_id", post(stop_project))
         .with_state(project_manager.clone());
 
+
+
+    let app = Router::new().nest("/api", api_app).layer(cors);
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("-> Listening on {}", addr);
     

@@ -1,9 +1,8 @@
 // Define the types for the API response
 import FetchFactory from "~/repository/factory";
 import {FetchOptions} from "ofetch";
-import {integer} from "vscode-languageserver-types";
 
-type TimerConfigNode = {
+export type TimerConfigNode = {
     value : {
         duration: {
         nanos: number;
@@ -16,11 +15,11 @@ export type ProjectIdentifier = {
     project_name : string;
 }
 
-type TimerTokenNode = {
+export type TimerTokenNode = {
     value : number
 };
 
-type Node<T> = {
+export type FlowNode<T> = {
     node_type: string;
     type_parameters: T;
     constructor: string;
@@ -47,7 +46,7 @@ export type FlowProject = {
         path: string;
     }>;
     flow: {
-        nodes: { [key: string]: Node<any> };
+        nodes: { [key: string]: FlowNode<any> };
         connections: Connection[];
         data: FlowData;
     };
@@ -56,7 +55,8 @@ export type FlowProject = {
 class ProjectsModule extends FetchFactory {
     private RESOURCE: string = '/projects/';
     private BUILD_PATH: string = '/build/';
-    private COMPILE_PATH: string = '/compile_jobs/';
+    //TODO: Placeholder string
+    private COMPILE_PATH: string = '/projects/{}/compile';
     private RUN_JOBS: string = '/run_jobs/';
 
     async getProjects() : Promise<FlowProject[]> {
@@ -78,7 +78,7 @@ class ProjectsModule extends FetchFactory {
                 'Content-Type': 'application/json',
             }
         }
-        return await this.call<FlowProject>('POST', `${this.COMPILE_PATH}`, project, fetchOptions)
+        return await this.call<FlowProject>('POST', '/projects/flow_project_100/compile', project, fetchOptions)
     }
 
     async runProject(project : ProjectIdentifier) : Promise<FlowProject> {

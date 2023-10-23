@@ -17,10 +17,10 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     const fetchOptions: FetchOptions = {
         // baseURL: config.public.apiBaseUrl
-        baseURL: "http://127.0.0.1:3000"
+        baseURL: "http://127.0.0.1:3000/api"
     };
 
-    // Create a new instance of $fecther with custom option
+    // Create a new instance of $fetcher with custom option
     const apiFetcher = $fetch.create(fetchOptions);
 
     // An object containing all repositories we need to expose
