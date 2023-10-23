@@ -8,7 +8,7 @@ use axum::{
 };
 use tokio_util::io::ReaderStream;
 use tokio::sync::broadcast;
-use tower::{ServiceBuilder, ServiceExt, Service, Layer};
+use tower::{Service, Layer};
 use tower_http::cors::{Any, CorsLayer};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
@@ -25,7 +25,6 @@ use flowrs_build::{
     package_manager::PackageManager,
 };
 use serde::{Deserialize, Serialize};
-use tracing_subscriber::fmt::layer;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
