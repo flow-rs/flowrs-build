@@ -284,7 +284,8 @@ impl FlowProjectManager {
         let base_path = format!("{project_dir_path}/target/{build_type}/");
 
         // name and ending combinations for windows, mac and linux
-        let possible_file_names = [project_name, format!("lib{project_name}")];
+        let binding = format!("lib{project_name}");
+        let possible_file_names = [project_name, binding.as_str()];
         let possible_file_endings = [".dll", ".dylib", ".so"];
         // find correct executable
         for possible_file_name in possible_file_names {
