@@ -55,14 +55,15 @@ const data : ProjectIdentifier = {
   project_name: "flow_project_100"
 }
 
-// POST compile project TODO: return type
-const status = await $api.projects.compileProject(data);
+// POST compile project
+// const status = await $api.projects.compileProject(data);
 
-// POST run project TODO: return type
-// const run_status = await $api.projects.runProject(data);
+// POST run project
+const process_identifier = await $api.projects.runProject(data);
 
+// POST stop project
+const stopped = await $api.projects.stopProject(process_identifier)
 
-// console.log(JSON.stringify(createdflowProject, null, 2))
 
 </script>
 
