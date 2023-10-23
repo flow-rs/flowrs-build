@@ -23,6 +23,7 @@ use flowrs_build::{
     package_manager::PackageManager,
 };
 use serde::{Deserialize, Serialize};
+use flowrs_build::flow_project::BuildType;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -131,9 +132,6 @@ async fn main() {
     }
 
     let app = Router::new()
-        .route("/build/:project_name", get(build_package)) // TODO merge with compile
-        .route("/file/:project_name/:file_name", get(get_file)) // FIXME
-        .with_state(project_manager.clone())
         .route("/packages/:package_name", get(get_package_by_name))
         .route("/packages/", get(get_all_packages))
         .with_state(package_manager.clone())
@@ -229,11 +227,12 @@ async fn create_project(
 async fn compile_project(
     Path(project_name): Path<String>,
     State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
+    build_type:Query<BuildType>,
 ) -> Result<Response<Body>, StatusCode> {
     match project_manager
         .lock()
         .unwrap()
-        .compile_flow_project(project_name.as_str())
+        .compile_flow_project(project_name.as_str(), build_type.0.build_type)
     {
         Ok(result) => {
             // Return a success response with the created object in the body
@@ -259,11 +258,12 @@ async fn compile_project(
 async fn run_project(
     Path(project_name): Path<String>,
     State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
+    build_type:Query<BuildType>,
 ) -> Result<Response<Body>, StatusCode> {
     match project_manager
         .lock()
         .unwrap()
-        .run_flow_project(project_name.as_str())
+        .run_flow_project(project_name.as_str(), build_type.0.build_type)
     {
         Ok(process) => {
             // Return a success response with the created object in the body
