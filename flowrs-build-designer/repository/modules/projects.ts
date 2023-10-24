@@ -53,11 +53,16 @@ export type FlowProject = {
     };
 };
 
+export enum BuildType {
+    Wasm = "wasm",
+    Cargo = "cargo",
+}
+
 class ProjectsModule extends FetchFactory {
     private RESOURCE: string = '/projects/';
     private BUILD_PATH: string = '/build/';
-    private COMPILE_PATH: string = '/projects/{project_name}/compile';
-    private RUN_PROJECT: string = '/projects/{project_name}/run';
+    private COMPILE_PATH: string = '/projects/{project_name}/compile?build_type=';
+    private RUN_PROJECT: string = '/projects/{project_name}/run?build_type=';
 
 
     async getProjects() : Promise<FlowProject[]> {
@@ -73,23 +78,22 @@ class ProjectsModule extends FetchFactory {
         return await this.call<FlowProject>('POST', `${this.RESOURCE}`, project, fetchOptions)
     }
 
-    //TODO: Query Param
     async compileProject(project : ProjectIdentifier, buildType: string) : Promise<string> {
         const fetchOptions: FetchOptions<'json'> = {
             headers: {
                 'Content-Type': 'application/json',
             }
         }
-        return await this.call<string>('POST', `${this.COMPILE_PATH.replace("{project_name}", project.project_name)}?buildType=${buildType}`, project, fetchOptions)
+        return await this.call<string>('POST', `${this.COMPILE_PATH.replace("{project_name}", project.project_name)}${buildType}`, project, fetchOptions)
     }
 
-    async runProject(project : ProjectIdentifier) : Promise<ProcessIdentifier> {
+    async runProject(project : ProjectIdentifier, buildType: string) : Promise<ProcessIdentifier> {
         const fetchOptions: FetchOptions<'json'> = {
             headers: {
                 'Content-Type': 'application/json',
             }
         }
-        return await this.call<ProcessIdentifier>('POST', this.RUN_PROJECT.replace("{project_name}", project.project_name), project, fetchOptions)
+        return await this.call<ProcessIdentifier>('POST', `${this.RUN_PROJECT.replace("{project_name}", project.project_name)}${buildType}`, project, fetchOptions)
     }
 
     async buildProject(projectName : string) : Promise<FlowProject> {

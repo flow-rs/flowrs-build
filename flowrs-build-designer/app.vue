@@ -28,9 +28,16 @@
 
 <script setup lang="ts">
 import Rete from './components/Rete.vue'
-import {FlowProject, ProjectIdentifier, TimerConfigNode, TimerTokenNode} from "~/repository/modules/projects";
+import {
+  BuildType,
+  FlowProject,
+  ProjectIdentifier,
+  TimerConfigNode,
+  TimerTokenNode
+} from "~/repository/modules/projects";
 import api from "~/plugins/api";
 import {newFlowProject} from "~/repository/api_sample_data";
+import {ProcessIdentifier} from "~/repository/modules/processes";
 
 const { $api } = useNuxtApp();
 
@@ -52,19 +59,27 @@ const { $api } = useNuxtApp();
 // const createdflowProject = await $api.projects.createProject(newFlowProject);
 
 const data : ProjectIdentifier = {
-  project_name: "flow_project_100"
+  project_name: "flow_project_200"
 }
 
-// POST compile project
-// const status = await $api.projects.compileProject(data);
+const buildType = BuildType.Cargo;
 
-// POST run project
-const process_identifier = await $api.projects.runProject(data);
+// POST compile project with build_type query param
+// const status = await $api.projects.compileProject(data, buildType);
 
-// POST stop project
-const stopped = await $api.projects.stopProcess(process_identifier)
+// POST run project with build_type query param
+// const process_identifier = await $api.projects.runProject(data, buildType);
 
-const logs = await $api.projects.getProcessLogs(process_identifier);
+const process_identifier : ProcessIdentifier = {
+  process_id : 52086
+}
+
+// POST stop process
+// const stopped = await $api.processes.stopProcess(process_identifier)
+//
+
+
+// const logs = await $api.processes.getProcessLogs(process_identifier);
 
 
 </script>
