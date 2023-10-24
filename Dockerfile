@@ -1,29 +1,33 @@
-# systax=docker/dockerfile:1
+FROM rust as rust-builder
 
-FROM alpine:latest
+WORKDIR /app
 
-# Install required dependencies (curl, bash)
-RUN apk add --no-cache curl bash
+# install missing rustfmt
+RUN rustup component add rustfmt
 
-# Install Docker CLI
-RUN curl -fsSL https://get.docker.com | sh
+# copy cargo files to build dependencies
+COPY ./Cargo.toml ./
+COPY ./Cargo.lock ./
 
-FROM rust:1.73
-
-# COPY /flowrs-dependencies/flowrs /flowrs
-# WORKDIR /flowrs
-# RUN cargo build
-
-# WORKDIR /../
-# COPY /flowrs-dependencies/flowrs-std /flowrs-std
-# WORKDIR /../flowrs-std
-# RUN cargo build
-
-WORKDIR /../
-COPY ./ /flowrs-build
-WORKDIR /../flowrs-build
+# create dummy .rs file for build caching
+RUN mkdir ./src &&  mkdir ./src/bin && echo 'fn main() {println!("Dummy!"); }' > ./src/bin/service_main.rs
+# build for dependencies
 RUN cargo build
 
-WORKDIR /../
+# remove dummy and copy real source folder
+RUN rm -rf ./src
+COPY ./src ./src
+
+# the last modified attribute of service_main.rs needs to be updated
+# otherwise cargo won't rebuild it
+RUN touch -a -m ./src/bin/service_main.rs
+
+RUN cargo build
+
+# # use slim version of debian to run release build
+# FROM debian:bullseye
+# COPY --from=rust-builder /app/target/release/service_main /usr/local/bin
+
+# WORKDIR /usr/local/bin
 COPY config.json config.json
-ENTRYPOINT ["./flowrs-build/target/debug/service_main", "--config-file", "./config.json"]
+ENTRYPOINT ["./target/debug/service_main", "--config-file", "./config.json"]

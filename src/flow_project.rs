@@ -246,6 +246,8 @@ impl FlowProjectManager {
             "target/release/runner_main"
         };
 
+        println!("file path:   {}", option_path_to_executable.clone().unwrap());
+        println!("runner path: {}", runner_executable_path);
         Ok(Command::new(runner_executable_path)
             .arg("--flow")
             .arg(option_path_to_executable.unwrap())

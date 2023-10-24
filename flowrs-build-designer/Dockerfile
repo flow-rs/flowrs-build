@@ -1,12 +1,12 @@
-FROM node:20
+FROM node:20-alpine
 
-WORKDIR /
+WORKDIR /app
+
+COPY package.json ./
+COPY yarn.lock ./
+
+RUN yarn install
 
 COPY . .
 
-RUN yarn install
-RUN yarn build
-
-WORKDIR /.output
-RUN ls -al
-CMD [ "node", "./server/index.mjs"]
+CMD ["yarn", "nodemon"]
