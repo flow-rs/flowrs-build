@@ -171,6 +171,7 @@ impl FlowProjectManager {
     ) -> Result<Process, anyhow::Error> {
         // get path to the projects executable
         let option_path_to_executable = self.get_path_to_executable(project_name);
+        eprintln!("{:?}", option_path_to_executable);
         if option_path_to_executable.is_none() {
             return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name}"));
         }
@@ -225,7 +226,7 @@ impl FlowProjectManager {
             "release"
         };
         let path_without_file_ending = format!("{project_folder_path}/{project_name}/target/{build_type}/{project_name}");
-
+        eprintln!("{}", path_without_file_ending);
         // endings for windows, mac and linux
         let possible_file_endings = [".dll", ".dylib", ".so"];
         // find correct ending

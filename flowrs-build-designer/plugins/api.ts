@@ -1,15 +1,13 @@
-// import { $fetch, FetchOptions } from 'ofetch';
 
-// locals
 import PackagesModule from "~/repository/modules/packages";
-// import Packages from "~/repository/modules/packages";
-import axios from "axios";
 import {$fetch, FetchOptions} from "ofetch";
 import ProjectsModule from "~/repository/modules/projects";
+import ProcessesModule from "~/repository/modules/processes";
 
 interface IApiInstance {
     packages: PackagesModule;
-    projects: ProjectsModule
+    projects: ProjectsModule;
+    processes: ProcessesModule;
 }
 
 export default defineNuxtPlugin((nuxtApp) => {
@@ -27,6 +25,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     const modules: IApiInstance = {
         packages: new PackagesModule(apiFetcher),
         projects: new ProjectsModule(apiFetcher),
+        processes: new ProcessesModule(apiFetcher)
     };
 
     return {

@@ -62,7 +62,9 @@ const data : ProjectIdentifier = {
 const process_identifier = await $api.projects.runProject(data);
 
 // POST stop project
-const stopped = await $api.projects.stopProject(process_identifier)
+const stopped = await $api.projects.stopProcess(process_identifier)
+
+const logs = await $api.projects.getProcessLogs(process_identifier);
 
 
 </script>

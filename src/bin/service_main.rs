@@ -123,9 +123,9 @@ async fn main() {
        .allow_headers(Any);
 
     let api_app = Router::new()
-        .route("/build/:project_name", get(build_package)) // TODO merge with compile
-        .route("/file/:project_name/:file_name", get(get_file)) // FIXME
-        .with_state(project_manager.clone())
+        //.route("/build/:project_name", get(build_package)) // TODO merge with compile
+        //.route("/file/:project_name/:file_name", get(get_file)) // FIXME
+        //.with_state(project_manager.clone())
         .route("/packages/:package_name", get(get_package_by_name))
         .route("/packages/", get(get_all_packages))
         .with_state(package_manager.clone())

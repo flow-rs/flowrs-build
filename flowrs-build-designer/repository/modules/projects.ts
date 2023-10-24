@@ -1,6 +1,7 @@
 // Define the types for the API response
 import FetchFactory from "~/repository/factory";
 import {FetchOptions} from "ofetch";
+import {ProcessIdentifier} from "~/repository/modules/processes";
 
 export type TimerConfigNode = {
     value : {
@@ -13,10 +14,6 @@ export type TimerConfigNode = {
 
 export type ProjectIdentifier = {
     project_name : string;
-}
-
-export type ProcessIdentifier = {
-    process_id : number;
 }
 
 export type TimerTokenNode = {
@@ -61,7 +58,7 @@ class ProjectsModule extends FetchFactory {
     private BUILD_PATH: string = '/build/';
     private COMPILE_PATH: string = '/projects/{project_name}/compile';
     private RUN_PROJECT: string = '/projects/{project_name}/run';
-    private STOP_PROJECT: string = '/projects/stop/{process_id}';
+
 
     async getProjects() : Promise<FlowProject[]> {
         return await this.call<FlowProject[]>('GET', `${this.RESOURCE}`)
@@ -76,13 +73,14 @@ class ProjectsModule extends FetchFactory {
         return await this.call<FlowProject>('POST', `${this.RESOURCE}`, project, fetchOptions)
     }
 
-    async compileProject(project : ProjectIdentifier) : Promise<string> {
+    //TODO: Query Param
+    async compileProject(project : ProjectIdentifier, buildType: string) : Promise<string> {
         const fetchOptions: FetchOptions<'json'> = {
             headers: {
                 'Content-Type': 'application/json',
             }
         }
-        return await this.call<string>('POST', this.COMPILE_PATH.replace("{project_name}", project.project_name), project, fetchOptions)
+        return await this.call<string>('POST', `${this.COMPILE_PATH.replace("{project_name}", project.project_name)}?buildType=${buildType}`, project, fetchOptions)
     }
 
     async runProject(project : ProjectIdentifier) : Promise<ProcessIdentifier> {
@@ -92,15 +90,6 @@ class ProjectsModule extends FetchFactory {
             }
         }
         return await this.call<ProcessIdentifier>('POST', this.RUN_PROJECT.replace("{project_name}", project.project_name), project, fetchOptions)
-    }
-
-    async stopProject(process : ProcessIdentifier) : Promise<void> {
-        const fetchOptions: FetchOptions<'json'> = {
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        }
-        return await this.call<void>('POST', `${this.STOP_PROJECT}${process.process_id}`, process, fetchOptions)
     }
 
     async buildProject(projectName : string) : Promise<FlowProject> {
