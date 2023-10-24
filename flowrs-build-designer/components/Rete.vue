@@ -1,15 +1,29 @@
 <template>
+  <v-row align="center"
+      justify="center">
+    <v-col cols="12" sm="12" md="6" >
+      <v-toolbar  dark="true">
+        <v-btn to="/projectselect" nuxt>Project Select</v-btn>
+        <v-btn to="/packageselect" nuxt>Package Select</v-btn>
+        <v-btn>
+          <v-icon>mdi-content-save-all-outline</v-icon> Save
+        </v-btn>
+      </v-toolbar>
+    </v-col>
+  </v-row>
+
   <div class="rete" ref="rete"></div>
+
 </template>
 
 <script lang="ts">
-import { createEditor } from '../rete';
+import { createEditor } from "../rete";
 
 export default {
   async mounted() {
-    await createEditor(this.$refs.rete)
-  }
-}
+    await createEditor(this.$refs.rete);
+  },
+};
 </script>
 
 <style scoped>

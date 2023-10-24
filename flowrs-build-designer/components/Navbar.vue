@@ -4,8 +4,8 @@
       
       <ul class="nav-menu">
         <li><nuxt-link to="/">Home</nuxt-link></li>
-        <li><nuxt-link to="/ProjectSelect">Project Select</nuxt-link></li>
-        <li><nuxt-link to="/PackageSelect">Package Select</nuxt-link></li>
+        <li><nuxt-link to="/projectselect">Project Select</nuxt-link></li>
+        <li><nuxt-link to="/packageselect">Package Select</nuxt-link></li>
       </ul>
       <div class="logo">
          <div id="logo"><img src="../assets/images/flowers-logo.png" height="30PX"/></div>
