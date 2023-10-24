@@ -1,17 +1,13 @@
 <template>
   <div>
-    <Navbar />
-    <ProjectSelect />
+    <h1>Project Selection</h1>
+    <ul>
+    <li>Test</li>
+    <li>Test</li>
+    <li>Test</li>
+    <li>Test</li>
+    </ul>
+    
   </div>
 </template>
 
-<script>
-import ProjectSelect from '../components/ProjectSelect.vue'
-import Navbar from '../components/Navbar.vue'
-
-export default {
-  components: {
-    ProjectSelect,
-  },
-}
-</script>

@@ -1,17 +1,3 @@
 <template>
-  <div>
-    <Navbar />
-    <PackageSelect />
-  </div>
+  <div>Was kommt hier hin?</div>
 </template>
-
-<script>
-import PackageSelect from '../components/PackageSelect.vue'
-import Navbar from '../components/Navbar.vue'
-
-export default {
-  components: {
-    PackageSelect,
-  },
-}
-</script>
