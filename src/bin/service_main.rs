@@ -123,8 +123,8 @@ async fn main() {
        .allow_headers(Any);
 
     let api_app = Router::new()
-        .route("/build/:project_name", get(build_package))
-        .route("/file/:project_name/:file_name", get(get_file))
+        .route("/build/:project_name", get(build_package)) // TODO merge with compile
+        .route("/file/:project_name/:file_name", get(get_file)) // FIXME
         .with_state(project_manager.clone())
         .route("/packages/:package_name", get(get_package_by_name))
         .route("/packages/", get(get_all_packages))
@@ -133,9 +133,10 @@ async fn main() {
         .route("/projects/", post(create_project))
         .with_state((project_manager.clone(), package_manager.clone()))
         .route("/projects/", get(get_all_projects))
-        .route("/projects/:project_name/compile", post(compile_project))
-        .route("/projects/:project_name/run", post(run_project))
-        .route("/stop/:process_id", post(stop_project))
+        .route("/projects/:project_name/compile", post(compile_project)) // TODO query for wasm and cargo
+        .route("/projects/:project_name/run", post(run_project))// TODO query for wasm and cargo
+        .route("/processes/:process_id/stop", post(stop_process))
+        .route("/processes/:process_id/logs", get(get_process_logs))
         .with_state(project_manager.clone());
 
 
@@ -232,7 +233,7 @@ async fn build_package(
     }
 
     let project_path = PathBuf::from(format!("./flow-projects/{}", project_name));
-    eprintln!("{}", project_path.to_str().unwrap_or_default());
+
     if !project_path.exists() {
         let error_message = "The specified project directory does not exist.";
         eprintln!("{}", error_message);
@@ -378,7 +379,6 @@ async fn compile_project(
             Ok(response)
         }
         Err(err) => {
-            eprintln!("{}", err.to_string());
             // Return an error response with status code and error message in the body
             let response = Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -420,20 +420,50 @@ async fn run_project(
     }
 }
 
-async fn stop_project(
+async fn stop_process(
     Path(process_id): Path<String>,
     State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
 ) -> Result<Response<Body>, StatusCode> {
     match project_manager
         .lock()
         .unwrap()
-        .stop_process_flow_project(process_id)
+        .stop_process(process_id)
     {
-        Ok(process) => {
+        Ok(result) => {
             // Return a success response with the created object in the body
             let response = Response::builder()
                 .status(StatusCode::CREATED)
-                .body(Body::from(serde_json::to_string(&process).unwrap()))
+                .body(Body::from(result))
+                .unwrap();
+
+            Ok(response)
+        }
+        Err(err) => {
+            // Return an error response with status code and error message in the body
+            let response = Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(err.to_string()))
+                .unwrap();
+
+            Ok(response)
+        }
+    }
+}
+
+async fn get_process_logs(
+    Path(process_id): Path<String>,
+    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
+) -> Result<Response<Body>, StatusCode> {
+    match project_manager
+        .lock()
+        .unwrap()
+        .get_process_logs(process_id)
+    {
+        Ok(result) => {
+            // Return a success response with the created object in the body
+            let response = Response::builder()
+                .status(StatusCode::CREATED)
+                .body(Body::from(serde_json::to_string(&result).unwrap()))
                 .unwrap();
 
             Ok(response)

@@ -3,13 +3,14 @@ use serde::{Deserialize, Serialize};
 use crate::flow_model::FlowModel;
 use crate::package_manager::PackageManager;
 
-use std::collections::HashMap;
-use std::fs;
+use std::collections::{HashMap, VecDeque};
+use std::{fs, thread};
 
 use std::io;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
 
 use serde_json;
 use handlebars::Handlebars;
@@ -36,6 +37,11 @@ pub struct FlowProject {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Process {
     process_id: u32,
+}
+
+pub struct FlowProcess {
+    process: Child,
+    outputs: Arc<Mutex<VecDeque<String>>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -92,7 +98,7 @@ const fn do_formatting_default() -> bool {
 pub struct FlowProjectManager {
     config: FlowProjectManagerConfig,
     pub projects: HashMap<String, FlowProject>,
-    processes: HashMap<u32, Child>,
+    processes: HashMap<u32, FlowProcess>,
 }
 
 impl FlowProjectManager {
@@ -125,6 +131,12 @@ impl FlowProjectManager {
         &mut self,
         project_name: &str,
     ) -> Result<String, anyhow::Error> {
+        // check if project exists
+        let option_project = self.projects.get(project_name);
+        if option_project.is_none() {
+            return Err(anyhow::anyhow!("{project_name} does not exist!"));
+        }
+
         // construct path to folder
         let project_folder_path = self.config.project_folder.clone();
         let flow_project_path = format!("{project_folder_path}/{project_name}");
@@ -170,16 +182,39 @@ impl FlowProjectManager {
             "target/release/runner_main.exe"
         };
 
-        let child = Command::new(runner_main_path)
+        let mut child = Command::new(runner_main_path)
             .arg("--flow")
             .arg(option_path_to_executable.unwrap())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
             .expect("Fehler beim Ausführen");
 
-        let id = child.id().clone();
+
+        // Create a VecDeque to store the combined output lines
+        let outputs_mutex = std::sync::Arc::new(std::sync::Mutex::new(VecDeque::new()));
+
+        Self::start_logs_export_thread(&mut child, outputs_mutex.clone());
+
         // save the new child process for later to be killed on request
-        self.processes.insert(id, child);
+        let id = child.id().clone();
+        self.processes.insert(id, FlowProcess { outputs: outputs_mutex, process: child });
         Ok(Process { process_id: id })
+    }
+
+    fn start_logs_export_thread(child: &mut Child, thread_outputs_mutex: Arc<Mutex<VecDeque<String>>>) {
+        // Spawn a thread to read and store both stdout and stderr lines
+        let stdout = child.stdout.take().expect("Failed to capture stdout");
+        let stderr = child.stderr.take().expect("Failed to capture stderr");
+        thread::spawn(move || {
+            let stdout_reader = BufReader::new(stdout);
+            let stderr_reader = BufReader::new(stderr);
+
+            for line in stdout_reader.lines().chain(stderr_reader.lines()) {
+                let line = line.expect("Error reading line");
+                thread_outputs_mutex.lock().unwrap().push_back(line);
+            }
+        });
     }
 
     fn get_path_to_executable(&mut self, project_name: &str) -> Option<String> {
@@ -206,26 +241,68 @@ impl FlowProjectManager {
         return None;
     }
 
-    pub fn stop_process_flow_project(
+    pub fn stop_process(
         &mut self,
         process_id: String,
     ) -> Result<String, anyhow::Error> {
-        // convert to u32 type
+        let id = match Self::convert_to_process_id(process_id) {
+            Ok(value) => value,
+            Err(value) => return Err(value),
+        };
+
+        let process = match self.get_process(&id) {
+            Ok(value) => value,
+            Err(value) => return Err(value),
+        };
+
+        process.process.kill()?;
+        Ok("Process killed".parse()?)
+    }
+
+    pub fn get_process_logs(
+        &mut self,
+        process_id: String,
+    ) -> Result<Vec<String>, anyhow::Error> {
+        let id = match Self::convert_to_process_id(process_id) {
+            Ok(value) => value,
+            Err(value) => return Err(value),
+        };
+
+        let process = match self.get_process(&id) {
+            Ok(value) => value,
+            Err(value) => return Err(value),
+        };
+
+        let mut outputs = process.outputs.lock().unwrap();
+        let mut lines = Vec::new();
+        for _i in 0..outputs.len() {
+            let option = outputs.pop_front();
+            if option.is_none() {
+                break;
+            }
+            lines.push(option.unwrap())
+        }
+
+        return Ok(lines);
+    }
+
+    // convert to u32 type
+    fn convert_to_process_id(process_id: String) -> Result<u32, anyhow::Error> {
         let result = from_str::<u32>(process_id.as_str());
         if result.is_err() {
             return Err(anyhow::anyhow!("supplied process_id wasn't of type u32"));
         }
         let id = result.unwrap();
+        Ok(id)
+    }
 
-        // get child process and kill it
-        if let Some(mut child) = self.processes.remove(&id) {
-            child.kill()?;
-        } else {
+    fn get_process(&mut self, id: &u32) -> Result<&mut FlowProcess, anyhow::Error> {
+        let process = self.processes.get_mut(&id);
+        if process.is_none() {
             let msg = format!("No registered process found with id {}", id);
             return Err(anyhow::anyhow!(msg));
         }
-
-        Ok("Process killed".parse()?)
+        Ok(process.unwrap())
     }
 
     pub fn create_flow_project(
