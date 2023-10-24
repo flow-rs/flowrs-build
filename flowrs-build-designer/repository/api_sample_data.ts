@@ -9,7 +9,7 @@ const timerTokenNode: FlowNode<any> = {node_type: "flowrs_std::nodes::value::Val
 const timerNode: FlowNode<any> = {node_type: "flowrs_std::nodes::timer::TimerNode", type_parameters: {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"}, constructor: "New"}
 
 export const newFlowProject: FlowProject = {
-    name: 'flow_project_100',
+    name: 'flow_project_301',
     version: '1.0.0',
     packages: [
         {
@@ -37,6 +37,18 @@ export const newFlowProject: FlowProject = {
                 to_node: 'timer_node',
                 to_input: 'config_input',
                 from_output: 'output',
+            },
+            {
+                from_node: 'timer_token_node',
+                to_node: 'timer_node',
+                to_input: 'token_input',
+                from_output: 'output',
+            },
+            {
+                from_node: 'timer_node',
+                to_node: 'debug_node',
+                to_input: 'input',
+                from_output: 'token_output',
             },
             // Define other connections here
         ],

@@ -28,9 +28,9 @@ export type FlowNode<T> = {
 
 type Connection = {
     from_node: string;
+    from_output: string;
     to_node: string;
     to_input: string;
-    from_output: string;
 };
 
 type FlowData = {

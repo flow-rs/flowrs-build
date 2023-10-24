@@ -24,6 +24,8 @@
       <div class="title">Project Name: {{ fpro.name }}</div>
 
   </div>
+  <h1>Test</h1>
+  <div>{{stopped}}</div>
 </template>
 
 <script setup lang="ts">
