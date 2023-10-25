@@ -7,7 +7,7 @@ RUN rustup component add rustfmt
 
 # copy cargo files to build dependencies
 COPY ./Cargo.toml ./
-COPY ./Cargo.lock ./
+#COPY ./Cargo.lock ./
 
 # create dummy .rs file for build caching
 RUN mkdir ./src &&  mkdir ./src/bin && echo 'fn main() {println!("Dummy!"); }' > ./src/bin/service_main.rs
