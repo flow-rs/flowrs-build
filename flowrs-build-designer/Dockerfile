@@ -4,9 +4,11 @@ WORKDIR /app
 
 COPY package.json ./
 COPY yarn.lock ./
-
+# COPY tsconfig.json ./
+COPY nuxt.config.ts ./
+# COPY 
 RUN yarn install --frozen-lockfile
 
-COPY . .
+COPY . /app
 
 CMD ["yarn", "nodemon"]

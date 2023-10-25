@@ -1,12 +1,10 @@
 FROM node:20
 
-WORKDIR /
+WORKDIR /app
 
 COPY . .
 
 RUN yarn install --frozen-lockfile
 RUN yarn build
 
-WORKDIR /.output
-RUN ls -al
-CMD [ "node", "./server/index.mjs"]
+CMD [ "node", "./.output/server/index.mjs"]

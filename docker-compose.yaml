@@ -15,13 +15,15 @@ services:
       - HOST_IP_4=0
 
   designer:
-    build: ./flowrs-build-designer
+    build: 
+      context: ./flowrs-build-designer
+      dockerfile: Dockerfile
     ports:
       - 3001:3001
       - 9229:9229 #for debugging
     volumes:
-      - ./flowrs-build-designer:/app
-      - ignore:/app/node_modules
+      - ./flowrs-build-designer:/app/
+      - nodemodules:/app/node_modules
 
 volumes:
-  ignore:
+    nodemodules: {}
