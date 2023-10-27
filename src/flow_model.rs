@@ -4,11 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use syn::Ident;
-
-use std::path::PathBuf;
-use std::process::Command;
-
-use crate::package::{Constructor, Namespace, ObjectDescription, Package};
+use crate::package::{Namespace, ObjectDescription, Package};
 use crate::package_manager::PackageManager;
 
 use anyhow::{Error, Result};

@@ -2,17 +2,35 @@ http://127.0.0.1:3000/projects/
 
 ###
 
-POST http://127.0.0.1:3000/compile_jobs/ HTTP/1.1
-content-type: application/json
-{
-    "project-name": "flow_project_1"
-}
+http://127.0.0.1:3000/packages/
 
-Response: {"job-id": "1234"}
+####
 
-http://127.0.0.1:3000/compile_jobs/1234/state
+POST http://127.0.0.1:3000/projects/flow_project_79/compile?build_type=cargo
 
-Response: 
+####
+
+POST http://127.0.0.1:3000/projects/flow_project_79/compile?build_type=wasm
+
+###
+
+POST http://127.0.0.1:3000/projects/flow_project_79/run?build_type=cargo
+
+Response: {"process_id":18940}
+
+###
+
+POST http://127.0.0.1:3000/projects/flow_project_79/run?build_type=wasm
+
+Response: {"process_id":18940}
+
+###
+
+POST http://127.0.0.1:3000/processes/18940/stop
+
+###
+
+GET http://127.0.0.1:3000/processes/18940/logs
 
 ###
 
