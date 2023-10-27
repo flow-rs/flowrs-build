@@ -6,13 +6,14 @@ use axum::{
     Json, Router,
 };
 use tokio::sync::broadcast;
-
+use tower::{Service, Layer};
+use tower_http::cors::{Any, CorsLayer};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::fs::File;
 use std::io::Read;
 use std::fs;
-
+use axum::handler::{Handler, HandlerWithoutStateExt};
 use clap::Parser;
 
 use flowrs_build::{
@@ -114,7 +115,15 @@ async fn main() {
         }
     }
 
-    let app = Router::new()
+   let cors = CorsLayer::new()
+       .allow_origin(Any)
+       .allow_methods(Any)
+       .allow_headers(Any);
+
+    let api_app = Router::new()
+        //.route("/build/:project_name", get(build_package)) // TODO merge with compile
+        //.route("/file/:project_name/:file_name", get(get_file)) // FIXME
+        //.with_state(project_manager.clone())
         .route("/packages/:package_name", get(get_package_by_name))
         .route("/packages/", get(get_all_packages))
         .with_state(package_manager.clone())
@@ -128,6 +137,9 @@ async fn main() {
         .route("/processes/:process_id/logs", get(get_process_logs))
         .with_state(project_manager.clone());
 
+
+
+    let app = Router::new().nest("/api", api_app).layer(cors);
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("-> Listening on {}", addr);
     
