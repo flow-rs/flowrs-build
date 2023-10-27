@@ -139,8 +139,8 @@ async fn main() {
         .route("/projects/", post(create_project))
         .with_state((project_manager.clone(), package_manager.clone()))
         .route("/projects/", get(get_all_projects))
-        .route("/projects/:project_name/compile", post(compile_project)) // TODO query for wasm and cargo
-        .route("/projects/:project_name/run", post(run_project))// TODO query for wasm and cargo
+        .route("/projects/:project_name/compile", post(compile_project))
+        .route("/projects/:project_name/run", post(run_project))
         .route("/processes/:process_id/stop", post(stop_process))
         .route("/processes/:process_id/logs", get(get_process_logs))
         .with_state(project_manager.clone());
