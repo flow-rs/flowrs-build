@@ -121,7 +121,7 @@ async fn main() {
        .allow_methods(Any)
        .allow_headers(Any);
 
-    let api_app = Router::new()
+    let mut app = Router::new()
         .route("/packages/:package_name", get(get_package_by_name))
         .route("/packages/", get(get_all_packages))
         .with_state(package_manager.clone())
@@ -136,9 +136,8 @@ async fn main() {
         .route("/processes/:process_id/logs", get(get_process_logs))
         .with_state(project_manager.clone());
 
+    app = Router::new().nest("/api", app).layer(cors);
 
-
-    let app = Router::new().nest("/api", api_app).layer(cors);
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("-> Listening on {}", addr);
     
