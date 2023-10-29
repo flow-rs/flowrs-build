@@ -6,7 +6,7 @@ use crate::package_manager::PackageManager;
 use std::collections::{HashMap, VecDeque};
 use std::{fs, thread};
 use std::io;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 use std::sync::{Arc, Mutex};
@@ -146,25 +146,24 @@ impl FlowProjectManager {
         let project_folder_path = self.config.project_folder.clone();
         let flow_project_path = format!("{project_folder_path}/{project_name}");
 
-        let output;
         if build_type.eq("cargo") {
-            output = Self::compile_cargo(flow_project_path.clone());
+            match Self::compile_cargo(flow_project_path.clone()) {
+                Err(value) => return Err(anyhow::Error::from(value)),
+                _ => {}
+            };
         } else if build_type.eq("wasm") {
-            output = Self::compile_wasm(flow_project_path.clone());
+            match Self::compile_wasm(flow_project_path.clone()) {
+                Err(value) => return Err(anyhow::Error::from(value)),
+                _ => {}
+            };
         } else {
             return Err(anyhow::anyhow!("{build_type} is not an allowed build_type"));
         }
 
-
-        return if output.status.success() {
-            Ok("Das Rust-Projekt wurde erfolgreich kompiliert.".parse()?)
-        } else {
-            let error = String::from_utf8_lossy(&output.stderr);
-            Err(anyhow::anyhow!("Das Rust-Projekt wurde nicht erfolgreich kompiliert.\nWorkingdirectory:{flow_project_path}\nError:\n {error}"))
-        };
+        Ok("Das Rust-Projekt wurde erfolgreich kompiliert.".parse()?)
     }
 
-    fn compile_cargo(flow_project_path: String) -> Output {
+    fn compile_cargo(flow_project_path: String) -> io::Result<Output> {
         // construct command for cargo build
         let mut binding = Command::new("cargo");
         let command = binding
@@ -176,12 +175,10 @@ impl FlowProjectManager {
             command.arg("--release");
         }
 
-        command
-            .output()
-            .expect("Fehler beim Ausführen von cargo build")
+        command.output()
     }
 
-    fn compile_wasm(flow_project_path: String) -> Output {
+    fn compile_wasm(flow_project_path: String) -> io::Result<Output> {
         let mut binding = Command::new("wasm-pack");
         let command = binding
             .current_dir(flow_project_path)
@@ -196,7 +193,6 @@ impl FlowProjectManager {
             .arg("--target")
             .arg("web")
             .output()
-            .expect("Fehler beim Ausführen von wasm-pack build --release --target web")
     }
 
     pub fn run_flow_project(
@@ -206,14 +202,14 @@ impl FlowProjectManager {
     ) -> Result<Process, anyhow::Error> {
         let mut child;
         if build_type.eq("cargo") {
-            child  = match self.run_cargo_project(project_name) {
+            child = match self.run_cargo_project(project_name) {
                 Ok(value) => value,
-                Err(value) => return Err(value),
+                Err(value) => return Err(anyhow::Error::from(value)),
             };
         } else if build_type.eq("wasm") {
-            child  = match self.run_wasm_project(project_name) {
+            child = match self.run_wasm_project(project_name) {
                 Ok(value) => value,
-                Err(value) => return Err(value),
+                Err(value) => return Err(anyhow::Error::from(value)),
             };
         } else {
             return Err(anyhow::anyhow!("{build_type} is not an allowed build_type"));
@@ -230,11 +226,11 @@ impl FlowProjectManager {
         Ok(Process { process_id: id })
     }
 
-    fn run_cargo_project(&mut self, project_name: &str) -> Result<Child, anyhow::Error> {
+    fn run_cargo_project(&mut self, project_name: &str) -> io::Result<Child> {
         // get path to the projects executable
         let option_path_to_executable = self.get_path_to_executable(project_name, false);
         if option_path_to_executable.is_none() {
-            return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name}"));
+            return Err(io::Error::new(ErrorKind::Other, "Couldn't find path to executable for project {project_name}"));
         }
 
         // execute runner_main --flow
@@ -244,30 +240,28 @@ impl FlowProjectManager {
             "target/release/runner_main"
         };
 
-        Ok(Command::new(runner_executable_path)
+       Command::new(runner_executable_path)
             .arg("--flow")
             .arg(option_path_to_executable.unwrap())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .expect("Fehler beim Ausführen"))
     }
 
-    fn run_wasm_project(&mut self, project_name: &str) -> Result<Child, anyhow::Error>  {
+    fn run_wasm_project(&mut self, project_name: &str) -> io::Result<Child> {
         // get path to the projects executable
         let wasm_build_directory = self.get_path_to_executable(project_name, true);
         if wasm_build_directory.is_none() {
-            return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name}"));
+            return Err(io::Error::new(ErrorKind::Other, "Couldn't find path to executable for project {project_name}"));
         }
 
-        Ok(Command::new("python")
+        Command::new("python")
             .arg("-m")
             .arg("http.server")
             .current_dir(wasm_build_directory.unwrap())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .expect("Fehler beim Ausführen"))
     }
 
     fn get_path_to_executable(&mut self, project_name: &str, is_wasm: bool) -> Option<String> {
@@ -277,7 +271,7 @@ impl FlowProjectManager {
         } else {
             "release"
         };
-        let project_dir_path= format!("{project_folder_path}/{project_name}");
+        let project_dir_path = format!("{project_folder_path}/{project_name}");
         if is_wasm {
             return Some(project_dir_path);
         }
@@ -504,7 +498,7 @@ impl FlowProjectManager {
     }
 
     fn run_rust_fmt(&self, file_path: &PathBuf) {
-        let mut command = std::process::Command::new(&self.config.rust_fmt_path);
+        let mut command = Command::new(&self.config.rust_fmt_path);
         command.arg(file_path.to_str().unwrap());
 
         let status = command.output().unwrap();
