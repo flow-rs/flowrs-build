@@ -544,18 +544,18 @@ impl FlowProjectManager {
         Ok(())
     }
 
-    pub fn delete_flow_project(&mut self, name: &str) -> Result<(), anyhow::Error> {
-        if !self.projects.contains_key(name) {
-            return Ok(());
+    pub fn delete_flow_project(&mut self, project_name: &str) -> Result<String, anyhow::Error> {
+        if !self.projects.contains_key(project_name) {
+            return Err(anyhow::anyhow!("{project_name} does not exist!"));
         }
 
-        if let Err(err) = delete_folder_recursive(&PathBuf::from(&self.config.project_folder).join(name)) {
+        if let Err(err) = delete_folder_recursive(&PathBuf::from(&self.config.project_folder).join(project_name)) {
             return Err(err.into());
         } else {
-            self.projects.remove(name);
+            self.projects.remove(project_name);
         }
 
-        Ok(())
+        Ok(format!("{project_name} deleted.").to_string())
     }
 
     pub fn update_flow_project_flow_model(&mut self, name: &str, flow: FlowModel) -> Result<(), anyhow::Error> {

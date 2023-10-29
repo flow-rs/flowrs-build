@@ -14,6 +14,7 @@ use std::fs::File;
 use std::io::Read;
 use std::fs;
 use axum::handler::{Handler, HandlerWithoutStateExt};
+use axum::routing::delete;
 use clap::Parser;
 
 use flowrs_build::{
@@ -121,9 +122,6 @@ async fn main() {
        .allow_headers(Any);
 
     let api_app = Router::new()
-        //.route("/build/:project_name", get(build_package)) // TODO merge with compile
-        //.route("/file/:project_name/:file_name", get(get_file)) // FIXME
-        //.with_state(project_manager.clone())
         .route("/packages/:package_name", get(get_package_by_name))
         .route("/packages/", get(get_all_packages))
         .with_state(package_manager.clone())
@@ -131,6 +129,7 @@ async fn main() {
         .route("/projects/", post(create_project))
         .with_state((project_manager.clone(), package_manager.clone()))
         .route("/projects/", get(get_all_projects))
+        .route("/projects/:project_name/", delete(delete_project))
         .route("/projects/:project_name/compile", post(compile_project))
         .route("/projects/:project_name/run", post(run_project))
         .route("/processes/:process_id/stop", post(stop_process))
@@ -202,6 +201,36 @@ async fn create_project(
             let response = Response::builder()
                 .status(StatusCode::CREATED)
                 .body(Body::from(serde_json::to_string(&flow_project).unwrap()))
+                .unwrap();
+
+            Ok(response)
+        }
+        Err(err) => {
+            // Return an error response with status code and error message in the body
+            let response = Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(err.to_string()))
+                .unwrap();
+
+            Ok(response)
+        }
+    }
+}
+
+async fn delete_project(
+    Path(project_name): Path<String>,
+    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
+) -> Result<Response<Body>, StatusCode> {
+    match project_manager
+        .lock()
+        .unwrap()
+        .delete_flow_project(project_name.as_str())
+    {
+        Ok(result) => {
+            // Return a success response with the created object in the body
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(result))
                 .unwrap();
 
             Ok(response)
