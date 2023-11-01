@@ -3,7 +3,7 @@ import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  devServer: {
+    devServer: {
     port: 3001,
     host: '0.0.0.0'
   },
