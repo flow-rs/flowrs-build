@@ -1,14 +1,14 @@
-FROM node:20-alpine
+FROM node:alpine
 
-WORKDIR /app
+WORKDIR /app/
 
 COPY package.json ./
 COPY yarn.lock ./
-# COPY tsconfig.json ./
 COPY nuxt.config.ts ./
-# COPY 
+
+RUN yarn cache clean
 RUN yarn install --frozen-lockfile
 
-COPY . /app
+COPY . ./app/
 
 CMD ["yarn", "nodemon"]

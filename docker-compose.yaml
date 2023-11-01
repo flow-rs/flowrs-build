@@ -26,4 +26,4 @@ services:
       - nodemodules:/app/node_modules
 
 volumes:
-    nodemodules: {}
+    nodemodules:

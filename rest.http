@@ -1,40 +1,40 @@
-http://127.0.0.1:3000/projects/
+http://127.0.0.1:3000/api/projects/
 
 ###
 
-http://127.0.0.1:3000/packages/
+http://127.0.0.1:3000/api/packages/
 
 ####
 
-POST http://127.0.0.1:3000/projects/flow_project_01/compile?build_type=cargo
+POST http://127.0.0.1:3000/api/projects/flow_project_01/compile?build_type=cargo
 
 ####
 
-POST http://127.0.0.1:3000/projects/flow_project_01/compile?build_type=wasm
+POST http://127.0.0.1:3000/api/projects/flow_project_01/compile?build_type=wasm
 
 ###
 
-POST http://127.0.0.1:3000/projects/flow_project_01/run?build_type=cargo
+POST http://127.0.0.1:3000/api/projects/flow_project_01/run?build_type=cargo
 
-Response: {"process_id":18940}
-
-###
-
-POST http://127.0.0.1:3000/projects/flow_project_01/run?build_type=wasm
-
-Response: {"process_id":18940}
+#--> Response: {"process_id":18940}
 
 ###
 
-POST http://127.0.0.1:3000/processes/18940/stop
+POST http://127.0.0.1:3000/api/projects/flow_project_01/run?build_type=wasm
+
+#--> Response: {"process_id":18940}
 
 ###
 
-GET http://127.0.0.1:3000/processes/18940/logs
+POST http://127.0.0.1:3000/api/processes/18940/stop
 
 ###
 
-POST http://127.0.0.1:3000/projects/ HTTP/1.1
+GET http://127.0.0.1:3000/api/processes/18940/logs
+
+###
+
+POST http://127.0.0.1:3000/api/projects/ HTTP/1.1
 content-type: application/json
 
 {
