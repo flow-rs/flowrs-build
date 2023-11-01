@@ -1,14 +1,15 @@
-import { defineStore } from 'pinia'
+import {defineStore} from 'pinia'
+import {ProjectIdentifier} from "~/repository/modules/projects";
+
 export const useProjectsStore = defineStore({
     id: 'projects',
     state: () => ({
-        projects: {},
+        projects: [],
         loading: false
     }),
     actions: {
         async getAll() {
-            const { $api } = useNuxtApp();
-            // this.projects = { loading: true };
+            const {$api} = useNuxtApp();
             const response = $api.projects.getProjects().then(projects => {
                 this.projects = projects;
             }).catch((error) => console.log("Error fetching projects!"))
@@ -16,11 +17,20 @@ export const useProjectsStore = defineStore({
 
         },
         async deleteProject(project) {
-            const { $api } = useNuxtApp();
-
-            const response = $api.projects.deleteProject().then(projects => {
+            const {$api} = useNuxtApp();
+            const projectIdentifier: ProjectIdentifier = {
+                project_name: project.name
+            }
+            $api.projects.deleteProject(projectIdentifier).then(projects => {
                 console.log("Flow Project was deleted")
-            }).catch((error) => console.log("Error fetching projects!"))
+                // remove item from list in store to update the ui list
+                this.projects = this.projects.filter((object) => {
+                    return object.name != project.name
+                })
+            }).catch((error) => {
+                console.log(error)
+                console.log("Error deleting projects!")
+            })
                 .finally(() => (this.loading = false))
 
         }
