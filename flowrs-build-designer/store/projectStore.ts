@@ -31,9 +31,9 @@ export const useProjectsStore = defineStore({
                 this.projects = this.projects.filter((object) => {
                     return object.name != this.selectedProject!.name
                 })
+                this.selectedProject = null
             }).catch((error) => {
-                console.log(error)
-                console.log("Error deleting projects!")
+                console.log("Error deleting projects:" + error)
             })
                 .finally(() => (this.loading = false))
 

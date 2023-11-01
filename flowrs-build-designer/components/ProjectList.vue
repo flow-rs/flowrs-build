@@ -2,6 +2,7 @@
 
 import {useProjectsStore} from "~/store/projectStore.js";
 import type {FlowProject} from "~/repository/modules/projects";
+import {newFlowProject} from "~/repository/api_sample_data";
 
 
 const projectsStore = useProjectsStore()
@@ -22,7 +23,16 @@ const openProjectAsFlow = () => {
 
 const deleteProject = () => {
   console.log("Deletion of flow project was triggered")
+  projectClicked.value = false;
   projectsStore.deleteProject();
+}
+
+// Testing method to create project with UI TODO: should be open flow creation page
+const createProject = () => {
+  let projectToCreate = newFlowProject
+  projectToCreate.name = "Name_" + Math.random()
+  const {$api} = useNuxtApp();
+  $api.projects.createProject(projectToCreate);
 }
 
 const refreshProjectList = () => {
@@ -55,6 +65,7 @@ defineProps({
           <v-btn prepend-icon="mdi-open-in-app" color="blue" :disabled="!projectClicked" @click="openProjectAsFlow()">
             Open
           </v-btn>
+          <v-btn prepend-icon="mdi-plus" color="green" @click="createProject()">Create flow</v-btn>
           <v-btn prepend-icon="mdi-delete-forever" color="red" :disabled="!projectClicked" @click="deleteProject()">
             Delete
           </v-btn>

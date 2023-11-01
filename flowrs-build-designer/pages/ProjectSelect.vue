@@ -1,6 +1,5 @@
 <script setup lang="ts">
 
-import {newFlowProject} from "~/repository/api_sample_data";
 import {useProjectsStore} from "~/store/projectStore";
 
 const projectsStore = useProjectsStore();
@@ -8,18 +7,9 @@ const selectedProject = computed(() => projectsStore.selectedProject);
 
 const activeFilter = computed(() => projectsStore.activeFilter);
 
-const handleFilterSelection = (value: any) => {
+const handleFilterSelection = (value: string) => {
   projectsStore.setActiveFilter(value)
 };
-
-
-// Testing method to create project with UI
-const createProject = () => {
-  let projectToCreate = newFlowProject
-  projectToCreate.name = "Name_" + Math.random()
-  const {$api} = useNuxtApp();
-  $api.projects.createProject(projectToCreate);
-}
 
 </script>
 
@@ -28,7 +18,6 @@ const createProject = () => {
   <v-row>
     <v-col class="text-center mt-5 ml-5">
       <ProjectList :card-title="'Projects'" :card-subtitle="'Choose your project'"></ProjectList>
-      <v-btn class="mt-5" @click="createProject()">Create project (Testing-purpose)</v-btn>
     </v-col>
 
     <v-col class="mt-5 mr-5">
