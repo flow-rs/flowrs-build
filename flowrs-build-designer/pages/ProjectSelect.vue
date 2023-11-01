@@ -2,30 +2,14 @@
 
 import {newFlowProject} from "~/repository/api_sample_data";
 import {useProjectsStore} from "~/store/projectStore";
-import {FlowProject} from "~/repository/modules/projects";
 
 const projectsStore = useProjectsStore();
-const selectedProject: FlowProject = computed(() => projectsStore.selectedProject);
-
-const displayedObject = computed(() => projectsStore.displayedJSON);
+const selectedProject = computed(() => projectsStore.selectedProject);
 
 const activeFilter = computed(() => projectsStore.activeFilter);
 
-const handleFilterSelection = (value) => {
+const handleFilterSelection = (value: any) => {
   projectsStore.setActiveFilter(value)
-  switch (value) {
-    case 'noFilter':
-      projectsStore.setDisplayedJSON(selectedProject.value)
-      break;
-    case 'packages':
-      projectsStore.setDisplayedJSON(selectedProject.value.packages)
-      break;
-    case 'flow':
-      projectsStore.setDisplayedJSON(selectedProject.value.flow)
-      break;
-    default:
-      projectsStore.setDisplayedJSON(null)
-  }
 };
 
 
@@ -66,11 +50,19 @@ const createProject = () => {
           </v-col>
         </v-row>
         <div class=" scroll">
-              <pre class="language-json">
-      <code>{{ displayedObject }}</code>
-    </pre>
-
+          <pre class="language-json">
+            <template v-if="activeFilter==='noFilter'">
+              <code>{{ selectedProject }}</code>
+            </template>
+            <template v-else-if="activeFilter==='packages'">
+              <code>{{ selectedProject ? selectedProject.packages : "nothing to show" }}</code>
+            </template>
+            <template v-else-if="activeFilter==='flow'">
+              <code>{{ selectedProject ? selectedProject.flow : "nothing to show" }}</code>
+            </template>
+          </pre>
         </div>
+
       </v-card>
 
     </v-col>

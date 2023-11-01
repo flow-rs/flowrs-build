@@ -1,6 +1,7 @@
 <script setup lang="ts">
 
 import {useProjectsStore} from "~/store/projectStore.js";
+import type {FlowProject} from "~/repository/modules/projects";
 
 
 const projectsStore = useProjectsStore()
@@ -8,11 +9,9 @@ projectsStore.getAll()
 
 const projectClicked = ref(false)
 
-const selectProject = (project) => {
-  const p: FlowProject = project
-  console.log("Project was selected: " + p.name)
+const selectProject = (project: FlowProject) => {
+  console.log("Project was selected: " + project.name)
   projectsStore.selectProject(project)
-  console.log(projectsStore.selectedProject.name)
   projectClicked.value = true;
 }
 
@@ -23,7 +22,7 @@ const openProjectAsFlow = () => {
 
 const deleteProject = () => {
   console.log("Deletion of flow project was triggered")
-  projectsStore.deleteProject(selectedProject.value);
+  projectsStore.deleteProject();
 }
 
 const refreshProjectList = () => {

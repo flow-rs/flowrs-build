@@ -1,34 +1,35 @@
 import {defineStore} from 'pinia'
-import {ProjectIdentifier} from "~/repository/modules/projects";
+import {FlowProject, ProjectIdentifier} from "~/repository/modules/projects";
 
 export const useProjectsStore = defineStore({
     id: 'projects',
-    state: () => ({
-        projects: [],
-        selectedProject: null,
-        displayedJSON: null,
-        loading: false,
-        activeFilter: ""
-    }),
+    state: () => {
+        return ({
+            projects: [] as FlowProject[],
+            selectedProject: null as FlowProject | null,
+            loading: false,
+            activeFilter: ""
+        });
+    },
     actions: {
         async getAll() {
             const {$api} = useNuxtApp();
-            const response = $api.projects.getProjects().then(projects => {
-                this.projects = projects;
+            const response = $api.projects.getProjects().then(listOfFlowProjects => {
+                this.projects = listOfFlowProjects;
             }).catch((error) => console.log("Error fetching projects!"))
                 .finally(() => (this.loading = false))
 
         },
-        async deleteProject(project) {
+        async deleteProject() {
             const {$api} = useNuxtApp();
             const projectIdentifier: ProjectIdentifier = {
-                project_name: project.name
+                project_name: this.selectedProject!.name
             }
             $api.projects.deleteProject(projectIdentifier).then(projects => {
                 console.log("Flow Project was deleted")
                 // remove item from list in store to update the ui list
                 this.projects = this.projects.filter((object) => {
-                    return object.name != project.name
+                    return object.name != this.selectedProject!.name
                 })
             }).catch((error) => {
                 console.log(error)
@@ -37,15 +38,11 @@ export const useProjectsStore = defineStore({
                 .finally(() => (this.loading = false))
 
         },
-        selectProject(project) {
+        selectProject(project: FlowProject) {
             this.selectedProject = project;
-            this.displayedJSON = project;
             this.activeFilter = 'noFilter'
         },
-        setDisplayedJSON(object) {
-            this.displayedJSON = object
-        },
-        setActiveFilter(value) {
+        setActiveFilter(value: string) {
             this.activeFilter = value
         }
     }

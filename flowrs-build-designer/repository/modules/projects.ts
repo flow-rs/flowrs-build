@@ -1,7 +1,8 @@
 // Define the types for the API response
 import FetchFactory from "~/repository/factory";
-import {FetchOptions} from "ofetch";
-import {ProcessIdentifier} from "~/repository/modules/processes";
+
+import type {ProcessIdentifier} from "~/repository/modules/processes";
+import type {FetchOptions} from "ofetch";
 
 export type TimerConfigNode = {
     value: {
