@@ -7,12 +7,7 @@ services:
       - ./flow-projects:/app/flow-projects
       - ./flow-packages:/app/flow-packages
     env_file:
-      - ./.env
-    environment:
-      - HOST_IP_1=0
-      - HOST_IP_2=0
-      - HOST_IP_3=0
-      - HOST_IP_4=0
+      - ./docker.env
 
   designer:
     build: 
