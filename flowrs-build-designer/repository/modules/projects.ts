@@ -4,20 +4,20 @@ import {FetchOptions} from "ofetch";
 import {ProcessIdentifier} from "~/repository/modules/processes";
 
 export type TimerConfigNode = {
-    value : {
+    value: {
         duration: {
-        nanos: number;
-        secs: number;
-    },
+            nanos: number;
+            secs: number;
+        },
     };
 };
 
 export type ProjectIdentifier = {
-    project_name : string;
+    project_name: string;
 }
 
 export type TimerTokenNode = {
-    value : number
+    value: number
 };
 
 export type FlowNode<T> = {
@@ -60,16 +60,16 @@ export enum BuildType {
 
 class ProjectsModule extends FetchFactory {
     private RESOURCE: string = '/projects/';
-    private BUILD_PATH: string = '/build/';
-    private COMPILE_PATH: string = '/projects/{project_name}/compile?build_type=';
-    private RUN_PROJECT: string = '/projects/{project_name}/run?build_type=';
+    private PROJECT_PATH: string = this.RESOURCE + '{project_name}/';
+    private COMPILE_PATH: string = this.PROJECT_PATH + 'compile?build_type=';
+    private RUN_PROJECT: string = this.PROJECT_PATH + 'run?build_type=';
 
 
-    async getProjects() : Promise<FlowProject[]> {
+    async getProjects(): Promise<FlowProject[]> {
         return await this.call<FlowProject[]>('GET', `${this.RESOURCE}`)
     }
 
-    async createProject(project : FlowProject) : Promise<FlowProject> {
+    async createProject(project: FlowProject): Promise<FlowProject> {
         const fetchOptions: FetchOptions<'json'> = {
             headers: {
                 'Content-Type': 'application/json',
@@ -78,7 +78,16 @@ class ProjectsModule extends FetchFactory {
         return await this.call<FlowProject>('POST', `${this.RESOURCE}`, project, fetchOptions)
     }
 
-    async compileProject(project : ProjectIdentifier, buildType: string) : Promise<string> {
+    async deleteProject(project: ProjectIdentifier): Promise<FlowProject> {
+        const fetchOptions: FetchOptions<'json'> = {
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }
+        return await this.call<FlowProject>('DELETE', `${this.PROJECT_PATH.replace("{project_name}", project.project_name)}`, project, fetchOptions)
+    }
+
+    async compileProject(project: ProjectIdentifier, buildType: string): Promise<string> {
         const fetchOptions: FetchOptions<'json'> = {
             headers: {
                 'Content-Type': 'application/json',
@@ -87,7 +96,7 @@ class ProjectsModule extends FetchFactory {
         return await this.call<string>('POST', `${this.COMPILE_PATH.replace("{project_name}", project.project_name)}${buildType}`, project, fetchOptions)
     }
 
-    async runProject(project : ProjectIdentifier, buildType: string) : Promise<ProcessIdentifier> {
+    async runProject(project: ProjectIdentifier, buildType: string): Promise<ProcessIdentifier> {
         const fetchOptions: FetchOptions<'json'> = {
             headers: {
                 'Content-Type': 'application/json',
@@ -95,14 +104,6 @@ class ProjectsModule extends FetchFactory {
         }
         return await this.call<ProcessIdentifier>('POST', `${this.RUN_PROJECT.replace("{project_name}", project.project_name)}${buildType}`, project, fetchOptions)
     }
-
-    async buildProject(projectName : string) : Promise<FlowProject> {
-        return await this.call<FlowProject>('GET', `${this.BUILD_PATH}${projectName}`)
-    }
-
-
-
-
 }
 
 export default ProjectsModule;
