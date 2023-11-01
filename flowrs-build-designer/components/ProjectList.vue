@@ -1,7 +1,5 @@
 <script setup lang="ts">
 
-import {defineProps} from 'vue'
-
 import {useProjectsStore} from "~/store/projectStore.js";
 
 

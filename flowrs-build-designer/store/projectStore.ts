@@ -6,7 +6,9 @@ export const useProjectsStore = defineStore({
     state: () => ({
         projects: [],
         selectedProject: null,
-        loading: false
+        displayedJSON: null,
+        loading: false,
+        activeFilter: ""
     }),
     actions: {
         async getAll() {
@@ -37,6 +39,14 @@ export const useProjectsStore = defineStore({
         },
         selectProject(project) {
             this.selectedProject = project;
+            this.displayedJSON = project;
+            this.activeFilter = 'noFilter'
+        },
+        setDisplayedJSON(object) {
+            this.displayedJSON = object
+        },
+        setActiveFilter(value) {
+            this.activeFilter = value
         }
     }
 })

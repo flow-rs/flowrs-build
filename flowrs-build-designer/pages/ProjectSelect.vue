@@ -7,22 +7,27 @@ import {FlowProject} from "~/repository/modules/projects";
 const projectsStore = useProjectsStore();
 const selectedProject: FlowProject = computed(() => projectsStore.selectedProject);
 
-const displayObject = ref(null);
+const displayedObject = computed(() => projectsStore.displayedJSON);
 
+const activeFilter = computed(() => projectsStore.activeFilter);
 
 const handleFilterSelection = (value) => {
+  projectsStore.setActiveFilter(value)
   switch (value) {
     case 'noFilter':
-      displayObject.value = selectedProject;
+      projectsStore.setDisplayedJSON(selectedProject.value)
       break;
     case 'packages':
-      displayObject.value = selectedProject.packages
+      projectsStore.setDisplayedJSON(selectedProject.value.packages)
       break;
     case 'flow':
-      displayObject.value = selectedProject.flow
+      projectsStore.setDisplayedJSON(selectedProject.value.flow)
       break;
+    default:
+      projectsStore.setDisplayedJSON(null)
   }
-}
+};
+
 
 // Testing method to create project with UI
 const createProject = () => {
@@ -31,12 +36,6 @@ const createProject = () => {
   const {$api} = useNuxtApp();
   $api.projects.createProject(projectToCreate);
 }
-
-const myObject = JSON.stringify(JSON.parse('[{"id":1,"name":"A green door","price":12.50,"tags":["home","green"]},' +
-    '{"id":1,"name":"A green door","price":12.50,"tags":["home","green"]},' +
-    '{"id":1,"name":"A green door","price":12.50,"tags":["home","green"]},' +
-    '{"id":1,"name":"A green door","price":12.50,"tags":["home","green"]}' +
-    ']'), null, 2)
 
 </script>
 
@@ -54,20 +53,22 @@ const myObject = JSON.stringify(JSON.parse('[{"id":1,"name":"A green door","pric
         <v-row>
           <v-col>
             <v-btn-toggle mandatory>
-              <v-btn @click="handleFilterSelection('noFilter')">
+              <v-btn @click="handleFilterSelection('noFilter')" :active="activeFilter==='noFilter'">
                 <v-icon>mdi-filter-off</v-icon>
               </v-btn>
-              <v-btn @click="handleFilterSelection('packages')">
+              <v-btn @click="handleFilterSelection('packages')" :active="activeFilter==='packages'">
                 <v-icon>mdi-package</v-icon>
               </v-btn>
-              <v-btn @click="handleFilterSelection('flow')">
+              <v-btn @click="handleFilterSelection('flow')" :active="activeFilter==='flow'">
                 <v-icon>mdi-call-split</v-icon>
               </v-btn>
             </v-btn-toggle>
           </v-col>
         </v-row>
         <div class=" scroll">
-          <pre>{{ displayObject }}</pre>
+              <pre class="language-json">
+      <code>{{ displayedObject }}</code>
+    </pre>
 
         </div>
       </v-card>
