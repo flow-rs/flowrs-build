@@ -4,7 +4,12 @@ import { createVuetify } from 'vuetify'
 
 export default defineNuxtPlugin((app) => {
   const vuetify = createVuetify({
-    // ... your configuration
+    defaults: {
+      VBtn: {
+        color: 'primary',
+        rounded: true,
+      },
+    },
   })
   app.vueApp.use(vuetify)
 })
