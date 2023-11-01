@@ -5,6 +5,7 @@ export const useProjectsStore = defineStore({
     id: 'projects',
     state: () => ({
         projects: [],
+        selectedProject: null,
         loading: false
     }),
     actions: {
@@ -33,6 +34,9 @@ export const useProjectsStore = defineStore({
             })
                 .finally(() => (this.loading = false))
 
+        },
+        selectProject(project) {
+            this.selectedProject = project;
         }
     }
 })

@@ -8,13 +8,13 @@ import {useProjectsStore} from "~/store/projectStore.js";
 const projectsStore = useProjectsStore()
 projectsStore.getAll()
 
-const selectedProject = ref(null)
 const projectClicked = ref(false)
 
 const selectProject = (project) => {
   const p: FlowProject = project
   console.log("Project was selected: " + p.name)
-  selectedProject.value = project
+  projectsStore.selectProject(project)
+  console.log(projectsStore.selectedProject.name)
   projectClicked.value = true;
 }
 
