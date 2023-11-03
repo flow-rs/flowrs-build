@@ -79,7 +79,7 @@ class ProjectsModule extends FetchFactory {
         return await this.call<FlowProject>('POST', `${this.RESOURCE}`, project, fetchOptions)
     }
 
-    async deleteProject(project: ProjectIdentifier): Promise<FlowProject> {
+    async deleteProject(project: ProjectIdentifier): Promise<string> {
         const fetchOptions: FetchOptions<'json'> = {
             headers: {
                 'Content-Type': 'application/json',
