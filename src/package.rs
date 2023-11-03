@@ -38,9 +38,21 @@ pub struct Module {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct Input {
+    #[serde(rename = "type")]
+    input_type: TypeDescription     
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Output {
+    #[serde(rename = "type")]
+    output_type: TypeDescription     
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Type {
-    pub inputs: Option<Vec<String>>,
-    pub outputs: Option<Vec<String>>,
+    pub inputs: Option<HashMap<String, Input>>,
+    pub outputs: Option<HashMap<String, Output>>,
     pub type_parameters: Option<Vec<String>>,
     pub constructors: HashMap<String, Constructor>,
 }
@@ -130,44 +142,23 @@ impl Modifier {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub enum ArgumentType {
+pub enum TypeDescription {
     Type {
         name: String,
-        #[serde(rename = "type_parameters")]
-        arg_type_parameters: Option<Vec<Box<ArgumentType>>>,
+        type_parameters: Option<Vec<Box<TypeDescription>>>,
     },
     
     Generic {
         name: String,
-        #[serde(rename = "type_parameters")]
-        arg_type_parameters: Option<Vec<Box<ArgumentType>>>,
+        type_parameters: Option<Vec<Box<TypeDescription>>>,
     },
+
     //TODO: Tuple 
     // Tuple {
     //    type_parameters: Vec<Box<ArgumentType>>,
     //},
+
     //TODO: Enum 
-}
-
-impl ArgumentType {
-    fn simple_type(name: &str) -> Box<ArgumentType> {
-        Box::new(ArgumentType::Type {
-            name: name.to_string(),
-            arg_type_parameters: None,
-        })
-    }
-
-    fn simple_type_with_simple_typ_args(name: &str, tp_names: Vec<&str>) -> Box<ArgumentType> {
-        Box::new(ArgumentType::Type {
-            name: name.to_string(),
-            arg_type_parameters: Some(
-                tp_names
-                    .iter()
-                    .map(|name| ArgumentType::simple_type(name))
-                    .collect(),
-            ),
-        })
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -179,7 +170,7 @@ pub enum ArgumentConstruction {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Argument {
     #[serde(rename = "type")]
-    arg_type: Box<ArgumentType>,
+    arg_type: Box<TypeDescription>,
     name: String,
     passing: ArgumentPassing,
     construction: ArgumentConstruction,
@@ -206,9 +197,9 @@ impl Argument {
 
     fn new_change_observer_arg() -> Self {
         Self {
-            arg_type: Box::new(ArgumentType::Type {
+            arg_type: Box::new(TypeDescription::Type {
                 name: "()".to_string(),
-                arg_type_parameters: None
+                type_parameters: None
             }),
             name: "change_observer".to_string(),
             passing: ArgumentPassing::Clone,
@@ -218,9 +209,9 @@ impl Argument {
 
     fn new_context_arg() -> Self {
         Self {
-            arg_type: Box::new(ArgumentType::Type {
+            arg_type: Box::new(TypeDescription::Type {
                 name: "()".to_string(),
-                arg_type_parameters: None,
+                type_parameters: None,
             }),
             name: "context".to_string(),
             passing: ArgumentPassing::Clone,
@@ -289,19 +280,19 @@ impl Constructor {
 
     fn get_resolved_arg_type_parameters(
         &self,
-        arg_type: &Box<ArgumentType>,
+        arg_type: &Box<TypeDescription>,
         already_resolved_tps: &HashMap<String, String>,
         resolved_tps: &mut HashMap<String, String>,
     ) {
 
-        let mut type_params: &Option<Vec<Box<ArgumentType>>> = &None;
+        let mut type_params: &Option<Vec<Box<TypeDescription>>> = &None;
 
         match arg_type.as_ref() {
-            ArgumentType::Type { arg_type_parameters: type_parameters, ..} => {
+            TypeDescription::Type { type_parameters, ..} => {
                 type_params = type_parameters;
             }
             
-            ArgumentType::Generic { arg_type_parameters: type_parameters, name } => {
+            TypeDescription::Generic { type_parameters, name } => {
                 if let Some(resolved_name) = already_resolved_tps.get(name) {
                     resolved_tps.insert(name.clone(), resolved_name.clone());
                 }
@@ -324,19 +315,19 @@ impl Constructor {
     fn emit_arg_type_parameters_part_rec(
         &self,
         tp_part: &mut String,
-        argument_type: &Box<ArgumentType>,
+        argument_type: &Box<TypeDescription>,
         resolved_type_parameters: &HashMap<String, String>,
     ) {
-        let mut arg_type_params: &Option<Vec<Box<ArgumentType>>> = &None;
+        let mut arg_type_params: &Option<Vec<Box<TypeDescription>>> = &None;
 
         match argument_type.as_ref() {
 
-            ArgumentType::Type { name, arg_type_parameters: type_parameters} => {
+            TypeDescription::Type { name, type_parameters} => {
                 tp_part.push_str(name);
                 arg_type_params = type_parameters;
             }
 
-            ArgumentType::Generic { name, arg_type_parameters: type_parameters} => {
+            TypeDescription::Generic { name, type_parameters} => {
                 if let Some(tn) = resolved_type_parameters.get(name) {
                     tp_part.push_str(tn);
                 } else {
@@ -363,7 +354,7 @@ impl Constructor {
 
     fn emit_arg_type_parameters_part(
         &self,
-        arg_type_parameters: &Option<Vec<Box<ArgumentType>>>,
+        arg_type_parameters: &Option<Vec<Box<TypeDescription>>>,
         type_parameters: &HashMap<String, String>,
     ) -> String {
                 
@@ -398,9 +389,9 @@ impl Constructor {
 
         match arg.arg_type.as_ref() {
 
-            ArgumentType::Type {
+            TypeDescription::Type {
                 name,
-                arg_type_parameters,
+                type_parameters: arg_type_parameters,
             } => {
                 if let Some(type_desc) = pack_man.get_type(name) {
                     
@@ -424,7 +415,7 @@ impl Constructor {
                 }
             }
 
-            ArgumentType::Generic { name , arg_type_parameters }=> {
+            TypeDescription::Generic { name , type_parameters: arg_type_parameters }=> {
 
                 // get resolved type parameters.
                 
@@ -688,8 +679,6 @@ fn test() {
           "my_crate": {
             "types": {
               "MyType": {
-                "inputs": null,
-                "outputs": null,
                 "type_parameters": ["U", "T"],
                 "constructors":{
                     "New":{"NewWithObserver": {}},
@@ -720,7 +709,7 @@ fn test() {
                        { "arguments":
                        [
                           {
-                             "arg_type":{
+                             "type":{
                                 "Generic":{
                                    "name":"T"
                                 }
@@ -743,7 +732,7 @@ fn test() {
                         "New": {
                        "NewWithArbitraryArgs":[
                           {
-                             "arg_type":{
+                             "type":{
                                 "Type":{
                                    "name":"my_crate::ImageType",
                                    "type_parameters":[{
@@ -805,12 +794,24 @@ fn test() {
                           },
                           "types":{
                              "DebugNode":{
-                                "inputs":[
-                                   "input"
-                                ],
-                                "outputs":[
-                                   "output"
-                                ],
+                                "inputs":{
+                                    "input": { 
+                                        "type":{
+                                            "Generic":{
+                                                "name":"I"
+                                            }
+                                        }
+                                    }
+                                },
+                                "outputs":{
+                                    "output": { 
+                                        "type":{
+                                            "Generic":{
+                                                "name":"I"
+                                            }
+                                        }
+                                    }
+                                },
                                 "type_parameters":[
                                    "I"
                                 ],
@@ -831,12 +832,15 @@ fn test() {
                                 }
                              },
                              "ValueNode":{
-                                "inputs":[
-                                   
-                                ],
-                                "outputs":[
-                                   "output"
-                                ],
+                                "outputs":{
+                                    "output": { 
+                                        "type":{
+                                            "Generic":{
+                                                "name":"I"
+                                            }
+                                        }
+                                    }
+                                },
                                 "type_parameters":[
                                    "I"
                                 ],
@@ -947,6 +951,10 @@ fn test() {
         is_mutable: false,
     };
     println!("CODE: {}", c_1.emit_code_template(&obj_1, &type_params_1, &pm_1, &ns_1).expect(""));    
+
+    let package_2: Package = serde_json::from_str(&package_json_3).expect("wrong format.");
+    pm_1.add_package(package_2);
+    
 
     /*
     let a = Argument::new_change_observer_arg();
