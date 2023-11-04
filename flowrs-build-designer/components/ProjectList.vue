@@ -17,8 +17,7 @@ const selectProject = (project: FlowProject) => {
 }
 
 const openProjectAsFlow = () => {
-  console.log("TODO: Navigate to flow page and open the project as flow")
-  navigateTo('/')
+  navigateTo('/flowbuilder')
 }
 
 const deleteProject = () => {

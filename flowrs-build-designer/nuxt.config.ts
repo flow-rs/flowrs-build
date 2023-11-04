@@ -22,6 +22,9 @@ export default defineNuxtConfig({
             })
         },
     ],
+    routeRules: {
+        '/': {redirect: '/projectselect'}
+    },
     vite: {
         vue: {
             template: {

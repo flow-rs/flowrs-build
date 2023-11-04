@@ -27,7 +27,7 @@ export type FlowNode<T> = {
     constructor: string;
 };
 
-type Connection = {
+export type FlowConnection = {
     from_node: string;
     from_output: string;
     to_node: string;
@@ -49,7 +49,7 @@ export type FlowProject = {
     }>;
     flow: {
         nodes: { [key: string]: FlowNode<any> };
-        connections: Connection[];
+        connections: FlowConnection[];
         data: FlowData;
     };
 };
@@ -85,7 +85,7 @@ class ProjectsModule extends FetchFactory {
                 'Content-Type': 'application/json',
             }
         }
-        return await this.call<FlowProject>('DELETE', `${this.PROJECT_PATH.replace("{project_name}", project.project_name)}`, project, fetchOptions)
+        return await this.call<string>('DELETE', `${this.PROJECT_PATH.replace("{project_name}", project.project_name)}`, project, fetchOptions)
     }
 
     async compileProject(project: ProjectIdentifier, buildType: string): Promise<string> {

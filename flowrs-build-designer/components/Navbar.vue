@@ -3,7 +3,6 @@
     <div class="nav-container">
       
       <ul class="nav-menu">
-        <li><nuxt-link to="/">Home</nuxt-link></li>
         <li><nuxt-link to="/projectselect">Project Select</nuxt-link></li>
         <li><nuxt-link to="/packageselect">Package Select</nuxt-link></li>
       </ul>
