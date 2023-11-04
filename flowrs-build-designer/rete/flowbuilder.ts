@@ -31,8 +31,8 @@ import {
     HistoryExtensions,
     Presets
 } from "rete-history-plugin";
-import {FlowConnection, FlowNode} from "~/repository/modules/projects";
-import {A} from "vite-node/types-516036fa";
+import {FlowNode} from "~/repository/modules/projects";
+import {useProjectsStore} from "~/store/projectStore";
 
 type Node = GeneralFlowNode;
 type Conn =
@@ -46,22 +46,34 @@ type AreaExtra =
     | MinimapExtra
     | RerouteExtra;
 
-class Connection<A extends Node, B extends Node> extends Classic.Connection<A, B>
-{}
+class Connection<A extends Node, B extends Node> extends Classic.Connection<A, B> {
+}
 
 class GeneralFlowNode extends Classic.Node implements DataflowNode {
-    constructor(initial: number, change?: (value: number) => void) {
-        super('Number');
+    width = 400;
+    height = 120;
 
-        this.addOutput('value', new Classic.Output(socket, 'Number'));
-        this.addControl(
-            'value',
-            new Classic.InputControl('number', {initial, change})
-        );
+    flowNode: FlowNode;
+
+    constructor(flowNode: FlowNode, name:string, initial: string) {
+        super(name);
+        this.flowNode = flowNode
+        for (let type_parameter_key in this.flowNode.type_parameters) {
+            let typeParameter = this.flowNode.type_parameters[type_parameter_key];
+            if (typeParameter.search("::nodes::") != -1) {
+                this.addInput('value', new Classic.Input(socket, typeParameter));
+            } else if (typeParameter == "i32") {
+                this.addControl(
+                    'value',
+                    new Classic.InputControl('text', {initial})
+                );
+                this.addOutput('value', new Classic.Output(socket, 'Value'));
+            }
+        }
     }
 
     data() {
-        const value = (this.controls['value'] as Classic.InputControl<'number'>)
+        const value = (this.controls['value'] as Classic.InputControl<'text'>)
             .value;
 
         return {
@@ -79,12 +91,6 @@ export async function createEditor(container: HTMLElement) {
 
     const vueRender = new VuePlugin<Schemes, AreaExtra>();
 
-    const contextMenu = new ContextMenuPlugin<Schemes>({
-        items: ContextMenuPresets.classic.setup([
-            ['Node', () => new NumberNode(1, process)],
-            ['Add', () => new AddNode()],
-        ]),
-    });
     const minimap = new MinimapPlugin<Schemes>();
     const reroutePlugin = new ReroutePlugin<Schemes>();
     const history = new HistoryPlugin<Schemes, HistoryActions<Schemes>>();
@@ -96,7 +102,6 @@ export async function createEditor(container: HTMLElement) {
     area.use(vueRender);
 
     area.use(connection);
-    area.use(contextMenu);
     area.use(minimap);
     area.use(history);
 
@@ -126,16 +131,15 @@ export async function createEditor(container: HTMLElement) {
 
     editor.use(dataflow);
 
-    const a = new NumberNode(1, process);
-    const b = new NumberNode(1, process);
-    const add = new AddNode();
+    const projectsStore = useProjectsStore();
+    const selectedProject = computed(() => projectsStore.selectedProject);
 
-    await editor.addNode(a);
-    await editor.addNode(b);
-    await editor.addNode(add);
-
-    await editor.addConnection(new Connection(a, 'value', add, 'a'));
-    await editor.addConnection(new Connection(b, 'value', add, 'b'));
+    let project = selectedProject.value;
+    for (let flowNode in project?.flow.nodes) {
+        const node = new GeneralFlowNode(project.flow.nodes[flowNode], flowNode, `${project?.flow.data[flowNode]?.value}`);
+        console.log("add node", project,node)
+        await editor.addNode(node);
+    }
 
     const arrange = new AutoArrangePlugin<Schemes>();
 
@@ -154,36 +158,6 @@ export async function createEditor(container: HTMLElement) {
 
     AreaExtensions.selectableNodes(area, selector, {accumulating});
     RerouteExtensions.selectablePins(reroutePlugin, selector, accumulating);
-
-    async function process() {
-        dataflow.reset();
-
-        editor
-            .getNodes()
-            .filter((node) => node instanceof AddNode)
-            .forEach(async (node) => {
-                const sum = await dataflow.fetch(node.id);
-
-                console.log(node.id, 'produces', sum);
-
-                area.update(
-                    'control',
-                    (node.controls['result'] as Classic.InputControl<'number'>).id
-                );
-            });
-    }
-
-    editor.addPipe((context) => {
-        if (
-            context.type === 'connectioncreated' ||
-            context.type === 'connectionremoved'
-        ) {
-            process();
-        }
-        return context;
-    });
-
-    process();
 
     return {
         destroy: () => area.destroy(),
