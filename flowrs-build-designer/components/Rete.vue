@@ -3,7 +3,7 @@
       justify="center">
     <v-col cols="12" sm="12" md="6" >
       <v-toolbar  dark="true">
-        <v-btn to="/projectselect" nuxt>Project Select</v-btn>
+        <v-btn to="/" nuxt>Project Select</v-btn>
         <v-btn to="/packageselect" nuxt>Package Select</v-btn>
         <v-btn>
           <v-icon>mdi-content-save-all-outline</v-icon> Save
