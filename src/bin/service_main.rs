@@ -147,7 +147,6 @@ async fn main() {
         .route("/processes/:process_id/logs", get(get_process_logs))
         .with_state(project_manager.clone());
 
-    //let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(host_ip_1_u8, host_ip_2_u8, host_ip_3_u8, host_ip_4_u8)), host_port_u16);
     let addr = SocketAddr::new(host_ip_addr, host_port_u16);
     let app = Router::new().nest("/api", api_app).layer(cors);
     println!("-> Listening on {}", addr);
