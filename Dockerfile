@@ -11,7 +11,6 @@ RUN apk add python3
 
 # copy cargo files to build dependencies
 COPY ./Cargo.toml ./
-#COPY ./Cargo.lock ./
 
 # create dummy .rs file for build caching
 RUN mkdir ./src &&  mkdir ./src/bin && echo 'fn main() {println!("Dummy!"); }' > ./src/bin/service_main.rs
@@ -28,10 +27,9 @@ RUN touch -a -m ./src/bin/service_main.rs
 
 RUN cargo build
 
-# # use slim version of debian to run release build
-# FROM debian:bullseye
-# COPY --from=rust-builder /app/target/release/service_main /usr/local/bin
-
-# WORKDIR /usr/local/bin
 COPY config.json config.json
+
+#https://github.com/rust-lang/rust/issues/59302
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+
 ENTRYPOINT ["./target/debug/service_main", "--config-file", "./config.json"]
