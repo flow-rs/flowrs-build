@@ -1,9 +1,13 @@
-FROM rust as rust-builder
+FROM rust:alpine as rust-builder
 
 WORKDIR /app
 
 # install missing rustfmt
 RUN rustup component add rustfmt
+
+# install missing wasm-pack
+RUN apk add wasm-pack
+RUN apk add python3
 
 # copy cargo files to build dependencies
 COPY ./Cargo.toml ./
