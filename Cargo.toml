@@ -5,7 +5,6 @@ edition = "2021"
 authors = ["wuermseer.florian@gmail.com", "markus.friedrich@hm.edu"]
 description = "Build tools for the flowrs library."
 repository = "https://github.com/flow-rs/flowrs-build"
-license = "Apache-2.0"
 license-file = "LICENSE"
 readme = "README.md"
 documentation = "https://docs.rs/flowrs-wasm"
