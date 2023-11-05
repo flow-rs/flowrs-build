@@ -18,6 +18,6 @@ export const usePackagesStore = defineStore({
         },
         selectPackage(packageE) {
             this.selectedPackage = packageE;
-        },
+        }
     }
 })

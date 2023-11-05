@@ -1,7 +1,7 @@
 <script setup lang="ts">
 
-import {usePackagesStore} from "~/store/packageStore.js";
-
+import { usePackagesStore } from "~/store/packageStore.js";
+import {Crate} from "~/repository/modules/packages";
 
 const packagesStore = usePackagesStore()
 packagesStore.getAll()
@@ -9,7 +9,8 @@ packagesStore.getAll()
 const projectClicked = ref(false)
 
 const selectPackage = (packageE) => {
-  const p = packageE
+  const p : Crate = packageE
+  console.log(packageE)
   console.log("Package was selected: " + p.name)
   packagesStore.selectPackage(packageE)
   console.log(packagesStore.selectedPackage.name)
@@ -21,8 +22,7 @@ const refreshPackageList = () => {
   packagesStore.getAll()
 }
 defineProps({
-  cardTitle: {type: String, default: "Packages"},
-  cardSubtitle: {type: String, default: "Choose your project!"},
+  cardTitle: { type: String, default: "Packages" }
 });
 </script>
 
@@ -30,15 +30,8 @@ defineProps({
   <v-card :title="cardTitle" :subtitle="cardSubtitle" variant="elevated">
     <v-divider></v-divider>
     <v-list>
-      <v-list-item
-          v-for="packageE in packagesStore.packages"
-          :key="packageE.name"
-          :value="packageE"
-          color="primary"
-          :title="packageE.name"
-          :subtitle="packageE.version"
-          @click="selectPackage(packageE)"
-      ></v-list-item>
+      <v-list-item v-for="packageE in packagesStore.packages" :key="packageE.name" :value="packageE" color="primary"
+        :title="packageE.name" :subtitle="packageE.version" @click="selectPackage(packageE)"></v-list-item>
     </v-list>
     <v-card-actions>
       <v-row class="mb-2 mt-2">
@@ -53,6 +46,4 @@ defineProps({
   </v-card>
 </template>
 
-<style scoped lang="scss">
-
-</style>
+<style scoped lang="scss"></style>

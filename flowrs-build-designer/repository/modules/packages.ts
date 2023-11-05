@@ -1,13 +1,13 @@
 
 import FetchFactory from '../factory';
 
-type Crate = {
+export type Crate = {
     name: string;
     version: string;
     crates: Record<string, CrateType>;
 }
 
-type CrateType = {
+export type CrateType = {
     types: Record<string, TypeDefinition>;
     modules: Record<string, ModuleDefinition>;
 }
