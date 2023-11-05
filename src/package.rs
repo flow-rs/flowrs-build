@@ -134,12 +134,12 @@ pub struct Modifier {
 }
 
 impl Modifier {
-    fn nothing() -> Self {
-        Self {
-            is_mutable: false,
-            is_reference: false,
-        }
-    }
+    // fn nothing() -> Self {
+    //     Self {
+    //         is_mutable: false,
+    //         is_reference: false,
+    //     }
+    // }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -322,17 +322,17 @@ impl Constructor {
             }
         }
 
-        if let Some(params) = type_params {
-            for param in params {
-                self.get_resolved_arg_type_parameters(
-                    &param,
-                    already_resolved_tps,
-                    resolved_tps,
-                );
-            }
-        }
+    //     if let Some(params) = type_params {
+    //         for param in params {
+    //             self.get_resolved_arg_type_parameters(
+    //                 &param,
+    //                 already_resolved_tps,
+    //                 resolved_tps,
+    //             );
+    //         }
+    //     }
 
-    }
+    // }
 
     fn emit_arg_type_parameters_part_rec(
         &self,
@@ -569,7 +569,7 @@ impl Constructor {
     fn emit_default(
         &self,
         od: &ObjectDescription,
-        pack_man: &PackageManager,
+        _pack_man: &PackageManager,
         current_namespace: &Namespace,
     ) -> Result<String, Error> {
 
