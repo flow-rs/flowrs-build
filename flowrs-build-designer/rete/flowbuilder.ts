@@ -1,38 +1,38 @@
-import {ClassicPreset as Classic, GetSchemes, NodeEditor} from 'rete';
+import {ClassicPreset as Classic, type GetSchemes, NodeEditor} from 'rete';
 
-import {Area2D, AreaExtensions, AreaPlugin} from 'rete-area-plugin';
+import {type Area2D, AreaExtensions, AreaPlugin} from 'rete-area-plugin';
 import {
     ConnectionPlugin,
     Presets as ConnectionPresets,
 } from 'rete-connection-plugin';
 
-import {VuePlugin, VueArea2D, Presets as VuePresets} from 'rete-vue-plugin';
+import {VuePlugin, type VueArea2D, Presets as VuePresets} from 'rete-vue-plugin';
 
-import {DataflowEngine, DataflowNode} from 'rete-engine';
+import {DataflowEngine, type DataflowNode} from 'rete-engine';
 import {
     AutoArrangePlugin,
     Presets as ArrangePresets,
 } from 'rete-auto-arrange-plugin';
 
 import {
-    ContextMenuPlugin,
-    ContextMenuExtra,
-    Presets as ContextMenuPresets,
+    type ContextMenuExtra,
+
 } from 'rete-context-menu-plugin';
-import {MinimapExtra, MinimapPlugin} from 'rete-minimap-plugin';
+import {type MinimapExtra, MinimapPlugin} from 'rete-minimap-plugin';
 import {
     ReroutePlugin,
-    RerouteExtra,
+    type RerouteExtra,
     RerouteExtensions,
 } from 'rete-connection-reroute-plugin';
 import {
     HistoryPlugin,
-    HistoryActions,
+    type HistoryActions,
     HistoryExtensions,
     Presets
 } from "rete-history-plugin";
-import {FlowNode} from "~/repository/modules/projects";
 import {useProjectsStore} from "~/store/projectStore";
+import type {TypeDefinition} from "~/repository/modules/packages";
+import {createAllPackagesToTypeDefintionMap} from "~/repository/modules/packages";
 
 type Node = GeneralFlowNode;
 type Conn =
@@ -53,21 +53,27 @@ class GeneralFlowNode extends Classic.Node implements DataflowNode {
     width = 400;
     height = 120;
 
-    flowNode: FlowNode;
-
-    constructor(flowNode: FlowNode, name:string, initial: string) {
+    constructor(name: string, types: TypeDefinition, data: any) {
         super(name);
-        this.flowNode = flowNode
-        for (let type_parameter_key in this.flowNode.type_parameters) {
-            let typeParameter = this.flowNode.type_parameters[type_parameter_key];
-            if (typeParameter.search("::nodes::") != -1) {
-                this.addInput('value', new Classic.Input(socket, typeParameter));
-            } else if (typeParameter == "i32") {
+        let hasNoInputs: boolean = false;
+        console.log("types", types)
+        if (types.inputs) {
+            for (let i = 0; i < types.inputs.length; i++) {
+                this.addInput(types.inputs[i], new Classic.Input(socket, types.inputs[i]));
+            }
+        } else {
+            hasNoInputs = true;
+        }
+        if (types.outputs) {
+            if (hasNoInputs) {
                 this.addControl(
-                    'value',
-                    new Classic.InputControl('text', {initial})
+                    'value', // TODO determine type
+                    new Classic.InputControl('text', data)
                 );
-                this.addOutput('value', new Classic.Output(socket, 'Value'));
+            }
+
+            for (let i = 0; i < types.outputs.length; i++) {
+                this.addOutput(types.outputs[i], new Classic.Output(socket, types.outputs[i]));
             }
         }
     }
@@ -134,10 +140,19 @@ export async function createEditor(container: HTMLElement) {
     const projectsStore = useProjectsStore();
     const selectedProject = computed(() => projectsStore.selectedProject);
 
+    let allPackagesToTypeDefintionMap = await createAllPackagesToTypeDefintionMap();
+
     let project = selectedProject.value;
     for (let flowNode in project?.flow.nodes) {
-        const node = new GeneralFlowNode(project.flow.nodes[flowNode], flowNode, `${project?.flow.data[flowNode]?.value}`);
-        console.log("add node", project,node)
+        let currentNodetype = project.flow.nodes[flowNode].node_type;
+        let typeDefinition = allPackagesToTypeDefintionMap.get(currentNodetype);
+        if (!typeDefinition) {
+            console.error("TypeDefinition for", currentNodetype, "not found")
+            continue
+        }
+        console.log(allPackagesToTypeDefintionMap, currentNodetype);
+        const node = new GeneralFlowNode(flowNode, typeDefinition, `${project?.flow.data[flowNode]?.value}`);
+        console.log("add node", project, node)
         await editor.addNode(node);
     }
 
