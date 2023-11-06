@@ -3,6 +3,10 @@ import vuetify, {transformAssetUrls} from 'vite-plugin-vuetify'
 
 export default defineNuxtConfig({
     devtools: {enabled: true},
+    devServer: {
+        port: 3001,
+        host: '0.0.0.0'
+    },
     imports: {
         dirs: ['stores'],
     },
@@ -18,8 +22,8 @@ export default defineNuxtConfig({
         (_options, nuxt) => {
             nuxt.hooks.hook('vite:extendConfig', (config) => {
                 // @ts-expect-error
-                config.plugins.push(vuetify({autoImport: true}))
-            })
+                config.plugins.push(vuetify({autoImport: true}));
+            });
         },
     ],
     vite: {
@@ -29,4 +33,4 @@ export default defineNuxtConfig({
             },
         },
     },
-})
+});

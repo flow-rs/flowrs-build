@@ -6,9 +6,12 @@ use axum::{
     Json, Router,
 };
 use tokio::sync::broadcast;
-use tower::{Service, Layer};
+
+use dotenv::dotenv;
+
 use tower_http::cors::{Any, CorsLayer};
-use std::net::SocketAddr;
+
+use std::net::{SocketAddr, Ipv4Addr, IpAddr};
 use std::sync::{Arc, Mutex};
 use std::fs::File;
 use std::io::Read;
@@ -91,6 +94,14 @@ async fn handle_shutdown_signal(
 #[tokio::main]
 async fn main() {
 
+
+    // Read Environment Variables
+    dotenv().ok();
+    let host_ip:String = std::env::var("HOST_IP").expect("HOST_IP must be set correctly");
+    let host_ip_addr:IpAddr = IpAddr::V4(host_ip.parse::<Ipv4Addr>().unwrap());
+    let host_port:String = std::env::var("HOST_PORT").expect("HOST_PORT must be set correctly");
+    let host_port_u16:u16 = host_port.parse::<u16>().unwrap();
+
     let (stopper_sender, _) = broadcast::channel::<()>(1);
     let stopper_sender_clone = stopper_sender.clone();
     tokio::spawn(handle_shutdown_signal(stopper_sender_clone));
@@ -136,9 +147,10 @@ async fn main() {
         .route("/processes/:process_id/logs", get(get_process_logs))
         .with_state(project_manager.clone());
 
-    app = Router::new().nest("/api", app).layer(cors);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::new(host_ip_addr, host_port_u16);
+    app = Router::new().nest("/api", app).layer(cors);
+  
     println!("-> Listening on {}", addr);
     
     let server = axum::Server::bind(&addr)

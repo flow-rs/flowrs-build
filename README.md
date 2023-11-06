@@ -1,6 +1,18 @@
 # flowrs-build
 Tools for flow development. Following tools: 
 
+## Getting started
+
+1. clone the repository
+2. Start both the backend service and the frontend server with docker using:
+   ```docker compose up --build``
+3. navigate to localhost:3001 in your browser to access the frontend
+4. to test the backend, use the http requests listed in the rest.http file
+    - create a new project
+    - compile the project
+    - run the project
+    - use the process endpoint to retrieve logs
+
 ## Service 
 REST service to create and maintain new flow projects and flow packages.
 Code is located in src/bin/service_main.rs. 
