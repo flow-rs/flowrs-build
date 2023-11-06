@@ -189,6 +189,8 @@ impl FlowProjectManager {
         // add release option if this rest-service is executed in release mode
         if !cfg!(debug_assertions) {
             command.arg("--release");
+        } else {
+            command.arg("--debug");
         }
 
         command
