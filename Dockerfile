@@ -1,4 +1,4 @@
-FROM rust:alpine as rust-builder
+FROM rust:slim-bookworm
 
 WORKDIR /app
 
@@ -6,12 +6,19 @@ WORKDIR /app
 RUN rustup component add rustfmt
 
 # install missing wasm-pack
-RUN apk add wasm-pack
-RUN apk add python3
+RUN apt-get update
+RUN apt-get install python3 -y
+#RUN echo 'alias python="python3"\n' >> ~/.bashrc
+RUN echo '#!/bin/bash\npython3 $@' > /usr/bin/python && chmod +x /usr/bin/python
+#RUN echo -e ''
+#RUN source ~/.bashrc
+#RUN apt-get install wasm-pack -y
+#RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+RUN cargo install wasm-pack
+
 
 # copy cargo files to build dependencies
 COPY ./Cargo.toml ./
-
 # create dummy .rs file for build caching
 RUN mkdir ./src &&  mkdir ./src/bin && echo 'fn main() {println!("Dummy!"); }' > ./src/bin/service_main.rs
 # build for dependencies
@@ -30,6 +37,6 @@ RUN cargo build
 COPY config.json config.json
 
 #https://github.com/rust-lang/rust/issues/59302
-ENV RUSTFLAGS="-C target-feature=-crt-static"
+#ENV RUSTFLAGS="-C target-feature=-crt-static"
 
 ENTRYPOINT ["./target/debug/service_main", "--config-file", "./config.json"]
