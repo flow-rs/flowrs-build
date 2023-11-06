@@ -1,3 +1,5 @@
+#https://github.com/rust-lang/rust/issues/59302
+#switch back to rust:alpine once resolved
 FROM rust:slim-bookworm
 
 WORKDIR /app
@@ -8,12 +10,7 @@ RUN rustup component add rustfmt
 # install missing wasm-pack
 RUN apt-get update
 RUN apt-get install python3 -y
-#RUN echo 'alias python="python3"\n' >> ~/.bashrc
 RUN echo '#!/bin/bash\npython3 $@' > /usr/bin/python && chmod +x /usr/bin/python
-#RUN echo -e ''
-#RUN source ~/.bashrc
-#RUN apt-get install wasm-pack -y
-#RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 RUN cargo install wasm-pack
 
 
@@ -35,8 +32,5 @@ RUN touch -a -m ./src/bin/service_main.rs
 RUN cargo build
 
 COPY config.json config.json
-
-#https://github.com/rust-lang/rust/issues/59302
-#ENV RUSTFLAGS="-C target-feature=-crt-static"
 
 ENTRYPOINT ["./target/debug/service_main", "--config-file", "./config.json"]
