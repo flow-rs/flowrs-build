@@ -56,24 +56,42 @@ class GeneralFlowNode extends Classic.Node implements DataflowNode {
     constructor(name: string, types: TypeDefinition, data: any) {
         super(name);
         let hasNoInputs: boolean = false;
-        console.log("types", types)
         if (types.inputs) {
-            for (let i = 0; i < types.inputs.length; i++) {
-                this.addInput(types.inputs[i], new Classic.Input(socket, types.inputs[i]));
+            for (let inputPairKey in types.inputs) {
+                let typeDescription = types.inputs[inputPairKey]["type"];
+                let type_name;
+                if (typeDescription.Generic) {
+                    type_name = typeDescription.Generic.name;
+                } else if (typeDescription.Type) {
+                    type_name = typeDescription.Type.name;
+                } else {
+                    console.error("Type not supported", typeDescription)
+                }
+                this.addInput(type_name, new Classic.Input(socket, type_name));
             }
         } else {
             hasNoInputs = true;
         }
         if (types.outputs) {
-            if (hasNoInputs) {
+            if (hasNoInputs) { // TODO not sure here
                 this.addControl(
                     'value', // TODO determine type
                     new Classic.InputControl('text', data)
                 );
             }
 
-            for (let i = 0; i < types.outputs.length; i++) {
-                this.addOutput(types.outputs[i], new Classic.Output(socket, types.outputs[i]));
+
+            for (let pairKey in types.outputs) {
+                let typeDescription = types.outputs[pairKey]["type"];
+                let type_name;
+                if (typeDescription.Generic) {
+                    type_name = typeDescription.Generic.name;
+                } else if (typeDescription.Type) {
+                    type_name = typeDescription.Type.name;
+                } else {
+                    console.error("Type not supported", typeDescription)
+                }
+                this.addOutput(type_name, new Classic.Output(socket, type_name));
             }
         }
     }

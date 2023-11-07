@@ -13,10 +13,15 @@ export type CrateType = {
 }
 
 export type TypeDefinition = {
-    inputs: string[] | null;
-    outputs: string[] | null;
+    inputs: Record<string, Record<string, TypeDescription>>;
+    outputs: Record<string, Record<string, TypeDescription>>;
     type_parameters: string[] | null;
     constructors: Record<string, string>;
+}
+
+export type TypeDescription = {
+    name: string;
+    type_parameters: TypeDescription[];
 }
 
 export type ModuleDefinition = {
