@@ -23,9 +23,8 @@
   },
   "dependencies": {
     "@types/three": "^0.156.0",
-    "@nuxtjs/axios": "^5.13.6",
     "@mdi/font": "^7.3.67",
-    "axios": "^1.5.1",
+    "@pinia/nuxt": "^0.5.1",
     "elkjs": "^0.8.2",
     "rete": "^2.0.2",
     "rete-area-3d-plugin": "^2.0.3",
@@ -41,7 +40,7 @@
     "rete-vue-plugin": "^2.0.4",
     "sass": "^1.69.4",
     "sass-loader": "^13.3.2",
-    "three": "^0.156.1",
+    "three": "^0.158.0",
     "web-worker": "^1.2.0"
   }
 }

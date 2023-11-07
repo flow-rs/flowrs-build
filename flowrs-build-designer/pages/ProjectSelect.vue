@@ -1,32 +1,72 @@
+<script setup lang="ts">
+
+import {useProjectsStore} from "~/store/projectStore";
+
+const projectsStore = useProjectsStore();
+const selectedProject = computed(() => projectsStore.selectedProject);
+
+const activeFilter = computed(() => projectsStore.activeFilter);
+
+const handleFilterSelection = (value: string) => {
+  projectsStore.setActiveFilter(value)
+};
+
+</script>
+
+
 <template>
+  <v-row>
+    <v-col class="text-center mt-5 ml-5">
+      <ProjectList :card-title="'Projects'" :card-subtitle="'Choose your project'"></ProjectList>
+    </v-col>
 
-        <v-card class="mx-auto" max-width="300">
-          <v-card-title> Projekte verwalten</v-card-title>
-
-          <v-divider></v-divider>
-          <v-btn class="ma-2" color="primary">
-            Projekt erstellen
-            <v-icon end icon="mdi-wrench"></v-icon>
-          </v-btn>
-          <v-virtual-scroll :items="items" height="420" item-height="48">
-            <template v-slot:default="{ item }">
-              <v-list-item>
-                <template v-slot:prepend>
-                  <v-btn to="/" nuxt :text="`Project #${item}`"></v-btn>
-                </template>
-                <template v-slot:append>
-                  <v-btn icon="mdi-delete" size="x-small" variant="tonal"></v-btn>
-                </template>
-              </v-list-item>
+    <v-col class="mt-5 mr-5">
+      <v-card :title="selectedProject ? selectedProject.name : 'No project selected!'" subtitle="flow-project.json">
+        <v-divider></v-divider>
+        <v-row>
+          <v-col>
+            <v-btn-toggle mandatory>
+              <v-btn @click="handleFilterSelection('noFilter')" :active="activeFilter==='noFilter'">
+                <v-icon>mdi-filter-off</v-icon>
+              </v-btn>
+              <v-btn @click="handleFilterSelection('packages')" :active="activeFilter==='packages'">
+                <v-icon>mdi-package</v-icon>
+              </v-btn>
+              <v-btn @click="handleFilterSelection('flow')" :active="activeFilter==='flow'">
+                <v-icon>mdi-call-split</v-icon>
+              </v-btn>
+            </v-btn-toggle>
+          </v-col>
+        </v-row>
+        <div class=" scroll">
+          <pre class="language-json">
+            <template v-if="activeFilter==='noFilter'">
+              <code>{{ selectedProject }}</code>
             </template>
-          </v-virtual-scroll>
-        </v-card>
+            <template v-else-if="activeFilter==='packages'">
+              <code>{{ selectedProject ? selectedProject.packages : "nothing to show" }}</code>
+            </template>
+            <template v-else-if="activeFilter==='flow'">
+              <code>{{ selectedProject ? selectedProject.flow : "nothing to show" }}</code>
+            </template>
+          </pre>
+        </div>
+
+      </v-card>
+
+    </v-col>
+
+
+  </v-row>
 
 </template>
-<script>
-export default {
-  data: () => ({
-    items: Array.from({ length: 10 }, (k, v) => v + 1),
-  }),
-};
-</script>
+
+<style scoped>
+
+div.scroll {
+  height: 650px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 20px;
+}
+</style>

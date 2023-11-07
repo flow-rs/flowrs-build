@@ -1,7 +1,8 @@
 // Define the types for the API response
 import FetchFactory from "~/repository/factory";
-import {FetchOptions} from "ofetch";
-import {ProcessIdentifier} from "~/repository/modules/processes";
+
+import type {ProcessIdentifier} from "~/repository/modules/processes";
+import type {FetchOptions} from "ofetch";
 
 export type TimerConfigNode = {
     value: {
@@ -84,7 +85,7 @@ class ProjectsModule extends FetchFactory {
                 'Content-Type': 'application/json',
             }
         }
-        return await this.call<FlowProject>('DELETE', `${this.PROJECT_PATH.replace("{project_name}", project.project_name)}`, project, fetchOptions)
+        return await this.call<string>('DELETE', `${this.PROJECT_PATH.replace("{project_name}", project.project_name)}`, project, fetchOptions)
     }
 
     async compileProject(project: ProjectIdentifier, buildType: string): Promise<string> {

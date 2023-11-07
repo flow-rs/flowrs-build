@@ -1,22 +1,29 @@
-// nuxt.config.ts
+// https://nuxt.com/docs/api/configuration/nuxt-config
 import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 
 export default defineNuxtConfig({
   devtools: { enabled: true },
     devServer: {
-    port: 3001,
-    host: '0.0.0.0'
-  },
+        port: 3001,
+        host: '0.0.0.0'
+    },
+    imports: {
+        dirs: ['stores'],
+    },
   build: {
     transpile: ['vuetify'],
   },
   modules: [
+    ['@pinia/nuxt',
+      {
+        autoImports: ['defineStore', 'acceptHMRUpdate'],
+      },
+    ],
     (_options, nuxt) => {
       nuxt.hooks.hook('vite:extendConfig', (config) => {
-        // console.log('Custom Vite Configuration:', config); // Log Vite config for debugging
         // @ts-expect-error
-        config.plugins.push(vuetify({ autoImport: true }));
-      });
+        config.plugins.push(vuetify({autoImport: true}))
+      })
     },
   ],
   vite: {
@@ -26,4 +33,4 @@ export default defineNuxtConfig({
       },
     },
   },
-});
+})
