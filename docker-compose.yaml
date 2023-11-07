@@ -1,0 +1,25 @@
+services:
+  service-main:
+    build: .
+    ports:
+      - 3000:3000 #backend
+      - 8000:8000 #wasm
+    volumes:
+      - ./flow-projects:/app/flow-projects
+      - ./flow-packages:/app/flow-packages
+    env_file:
+      - ./docker.env
+
+  designer:
+    build: 
+      context: ./flowrs-build-designer
+      dockerfile: Dockerfile
+    ports:
+      - 3001:3001
+      - 9229:9229 #for debugging
+    volumes:
+      - ./flowrs-build-designer:/app/
+      - nodemodules:/app/node_modules
+
+volumes:
+    nodemodules:

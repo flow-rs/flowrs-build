@@ -23,6 +23,8 @@ pub struct FlowPackage {
     name: String,
     version: String,
     path: Option<String>,
+    git: Option<String>,
+    branch: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -187,6 +189,8 @@ impl FlowProjectManager {
         // add release option if this rest-service is executed in release mode
         if !cfg!(debug_assertions) {
             command.arg("--release");
+        } else {
+            command.arg("--debug");
         }
 
         command
@@ -395,6 +399,12 @@ impl FlowProjectManager {
     fn create_project_dependencies(&self, p: &FlowPackage) -> String {
         if let Some(path) = &p.path {
             format!("{} = {{path = \"{}\"}}", p.name, path)
+        } else if let Some(git) = &p.git {
+            if let Some(branch) = &p.branch {
+                format!("{} = {{git = \"{}\", branch = \"{}\"}}", p.name, git, branch)
+            } else {
+                format!("{} = {{git = \"{}\"}}", p.name, git)
+            }
         } else {
             format!("{} = \"{}\"", p.name, p.version)
         }
@@ -410,7 +420,7 @@ impl FlowProjectManager {
         project_folder_name: &PathBuf,
     ) -> Result<()> {
         let content =
-            format!("[package]\n name = \"{}\" \n version = \"{}\"\nedition = \"2021\"\n\n[dependencies]\n{}\n{}\n\n[lib]\ncrate-type = [\"cdylib\"]",
+            format!("[package]\nname = \"{}\" \nversion = \"{}\"\nedition = \"2021\"\n\n[dependencies]\n{}\n{}\n\n[lib]\ncrate-type = [\"cdylib\"]",
                     flow_project.name,
                     flow_project.version,
                     flow_project.packages.iter().map(|x| self.create_project_dependencies(x)).collect::<Vec<String>>().join("\n"),
