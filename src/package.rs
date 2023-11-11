@@ -6,14 +6,14 @@ use handlebars::Handlebars;
 
 use crate::package_manager::PackageManager;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Package {
     pub name: String,
     pub version: String,
     pub crates: HashMap<String, Crate>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Crate {
     pub types: HashMap<String, Type>,
     pub modules: HashMap<String, Module>,
@@ -31,13 +31,13 @@ impl Crate {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Module {
     pub types: HashMap<String, Type>,
     pub modules: HashMap<String, Module>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Type {
     pub inputs: Option<Vec<String>>,
     pub outputs: Option<Vec<String>>,
@@ -81,7 +81,7 @@ impl Type {
 
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Namespace {
     parts: Vec<String>,
 }
@@ -106,7 +106,7 @@ impl ToString for Namespace {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 enum ArgumentPassing {
     Reference,
     MutableReference,
@@ -114,7 +114,7 @@ enum ArgumentPassing {
     Clone,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Modifier {
     is_mutable: bool,
     is_reference: bool,
@@ -129,7 +129,7 @@ impl Modifier {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum ArgumentType {
     Type {
         name: String,
@@ -170,13 +170,13 @@ impl ArgumentType {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum ArgumentConstruction {
     Constructor(String),
     ExistingObject()
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Argument {
     #[serde(rename = "type")]
     arg_type: Box<ArgumentType>,
@@ -243,7 +243,7 @@ impl Argument {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ObjectDescription {
     pub type_name: String,
     pub type_parameter_part: String,
@@ -252,7 +252,7 @@ pub struct ObjectDescription {
     pub is_mutable: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Constructor {
     New{function_name: Option<String>},
     NewWithObserver{function_name: Option<String>},
