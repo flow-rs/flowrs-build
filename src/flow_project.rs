@@ -658,10 +658,7 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn load_projects_test(){
-        let mut fpm = FlowProjectManager::new(create_test_config());
-        let proj_count = fpm.projects.len();
+    fn setup(mut fpm: FlowProjectManager ) -> FlowProjectManager {
         let create_result = create_test_directory();
         let write_result = write_project_json();
         let load_result = fpm.load_projects();
@@ -670,6 +667,15 @@ mod tests {
         assert!(!write_result.is_err());
         assert!(!load_result.is_err());
         assert!(!delete_result.is_err());
+
+        fpm
+    }
+
+    #[test]
+    fn load_projects_test(){
+        let mut fpm= FlowProjectManager::new(create_test_config());
+        let proj_count = fpm.projects.len();
+        fpm = setup(fpm);
         assert_eq!(proj_count + 1, fpm.projects.len());
         assert!(fpm.projects.contains_key(PROJECT_NAME));
         let flow_project_opt: Option<&FlowProject> = fpm.projects.get(PROJECT_NAME);
