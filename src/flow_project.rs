@@ -609,7 +609,7 @@ fn replace_file_contents(file_path: &Path, new_content: &str) -> io::Result<()> 
 
 #[cfg(test)]
 mod tests {
-    use std::fs::create_dir;
+    use std::{fs::create_dir, default};
 
     use anyhow::Ok;
 
@@ -618,101 +618,131 @@ mod tests {
     const PROJECT_JSON: &str = r#"
 {"name":"flow_project_01","version":"1.0.0","packages":[{"name":"flowrs","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs","branch":"dev"},{"name":"flowrs-std","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs-std","branch":"feature-project1"}],"flow":{"nodes":{"debug_node":{"node_type":"flowrs_std::nodes::debug::DebugNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_config_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"flowrs_std::nodes::timer::TimerNodeConfig"},"constructor":"New"},"timer_token_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_node":{"node_type":"flowrs_std::nodes::timer::TimerNode","type_parameters":{"T":"flowrs_std::nodes::timer::SelectedTimer","U":"i32"},"constructor":"New"}},"connections":[{"from_node":"timer_config_node","to_node":"timer_node","to_input":"config_input","from_output":"output"},{"from_node":"timer_token_node","to_node":"timer_node","to_input":"token_input","from_output":"output"},{"from_node":"timer_node","to_node":"debug_node","to_input":"input","from_output":"token_output"}],"data":{"timer_config_node":{"value":{"duration":{"nanos":0,"secs":1}}},"timer_token_node":{"value":42}}}}
     "#;
-    const TEST_DIR_PATH: &str = "tmp_test_dir";
+    const PROJECT_JSON_2: &str = r#"
+{"name":"flow_project_02","version":"1.0.0","packages":[{"name":"flowrs","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs","branch":"dev"},{"name":"flowrs-std","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs-std","branch":"feature-project1"}],"flow":{"nodes":{"debug_node":{"node_type":"flowrs_std::nodes::debug::DebugNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_config_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"flowrs_std::nodes::timer::TimerNodeConfig"},"constructor":"New"},"timer_token_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_node":{"node_type":"flowrs_std::nodes::timer::TimerNode","type_parameters":{"T":"flowrs_std::nodes::timer::SelectedTimer","U":"i32"},"constructor":"New"}},"connections":[{"from_node":"timer_config_node","to_node":"timer_node","to_input":"config_input","from_output":"output"},{"from_node":"timer_token_node","to_node":"timer_node","to_input":"token_input","from_output":"output"},{"from_node":"timer_node","to_node":"debug_node","to_input":"input","from_output":"token_output"}],"data":{"timer_config_node":{"value":{"duration":{"nanos":0,"secs":1}}},"timer_token_node":{"value":42}}}}
+    "#;
+    const PROJECT_JSON_3: &str = r#"
+{"name":"flow_project_03","version":"1.0.0","packages":[{"name":"flowrs","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs","branch":"dev"},{"name":"flowrs-std","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs-std","branch":"feature-project1"}],"flow":{"nodes":{"debug_node":{"node_type":"flowrs_std::nodes::debug::DebugNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_config_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"flowrs_std::nodes::timer::TimerNodeConfig"},"constructor":"New"},"timer_token_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_node":{"node_type":"flowrs_std::nodes::timer::TimerNode","type_parameters":{"T":"flowrs_std::nodes::timer::SelectedTimer","U":"i32"},"constructor":"New"}},"connections":[{"from_node":"timer_config_node","to_node":"timer_node","to_input":"config_input","from_output":"output"},{"from_node":"timer_token_node","to_node":"timer_node","to_input":"token_input","from_output":"output"},{"from_node":"timer_node","to_node":"debug_node","to_input":"input","from_output":"token_output"}],"data":{"timer_config_node":{"value":{"duration":{"nanos":0,"secs":1}}},"timer_token_node":{"value":42}}}}
+    "#;
+    const TEST_DIR_PATH_1: &str = "tmp_test_dir_01";
+    const TEST_DIR_PATH_2: &str = "tmp_test_dir_02";
     const PROJECT_JSON_FILE: &str = "flow-project.json";
-    const PROJECT_NAME: &str = "flow_project_01";
+    const PROJECT_NAME_1: &str = "flow_project_01";
+    const PROJECT_NAME_2: &str = "flow_project_02";
+    const PROJECT_NAME_3: &str = "flow_project_03";
 
-    fn create_test_config() -> FlowProjectManagerConfig {
+    fn create_test_config(path:String) -> FlowProjectManagerConfig {
         FlowProjectManagerConfig { 
-            project_folder: TEST_DIR_PATH.to_string(),
+            project_folder: path,
             project_json_file_name: project_json_file_name_default(),
             builtin_dependencies: builtin_dependencies_default(),
             rust_fmt_path: rust_fmt_path_default(),
             do_formatting: do_formatting_default() }
     }
 
-    fn create_test_directory() -> Result<(), anyhow::Error> {
-        if Path::new(&TEST_DIR_PATH.to_string()).is_dir() {
+    fn create_test_directory(path: String) -> Result<(), anyhow::Error> {
+        if Path::new(&path).is_dir() {
             return Ok(());
         }
-        return Ok(create_dir(Path::new(TEST_DIR_PATH))?);
+        return Ok(create_dir(Path::new(&path))?);
     }
 
-    fn write_project_json() -> Result<(), anyhow::Error> {
-        let dir_path = TEST_DIR_PATH.to_string();
+    fn write_project_json(path: String) -> Result<(), anyhow::Error> {
+        let dir_path = &path;
         let root_path = Path::new(&dir_path);
-        let path = root_path.join(Path::new(&PROJECT_NAME.to_string()));
-        let _ = create_dir(path.clone());
-        let file_path = path.join(PROJECT_JSON_FILE);
+        let proj_path = root_path.join(Path::new(&PROJECT_NAME_1.to_string()));
+        let _ = create_dir(proj_path.clone());
+        let file_path = proj_path.join(PROJECT_JSON_FILE);
         let mut file = fs::File::create(&file_path)?;
         file.write_all(PROJECT_JSON.as_bytes())?;
 
         Ok(())
     }
 
-    fn delete_test_directory() -> Result<(), anyhow::Error>{
-        if Path::new(&TEST_DIR_PATH.to_string()).is_dir() {
-            delete_folder_recursive(Path::new(&TEST_DIR_PATH.to_string()))?;
+    fn delete_test_directory(path: String) -> Result<(), anyhow::Error>{
+        if Path::new(&path).is_dir() {
+            delete_folder_recursive(Path::new(&path))?;
         }
 
         Ok(())
     }
 
-    fn setup(mut fpm: FlowProjectManager ) -> FlowProjectManager {
-        let create_result = create_test_directory();
-        let write_result = write_project_json();
+    #[test]
+    fn load_projects_test(){
+        let mut fpm= FlowProjectManager::new(create_test_config(TEST_DIR_PATH_1.to_string()));
+        let proj_count = fpm.projects.len();
+        let create_result = create_test_directory(TEST_DIR_PATH_1.to_string());
+        let write_result = write_project_json(TEST_DIR_PATH_1.to_string());
         let load_result = fpm.load_projects();
-        let delete_result = delete_test_directory();
+        let delete_result = delete_test_directory(TEST_DIR_PATH_1.to_string());
         assert!(!create_result.is_err());
         assert!(!write_result.is_err());
         assert!(!load_result.is_err());
         assert!(!delete_result.is_err());
-
-        fpm
-    }
-
-    #[test]
-    fn load_projects_test(){
-        let mut fpm= FlowProjectManager::new(create_test_config());
-        let proj_count = fpm.projects.len();
-        fpm = setup(fpm);
         assert_eq!(proj_count + 1, fpm.projects.len());
-        assert!(fpm.projects.contains_key(PROJECT_NAME));
-        let flow_project_opt: Option<&FlowProject> = fpm.projects.get(PROJECT_NAME);
+        assert!(fpm.projects.contains_key(PROJECT_NAME_1));
+        let flow_project_opt: Option<&FlowProject> = fpm.projects.get(PROJECT_NAME_1);
         assert!(!flow_project_opt.is_none());
         let flow_project = flow_project_opt.unwrap();
-        assert_eq!(PROJECT_NAME, flow_project.name);
-
-    }
-
-    #[test]
-    fn compile_flow_project_test(){
-        //TODO
-        panic!("Test not implemented");
+        assert_eq!(PROJECT_NAME_1, flow_project.name);
     }
 
     #[test]
     fn run_flow_project_test(){
-        //TODO
-        panic!("Test not implemented");
+
+        let _ = delete_folder_recursive(Path::new(TEST_DIR_PATH_2));
+        let mut fpm= FlowProjectManager::new(create_test_config(TEST_DIR_PATH_2.to_string()));
+        let create_result = create_test_directory(TEST_DIR_PATH_2.to_string());
+        assert!(!create_result.is_err());
+        
+        let build_type = "cargo".to_string();
+        let flow_project_res= serde_json::from_str(PROJECT_JSON_3);
+        assert!(!flow_project_res.is_err());
+        let flow_project = flow_project_res.unwrap();
+        let pm = PackageManager::new_from_folder("flow-packages");
+        let create_res = fpm.create_flow_project(flow_project, &pm);
+        assert!(!create_res.is_err());
+        let compile_res = fpm.compile_flow_project(PROJECT_NAME_3, build_type.clone());
+        assert!(!compile_res.is_err());
+        let run_res = fpm.run_flow_project(PROJECT_NAME_3, build_type);
+        assert!(!run_res.is_err());
+        let run = run_res.unwrap();
+        let stop_res = fpm.stop_process(run.process_id.to_string());
+        assert!(!stop_res.is_err());
+
+        let build_type2 = "wasm".to_string();
+        let flow_project_res2= serde_json::from_str(PROJECT_JSON_2);
+        assert!(!flow_project_res2.is_err());
+        let flow_project2 = flow_project_res2.unwrap();
+        let create_res2 = fpm.create_flow_project(flow_project2, &pm);
+        assert!(!create_res2.is_err());
+        let compile_res2 = fpm.compile_flow_project(PROJECT_NAME_2, build_type2.clone());
+        assert!(!compile_res2.is_err());
+        let run_res2 = fpm.run_flow_project(PROJECT_NAME_2, build_type2);
+        assert!(!run_res2.is_err());
+        let run2 = run_res2.unwrap();
+        let stop_res2 = fpm.stop_process(run2.process_id.to_string());
+        assert!(!stop_res2.is_err());
+
+        let _ = delete_folder_recursive(Path::new(TEST_DIR_PATH_2));
     }
 
-    #[test]
-    fn stop_process_test(){
-        //TODO
-        panic!("Test not implemented");
-    }
+    // #[test]
+    // fn stop_process_test(){
+    //     //TODO
+    //     panic!("Test not implemented");
+    // }
 
-    #[test]
-    fn delete_flow_project_test(){
-        //TODO
-        panic!("Test not implemented");
-    }
+    // #[test]
+    // fn delete_flow_project_test(){
+    //     //TODO
+    //     panic!("Test not implemented");
+    // }
 
-    #[test]
-    fn update_flow_project_flow_model_test(){
-        //TODO
-        panic!("Test not implemented");
-    }
+    // #[test]
+    // fn update_flow_project_flow_model_test(){
+    //     //TODO
+    //     panic!("Test not implemented");
+    // }
 
 }
