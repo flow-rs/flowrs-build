@@ -18,7 +18,7 @@ use anyhow::Result;
 use serde_json::from_str;
 use crate::flow_model::{CodeEmitter, StandardCodeEmitter};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FlowPackage {
     name: String,
     version: String,
@@ -27,7 +27,7 @@ pub struct FlowPackage {
     branch: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FlowProject {
     name: String,
     version: String,
@@ -35,22 +35,23 @@ pub struct FlowProject {
     flow: FlowModel,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Process {
     process_id: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BuildType {
     pub build_type: String,
 }
 
+#[derive(Debug)]
 pub struct FlowProcess {
     process: Child,
     outputs: Arc<Mutex<VecDeque<String>>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FlowProjectManagerConfig {
     #[serde(default = "project_folder_default")]
     pub project_folder: String,
@@ -101,6 +102,7 @@ const fn do_formatting_default() -> bool {
     true
 }
 
+#[derive(Debug)]
 pub struct FlowProjectManager {
     config: FlowProjectManagerConfig,
     pub projects: HashMap<String, FlowProject>,
@@ -601,4 +603,48 @@ fn replace_file_contents(file_path: &Path, new_content: &str) -> io::Result<()> 
     let mut file = fs::File::create(file_path)?;
     file.write_all(new_content.as_bytes())?;
     Ok(())
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_project_test(){
+        //TODO
+        panic!("Test not implemented");
+    }
+
+    #[test]
+    fn compile_flow_project_test(){
+        //TODO
+        panic!("Test not implemented");
+    }
+
+    #[test]
+    fn run_flow_project_test(){
+        //TODO
+        panic!("Test not implemented");
+    }
+
+    #[test]
+    fn stop_process_test(){
+        //TODO
+        panic!("Test not implemented");
+    }
+
+    #[test]
+    fn delete_flow_project_test(){
+        //TODO
+        panic!("Test not implemented");
+    }
+
+    #[test]
+    fn update_flow_project_flow_model_test(){
+        //TODO
+        panic!("Test not implemented");
+    }
+
 }
