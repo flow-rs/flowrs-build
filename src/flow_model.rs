@@ -9,7 +9,7 @@ use crate::package_manager::PackageManager;
 
 use anyhow::{Error, Result};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 struct ConnectionModel {
     from_node: String,
     to_node: String,
@@ -17,7 +17,7 @@ struct ConnectionModel {
     from_output: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct NodeModel {
     node_type: String,
     type_parameters: HashMap<String, String>,
@@ -26,7 +26,7 @@ pub struct NodeModel {
     //outputs: HashMap<String, OutputModel>
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FlowModel {
     nodes: HashMap<String, NodeModel>,
     connections: Vec<ConnectionModel>,
