@@ -5,8 +5,8 @@
       <v-toolbar  dark="true">
         <v-btn to="/" nuxt>Project Select</v-btn>
         <v-btn to="/packageselect" nuxt>Package Select</v-btn>
-<!--        <v-btn to="compileandrun" nuxt>Compile And Run</v-btn>-->
-        <v-btn @click="openNewTab">Compile And Run</v-btn>
+        <v-btn to="compileandrun" nuxt>Compile And Run</v-btn>
+<!--        <v-btn @click="openNewTab">Compile And Run</v-btn>-->
         <v-btn>
           <v-icon>mdi-content-save-all-outline</v-icon> Save
         </v-btn>

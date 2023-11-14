@@ -29,7 +29,7 @@ const deleteProject = () => {
 // Testing method to create project with UI TODO: should be open flow creation page
 const createProject = () => {
   let projectToCreate = newFlowProject
-  projectToCreate.name = "Name_" + Math.random()
+  projectToCreate.name = "flow_project_" + Math.floor(Math.random() * 2000) + 1;
   const {$api} = useNuxtApp();
   $api.projects.createProject(projectToCreate);
 }

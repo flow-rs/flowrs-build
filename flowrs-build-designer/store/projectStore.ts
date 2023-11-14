@@ -38,6 +38,24 @@ export const useProjectsStore = defineStore({
                 .finally(() => (this.loading = false))
 
         },
+
+        async compileProjectRequest(buildType: String) {
+            const {$api} = useNuxtApp();
+            const projectIdentifier: ProjectIdentifier = {
+                project_name: this.selectedProject!.name
+            }
+            this.loading = true
+            $api.projects.compileProject(projectIdentifier, buildType).then(response => {
+                console.log("Flow Project is compiling!")
+                console.log(response)
+
+            }).catch((error) => {
+                console.log("Error compiling projects:" + error)
+            })
+                .finally(() => (this.loading = false))
+
+        },
+
         selectProject(project: FlowProject) {
             this.selectedProject = project;
             this.activeFilter = 'noFilter'

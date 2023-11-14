@@ -3,10 +3,12 @@
 import {useProjectsStore} from "~/store/projectStore";
 
 const projectsStore = useProjectsStore()
-//TODO: solution for new tab
+//TODO: new tab or new page?
 const selectedProject = computed(() => projectsStore.selectedProject);
+const loading = computed(() => projectsStore.loading);
 console.log(selectedProject)
   const compile = () => {
+  projectsStore.compileProjectRequest("cargo")
 
   }
 
@@ -46,7 +48,10 @@ console.log(selectedProject)
 
         <v-card-actions>
           <v-col>
-            <v-btn prepend-icon="mdi-code-braces" rounded="0" size="large" @click="compile()" class="mb-2 ml-2">
+            <v-btn prepend-icon="mdi-code-braces" rounded="0" size="large" @click="compile()" class="mb-2 ml-2" :loading="loading">
+              <template v-slot:loader>
+                <v-progress-linear indeterminate="true" color="teal" rounded height="25"> Compiling</v-progress-linear>
+              </template>
               Compile project
             </v-btn>
 
