@@ -6,7 +6,8 @@ const projectsStore = useProjectsStore()
 //TODO: new tab or new page?
 const selectedProject = computed(() => projectsStore.selectedProject);
 const loading = computed(() => projectsStore.loading);
-console.log(selectedProject)
+const logEntries = computed(() => projectsStore.logEntries);
+
   const compile = () => {
   projectsStore.compileProjectRequest("cargo")
 
@@ -73,7 +74,7 @@ console.log(selectedProject)
     </v-col>
 
     <v-col cols="9" class="border-col">
-      Output of execution!
+        <div v-for="logEntry in logEntries" :key="logEntry">{{ logEntry }}</div>
 
     </v-col>
 

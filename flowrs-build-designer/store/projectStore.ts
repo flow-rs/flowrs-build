@@ -8,7 +8,8 @@ export const useProjectsStore = defineStore({
             projects: [] as FlowProject[],
             selectedProject: null as FlowProject | null,
             loading: false,
-            activeFilter: ""
+            activeFilter: "",
+            logEntries: []
         });
     },
     actions: {
@@ -47,13 +48,11 @@ export const useProjectsStore = defineStore({
             this.loading = true
             $api.projects.compileProject(projectIdentifier, buildType).then(response => {
                 console.log("Flow Project is compiling!")
-                console.log(response)
-
+                this.addLogEntry(response)
             }).catch((error) => {
                 console.log("Error compiling projects:" + error)
             })
                 .finally(() => (this.loading = false))
-
         },
 
         selectProject(project: FlowProject) {
@@ -62,6 +61,12 @@ export const useProjectsStore = defineStore({
         },
         setActiveFilter(value: string) {
             this.activeFilter = value
+        },
+
+        addLogEntry(entry) {
+          const timestamp = new Date().toLocaleString();
+          const logEntry = `[${timestamp}] ${entry}`;
+          this.logEntries.push(logEntry)
         }
     }
 })
