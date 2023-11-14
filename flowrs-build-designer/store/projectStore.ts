@@ -40,10 +40,10 @@ export const useProjectsStore = defineStore({
 
         },
 
-        async compileProjectRequest(buildType: String) {
+        async compileProjectRequest(projectName: String, buildType: String) {
             const {$api} = useNuxtApp();
             const projectIdentifier: ProjectIdentifier = {
-                project_name: this.selectedProject!.name
+                project_name: projectName
             }
             this.loading = true
             $api.projects.compileProject(projectIdentifier, buildType).then(response => {
