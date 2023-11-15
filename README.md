@@ -126,5 +126,5 @@ To compile a flow for execution in the browser, execute the following steps:
 1. Goto the flow-project folder [flow-project].
 2. run `wasm-pack build --release --target web` which will generate a the shared object file (*.dll or *.so) in target/[debug|release] (in this case: release).
 3. run `python -m http.server` in the very same directory (or any other webserver).
-4. Open your browser, **start your browser's dev tools** and browse to `localhost:8000` (must be in this order!).
-5. Open your browser's console viewer. 
+4. Open your browser, **start your browser's dev tools** (console viewer) and then browse to `localhost:8000` (must be in this order!).
+
