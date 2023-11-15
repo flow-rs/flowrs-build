@@ -13,15 +13,24 @@ export type CrateType = {
 }
 
 export type TypeDefinition = {
-    inputs: Record<string, Record<string, TypeDescription>>;
-    outputs: Record<string, Record<string, TypeDescription>>;
-    type_parameters: string[] | null;
-    constructors: Record<string, string>;
+    inputs: Record<string, TypeWrapper>;
+    outputs: Record<string, TypeWrapper>;
+    type_parameters?: string[];
+    constructors: ConstructorDefinition;
 }
 
 export type TypeDescription = {
-    name: string;
-    type_parameters: TypeDescription[];
+    Generic?: {
+        name: string;
+        type_parameters?: TypeWrapper[];
+    };
+    Type?: {
+        name: string;
+        type_parameters?: TypeWrapper[];
+    }
+};
+export type TypeWrapper = {
+    type: TypeDescription
 }
 
 export type ModuleDefinition = {
@@ -29,10 +38,34 @@ export type ModuleDefinition = {
     modules: Record<string, ModuleDefinition>;
 }
 
+export type ConstructorDefinition = {
+    Json?: string,
+    Default?: string,
+    New?: Record<string, ConstructorDescription>,
+    NewWithToken?: Record<string, ConstructorDescription>,
+}
+
+export type ConstructorDescription = {
+    function_name: string,
+    arguments?: ArgumentDefinition[],
+}
+
+export type ArgumentDefinition = {
+    type: TypeDescription,
+    name: string,
+    passing: string,
+    construction: {
+        Constructor?: string,
+        ExistingObject?: string,
+    }
+
+}
+
 // TODO refactor to a correct place
 export async function createAllPackagesToTypeDefintionMap() : Promise<Map<string, TypeDefinition>> {
     const {$api} = useNuxtApp();
     const packages = await $api.packages.getFlowrsPackages();
+    console.log('mapped packages to js-objects', packages)
     const packageMap: Map<string, TypeDefinition> = new Map<string, TypeDefinition>();
 
     for (const packagesKey in packages) {
