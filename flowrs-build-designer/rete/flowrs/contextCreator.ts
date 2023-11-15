@@ -23,14 +23,9 @@ export class ContextCreator {
             await this.connectProjectNodes(selectedProject, projectNodesMap, editor);
         }
 
-        return await this.createContextMenuWithConstructableNodes(typeDefinitionsMap);
-    }
+        this.preventTypeIncompatibleConnections(editor);
 
-    private static async createContextMenuWithConstructableNodes(typeDefinitionsMap: Map<string, TypeDefinition>) {
-        let constructableNodeList = await this.getConstructableNodeList(typeDefinitionsMap);
-        return new ContextMenuPlugin<Schemes>({
-            items: ContextMenuPresets.classic.setup(constructableNodeList),
-        });
+        return await this.createContextMenuWithConstructableNodes(typeDefinitionsMap);
     }
 
     private static getCurrentlySelectedProject() {
@@ -101,5 +96,22 @@ export class ContextCreator {
             output.push([fullTypeName, constructableNodes]);
         }
         return output;
+    }
+
+    private static preventTypeIncompatibleConnections(editor: NodeEditor<Schemes>) {
+        editor.addPipe(context => {
+            if (context.type == "connectioncreate" && context.data.sourceOutput !== context.data.targetInput) {
+                console.warn("Keys dont match!", context);
+                return;
+            }
+            return context;
+        });
+    }
+
+    private static async createContextMenuWithConstructableNodes(typeDefinitionsMap: Map<string, TypeDefinition>) {
+        let constructableNodeList = await this.getConstructableNodeList(typeDefinitionsMap);
+        return new ContextMenuPlugin<Schemes>({
+            items: ContextMenuPresets.classic.setup(constructableNodeList),
+        });
     }
 }
