@@ -2,6 +2,7 @@
 import vuetify, {transformAssetUrls} from 'vite-plugin-vuetify'
 
 export default defineNuxtConfig({
+    css: ['~/assets/scss/main.scss'],
     devtools: {enabled: true},
     devServer: {
         port: 3001,
