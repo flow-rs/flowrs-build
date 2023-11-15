@@ -58,44 +58,6 @@ export type ArgumentDefinition = {
         Constructor?: string,
         ExistingObject?: string,
     }
-
-}
-
-// TODO refactor to a correct place
-export async function createAllPackagesToTypeDefintionMap() : Promise<Map<string, TypeDefinition>> {
-    const {$api} = useNuxtApp();
-    const packages = await $api.packages.getFlowrsPackages();
-    console.log('mapped packages to js-objects', packages)
-    const packageMap: Map<string, TypeDefinition> = new Map<string, TypeDefinition>();
-
-    for (const packagesKey in packages) {
-        let crate = packages[packagesKey];
-        if (!crate) {
-            continue
-        }
-        let crateTypes = crate.crates;
-        for (let crateName in crateTypes) {
-            let crateType = crateTypes[crateName];
-            populatePackageMap(crateType.modules, crateType.types, packageMap, crateName);
-        }
-    }
-
-    return packageMap
-}
-
-function populatePackageMap(moduleDefinition: Record<string, ModuleDefinition>, typeDefinition: Record<string, TypeDefinition>, packageMap: Map<string, TypeDefinition>, packagePath: string) {
-    addTypeDefinitions(typeDefinition, packageMap, packagePath);
-    for (const moduleDefinitionKey in moduleDefinition) {
-        const newPackagePath = packagePath + "::" + moduleDefinitionKey;
-        const newModuleDefinition = moduleDefinition[moduleDefinitionKey];
-        populatePackageMap(newModuleDefinition.modules, newModuleDefinition.types, packageMap, newPackagePath);
-    }
-}
-
-function addTypeDefinitions(typeDefinition: Record<string, TypeDefinition>, packageMap: Map<string, TypeDefinition>, packagePath: string) {
-    for (const typeDefinitionKey in typeDefinition) {
-        packageMap.set(packagePath+ "::"+ typeDefinitionKey, typeDefinition[typeDefinitionKey])
-    }
 }
 
 class PackagesModule extends FetchFactory {
@@ -105,8 +67,51 @@ class PackagesModule extends FetchFactory {
         return await this.call<Crate[]>('GET', `${this.RESOURCE}`)
     }
 
+    // returns a parsed map of all packages, where the full type name is mapped to its typeDefinition
+    async getFlowrsTypeDefinitionsMap() : Promise<Map<string, TypeDefinition>> {
+        const crates = await this.getFlowrsPackages();
+
+        console.log('mapped packages to js-objects', crates)
+        const packageMap: Map<string, TypeDefinition> = new Map<string, TypeDefinition>();
+
+
+        for (const crate of crates) {
+            if (!crate) {
+                continue
+            }
+
+            let crateTypes = crate.crates;
+
+            for (let crateName in crateTypes) {
+                let crateType = crateTypes[crateName];
+                this.populatePackageMap(crateType.modules, crateType.types, packageMap, crateName);
+            }
+        }
+
+        return packageMap
+    }
+
     async getFlowrsPackageByName(packageName : string) : Promise<Crate> {
         return await this.call<Crate>('GET', `${this.RESOURCE}${packageName}`)
+    }
+
+    // recursively constructs the name and adds all type definition underneath that name to the map
+    private populatePackageMap(moduleDefinition: Record<string, ModuleDefinition>, typeDefinition: Record<string, TypeDefinition>, packageMap: Map<string, TypeDefinition>, packagePath: string) {
+        // add all typeDefinitions under this name
+        this.addTypeDefinitions(typeDefinition, packageMap, packagePath);
+
+        // go to the next module
+        for (const moduleName in moduleDefinition) {
+            const nextPackagePath = packagePath + "::" + moduleName;
+            const nextModuleDefinition = moduleDefinition[moduleName];
+            this.populatePackageMap(nextModuleDefinition.modules, nextModuleDefinition.types, packageMap, nextPackagePath);
+        }
+    }
+
+    private addTypeDefinitions(typeDefinitions: Record<string, TypeDefinition>, packageMap: Map<string, TypeDefinition>, packagePath: string) {
+        for (const typeDefinitionName in typeDefinitions) {
+            packageMap.set(packagePath+ "::"+ typeDefinitionName, typeDefinitions[typeDefinitionName])
+        }
     }
 }
 

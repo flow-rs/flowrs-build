@@ -187,14 +187,14 @@ export async function createEditor(container: HTMLElement) {
   AreaExtensions.selectableNodes(area, selector, { accumulating });
   RerouteExtensions.selectablePins(reroutePlugin, selector, accumulating);
 
-  async function process() {
+  function process() {
     dataflow.reset();
 
     editor
       .getNodes()
       .filter((node) => node instanceof AddNode)
-      .forEach(async (node) => {
-        const sum = await dataflow.fetch(node.id);
+      .forEach((node) => {
+        const sum = dataflow.fetch(node.id);
 
         console.log(node.id, 'produces', sum);
 
