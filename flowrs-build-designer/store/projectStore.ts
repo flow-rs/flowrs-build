@@ -1,5 +1,5 @@
 import {defineStore} from 'pinia'
-import {FlowProject, ProjectIdentifier} from "~/repository/modules/projects";
+import {type FlowProject, type ProjectIdentifier} from "~/repository/modules/projects";
 
 export const useProjectsStore = defineStore({
     id: 'projects',
@@ -14,11 +14,10 @@ export const useProjectsStore = defineStore({
     actions: {
         async getAll() {
             const {$api} = useNuxtApp();
-            const response = $api.projects.getProjects().then(listOfFlowProjects => {
+            $api.projects.getProjects().then(listOfFlowProjects => {
                 this.projects = listOfFlowProjects;
             }).catch((error) => console.log("Error fetching projects!"))
-                .finally(() => (this.loading = false))
-
+                .finally(() => (this.loading = false));
         },
         async deleteProject() {
             const {$api} = useNuxtApp();

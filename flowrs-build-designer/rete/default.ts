@@ -1,14 +1,14 @@
-import { ClassicPreset as Classic, GetSchemes, NodeEditor } from 'rete';
+import { ClassicPreset as Classic,type GetSchemes, NodeEditor } from 'rete';
 
-import { Area2D, AreaExtensions, AreaPlugin } from 'rete-area-plugin';
+import {type Area2D, AreaExtensions, AreaPlugin } from 'rete-area-plugin';
 import {
   ConnectionPlugin,
   Presets as ConnectionPresets,
 } from 'rete-connection-plugin';
 
-import { VuePlugin, VueArea2D, Presets as VuePresets } from 'rete-vue-plugin';
+import { VuePlugin,type VueArea2D, Presets as VuePresets } from 'rete-vue-plugin';
 
-import { DataflowEngine, DataflowNode } from 'rete-engine';
+import { DataflowEngine,type DataflowNode } from 'rete-engine';
 import {
   AutoArrangePlugin,
   Presets as ArrangePresets,
@@ -16,18 +16,18 @@ import {
 
 import {
   ContextMenuPlugin,
-  ContextMenuExtra,
+  type ContextMenuExtra,
   Presets as ContextMenuPresets,
 } from 'rete-context-menu-plugin';
-import { MinimapExtra, MinimapPlugin } from 'rete-minimap-plugin';
+import { type MinimapExtra, MinimapPlugin } from 'rete-minimap-plugin';
 import {
   ReroutePlugin,
-  RerouteExtra,
+  type RerouteExtra,
   RerouteExtensions,
 } from 'rete-connection-reroute-plugin';
 import { 
   HistoryPlugin,
-  HistoryActions,
+  type HistoryActions,
   HistoryExtensions,
   Presets 
 } from "rete-history-plugin";

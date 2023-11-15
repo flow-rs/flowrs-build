@@ -17,7 +17,7 @@
 </template>
 
 <script lang="ts">
-import { createEditor } from "../rete";
+import { createEditor } from "~/rete";
 
 export default {
   async mounted() {
