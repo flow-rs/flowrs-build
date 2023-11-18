@@ -46,7 +46,14 @@ export class ContextCreator {
                 console.error("TypeDefinition for", currentNodeType, "not found")
                 continue
             }
-            const node = new FlowrsNode(flowNode, typeDefinition, project.flow.data[flowNode]?.value, currentNode.constructor);
+            const node = new FlowrsNode(
+                flowNode,
+                typeDefinition,
+                project.flow.data[flowNode]?.value,
+                currentNode.constructor,
+                currentNode.type_parameters,
+                Object.values(typeDefinitionsMap));
+
             await editor.addNode(node);
             allAddedNodes.set(flowNode, node);
             console.log('node added', flowNode, node);
@@ -88,10 +95,24 @@ export class ContextCreator {
             let constructorDefinition = typeDefinition.constructors;
             let constructableNodes: ItemDefinition<Schemes>[] = [];
             if (constructorDefinition.New) {
-                constructableNodes.push(["New", () => new FlowrsNode(fullTypeName, typeDefinition!, null, "New")]);
+                constructableNodes.push(["New",
+                    () => new FlowrsNode(
+                        fullTypeName,
+                        typeDefinition!,
+                        null,
+                        "New",
+                        null,
+                        Object.values(typeDefinitionsMap))]);
             }
             if (constructorDefinition.NewWithToken) {
-                constructableNodes.push(["NewWithToken", () => new FlowrsNode(fullTypeName, typeDefinition!, null, "NewWithToken")]);
+                constructableNodes.push(["NewWithToken",
+                    () => new FlowrsNode(
+                        fullTypeName,
+                        typeDefinition!,
+                        null,
+                        "NewWithToken",
+                        null,
+                        Object.values(typeDefinitionsMap))]);
             }
             output.push([fullTypeName, constructableNodes]);
         }
@@ -100,9 +121,13 @@ export class ContextCreator {
 
     private static preventTypeIncompatibleConnections(editor: NodeEditor<Schemes>) {
         editor.addPipe(context => {
-            if (context.type == "connectioncreate" && context.data.sourceOutput !== context.data.targetInput) {
-                console.warn("Keys dont match!", context);
-                return;
+            if (context.type == "connectioncreate") {
+                let sourceNode = editor.getNode(context.data.source);
+                let targetNode = editor.getNode(context.data.target);
+                if (sourceNode.getTypeForKey(context.data.sourceOutput) != targetNode.getTypeForKey(context.data.targetInput)) {
+                    console.warn("Keys dont match!", context.data, sourceNode, targetNode);
+                    return;
+                }
             }
             return context;
         });

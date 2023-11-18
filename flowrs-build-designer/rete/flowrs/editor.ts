@@ -15,6 +15,10 @@ import {type HistoryActions, HistoryExtensions, HistoryPlugin, Presets} from "re
 import {FlowrsNode} from "~/rete/flowrs/flowrsNode";
 import {ContextCreator} from "~/rete/flowrs/contextCreator";
 
+import CustomDropdownControl from "../../components/CustomDropdownControl.vue";
+
+import type {TypeDefinition} from "~/repository/modules/packages";
+
 type Node = FlowrsNode;
 type Conn =
     | Connection<FlowrsNode, FlowrsNode>
@@ -28,6 +32,18 @@ type AreaExtra =
     | RerouteExtra;
 
 export class Connection<A extends Node, B extends Node> extends Classic.Connection<A, B> {
+}
+
+
+export class DropdownControl extends Classic.Control {
+    typeName: string;
+    possibleValues: TypeDefinition[];
+
+    constructor(typeName: string, possibleValues: TypeDefinition[], onSelection: (selectedValue: string) => void) {
+        super()
+        this.typeName = typeName;
+        this.possibleValues = possibleValues;
+    }
 }
 
 export async function createEditor(container: HTMLElement) {
@@ -55,7 +71,18 @@ export async function createEditor(container: HTMLElement) {
 
     connection.addPreset(ConnectionPresets.classic.setup());
 
-    vueRender.addPreset(VuePresets.classic.setup());
+    vueRender.addPreset(VuePresets.classic.setup({
+        customize: {
+            control (data) {
+                if (data.payload instanceof DropdownControl) {
+                    return CustomDropdownControl;
+                }
+                if (data.payload instanceof Classic.InputControl) {
+                    return VuePresets.classic.Control;
+                }
+            }
+        }
+    }));
     vueRender.addPreset(VuePresets.contextMenu.setup());
     vueRender.addPreset(VuePresets.minimap.setup());
     vueRender.addPreset(

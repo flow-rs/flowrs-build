@@ -1,49 +1,71 @@
 import {type DataflowNode} from "rete-engine";
-import {ClassicPreset as Classic} from 'rete';
+import {ClassicPreset, ClassicPreset as Classic} from 'rete';
 import {
     type ConstructorDefinition,
     type ConstructorDescription,
     type TypeDefinition,
     type TypeDescription
 } from "~/repository/modules/packages";
+import {DropdownControl} from "~/rete/flowrs/editor";
 
 const socket = new Classic.Socket('socket');
 
-export class FlowrsNode extends Classic.Node implements DataflowNode {
+export class FlowrsNode extends Classic.Node<
+    Record<string, ClassicPreset.Socket>,
+    Record<string, ClassicPreset.Socket>,
+    Record<
+        string,
+        | DropdownControl
+        | ClassicPreset.InputControl<"number">
+        | ClassicPreset.InputControl<"text">
+    >> implements DataflowNode {
     width = 500;
     height = 140;
-    node_data: string | undefined;
-    constructor_type: string = "New";
+    public node_data: string | undefined;
+    public genericsResolutionMap: Map<string, string> = new Map();
+    private keyToTypeParameterMap: Map<string, string> = new Map();
+    public constructor_type: string = "New";
+    private compatibleTypes: Map<string, TypeDefinition[]> = new Map();
 
-    constructor(name: string, typeDefinition: TypeDefinition, data: { [key: string]: any } | null, constructor_type: string) {
+    constructor(name: string,
+                typeDefinition: TypeDefinition,
+                data: { [key: string]: any } | null,
+                constructor_type: string,
+                typeParameters: { [key: string]: string } | null,
+                allPossibleTypes: TypeDefinition[]
+    ) {
         super(name);
 
         this.constructor_type = constructor_type;
         this.setNodeData(data);
-        this.addChooseConstructorAndControlInputs(typeDefinition.constructors)
+        this.setTypeParameters(typeParameters);
+        let constructorDescription = this.getConstructorDescription(typeDefinition.constructors);
+        this.calculateCompatibleTypes(constructorDescription, allPossibleTypes);
+        this.addControlInputs(constructorDescription);
+        this.addDropdownControlsForGenericTypeParameters(typeDefinition.type_parameters);
         this.addInputs(typeDefinition);
         this.addOutputs(typeDefinition);
     }
 
-    private addChooseConstructorAndControlInputs(constructors: ConstructorDefinition) {
-        let currentConstructor;
+    private getConstructorDescription(constructorDefinition: ConstructorDefinition) {
+        let currentConstructor: Record<string, ConstructorDescription> | undefined;
         if (this.constructor_type == "New") {
-            currentConstructor = constructors.New;
+            currentConstructor = constructorDefinition.New;
         } else if (this.constructor_type == "NewWithToken") {
-            currentConstructor = constructors.NewWithToken;
+            currentConstructor = constructorDefinition.NewWithToken;
         }
         if (!currentConstructor) {
             return;
         }
         let recordKeys = Object.keys(currentConstructor);
         if (recordKeys.length > 1) {
-            console.error("This isn't supposed to be like that!", currentConstructor);
+            console.error("Package endpoint malformed output?", currentConstructor);
         }
-        this.addControlInputs(currentConstructor[recordKeys[0]]);
+        return currentConstructor[recordKeys[0]];
     }
 
-    private addControlInputs(constructor: ConstructorDescription) {
-        if (!constructor.arguments) {
+    private addControlInputs(constructor: ConstructorDescription | undefined) {
+        if (!constructor?.arguments) {
             return
         }
         for (const argument of constructor.arguments) {
@@ -58,7 +80,25 @@ export class FlowrsNode extends Classic.Node implements DataflowNode {
                 );
             }
         }
+    }
 
+    private addDropdownControlsForGenericTypeParameters(type_parameters: string[] | undefined) {
+        if (!type_parameters) {
+            return;
+        }
+
+        for (const typeParameter of type_parameters) {
+            let possibleValues = this.compatibleTypes.get(typeParameter);
+            if (!possibleValues) {
+                continue
+            }
+            this.addControl(
+                typeParameter,
+                new DropdownControl(typeParameter, possibleValues, selectedValue => {
+                    this.genericsResolutionMap.set(typeParameter, selectedValue)
+                })
+            );
+        }
     }
 
     private setNodeData(data: { [key: string]: any } | null) {
@@ -69,37 +109,91 @@ export class FlowrsNode extends Classic.Node implements DataflowNode {
         this.node_data = JSON.stringify(data, null, 2);
     }
 
+    private setTypeParameters(typeParameters: { [p: string]: string } | null) {
+        if (!typeParameters) {
+            return;
+        }
+
+        for (const typeParametersKey in typeParameters) {
+            this.genericsResolutionMap.set(typeParametersKey, typeParameters[typeParametersKey]);
+        }
+
+        console.log("Type parameters set:", this.genericsResolutionMap);
+    }
+
+    private calculateCompatibleTypes(constructorDescription: ConstructorDescription | undefined, allPossibleTypes: TypeDefinition[]) {
+        if (!constructorDescription?.arguments) {
+            return;
+        }
+        for (const argument of constructorDescription.arguments) {
+            if (argument.type.Generic && argument.construction.Constructor) {
+                this.compatibleTypes.set(argument.type.Generic.name, this.filterTypesWithConstructor(argument.construction.Constructor, allPossibleTypes))
+            }
+        }
+    }
+
     private addOutputs(types: TypeDefinition) {
-        for (let name in types.outputs) {
-            let typeDescription = types.outputs[name].type;
-            let type_name = this.constructLabel(name, typeDescription);
-            this.addOutput(name, new Classic.Output(socket, type_name));
+        for (let outputName in types.outputs) {
+            let typeDescription = types.outputs[outputName].type;
+            let typeName = this.getTypeName(typeDescription);
+            this.addOutput(outputName, new Classic.Output(socket, outputName + ':' + typeName, false));
+            this.keyToTypeParameterMap.set(outputName, typeName);
         }
     }
 
     private addInputs(types: TypeDefinition) {
-        for (let name in types.inputs) {
-            let typeDescription = types.inputs[name].type;
-            let type_name = this.constructLabel(name, typeDescription);
-            this.addInput(name, new Classic.Input(socket, type_name));
+        for (let inputName in types.inputs) {
+            let typeDescription = types.inputs[inputName].type;
+            let typeName = this.getTypeName(typeDescription);
+            this.addInput(inputName, new Classic.Input(socket, inputName + ':' + typeName, false));
+            this.keyToTypeParameterMap.set(inputName, typeName);
             this.height += 20;
         }
     }
 
-    private constructLabel(inputPairKey: string, typeDescription: TypeDescription) {
-        let label = inputPairKey;
+    private getTypeName(typeDescription: TypeDescription) {
         if (typeDescription.Generic) {
-            label += ' : ' + typeDescription.Generic.name;
+            return typeDescription.Generic.name;
         } else if (typeDescription.Type) {
-            label += ' : ' + typeDescription.Type.name;
+            return typeDescription.Type.name;
         } else {
             console.error("Type not supported", typeDescription)
         }
-        return label;
+        return "unknown";
+    }
+
+    public getTypeForKey(key: string): string | undefined {
+        let typeName = this.keyToTypeParameterMap.get(key);
+        if (!typeName) {
+            return;
+        }
+        let genericResolutionType = this.genericsResolutionMap.get(typeName);
+        if (genericResolutionType) {
+            return genericResolutionType
+        }
+        return typeName;
     }
 
     data() {
         const value = this.node_data;
         return {value,};
+    }
+
+    private filterTypesWithConstructor(constructorName: string, allPossibleTypes: TypeDefinition[]) {
+        let filteredTypes = [];
+        for (const possibleType of allPossibleTypes) {
+            let constructorDefinition = possibleType.constructors;
+            for (const key in constructorDefinition.New) {
+                if (key == constructorName) {
+                    filteredTypes.push(possibleType);
+                }
+            }
+            for (const key in constructorDefinition.NewWithToken) {
+                if (key == constructorName) {
+                    filteredTypes.push(possibleType);
+                }
+            }
+        }
+        return filteredTypes;
     }
 }
