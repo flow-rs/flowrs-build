@@ -27,13 +27,13 @@ const handleFilterSelection = (value: string) => {
           <v-col>
             <v-btn-toggle mandatory>
               <v-btn @click="handleFilterSelection('noFilter')" :active="activeFilter==='noFilter'">
-                <v-icon>mdi-filter-off</v-icon>
+                No filter
               </v-btn>
               <v-btn @click="handleFilterSelection('packages')" :active="activeFilter==='packages'">
-                <v-icon>mdi-package</v-icon>
+                Only Packages
               </v-btn>
               <v-btn @click="handleFilterSelection('flow')" :active="activeFilter==='flow'">
-                <v-icon>mdi-call-split</v-icon>
+                Only Flow
               </v-btn>
             </v-btn-toggle>
           </v-col>

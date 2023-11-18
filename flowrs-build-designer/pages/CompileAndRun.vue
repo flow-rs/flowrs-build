@@ -23,6 +23,10 @@ watch(selectedProject, (newSelection: FlowProject) => {
 
   }
 
+  //TODO: extract compontens in own files
+
+  //TODO: add prefix for logs which project was executed/compiled etc.
+
   const run = () => {
 
   }

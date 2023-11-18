@@ -1,10 +1,11 @@
 <template>
  <nav>
     <div class="nav-container">
-      
+
       <ul class="nav-menu">
         <li><nuxt-link to="/">Project Select</nuxt-link></li>
         <li><nuxt-link to="/packageselect">Package Select</nuxt-link></li>
+        <li><nuxt-link to="/compileAndRun">Compile and Run</nuxt-link></li>
       </ul>
       <div class="logo">
          <div id="logo"><img src="../assets/images/flowers-logo.png" height="30PX"/></div>
