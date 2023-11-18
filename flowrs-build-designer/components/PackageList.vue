@@ -4,15 +4,18 @@ import { usePackagesStore } from "~/store/packageStore.js";
 import {Crate} from "~/repository/modules/packages";
 
 const packagesStore = usePackagesStore()
-packagesStore.getAll()
-
+await packagesStore.getAll()
+console.log(packagesStore.packagesMap)
+console.log(packagesStore.packages)
 const projectClicked = ref(false)
 
-const selectPackage = (packageE) => {
+function selectPackage(packageE){
   const p : Crate = packageE
   console.log(packageE)
   console.log("Package was selected: " + p.name)
   packagesStore.selectPackage(packageE)
+  packagesStore.getByName(p.name)
+  console.log(toRaw(packagesStore.selectedMap))
   console.log(packagesStore.selectedPackage.name)
   projectClicked.value = true;
 }
@@ -36,9 +39,6 @@ defineProps({
     <v-card-actions>
       <v-row class="mb-2 mt-2">
         <v-col class="d-flex justify-space-around">
-          <v-btn prepend-icon="mdi-open-in-app" color="blue" :disabled="!projectClicked" @click="openProjectAsFlow()">
-            Show Details
-          </v-btn>
           <v-btn prepend-icon="mdi-refresh" color="orange" @click="refreshPackageList()">Refresh list</v-btn>
         </v-col>
       </v-row>

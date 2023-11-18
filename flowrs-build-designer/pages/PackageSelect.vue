@@ -2,12 +2,12 @@
 
 import { usePackagesStore } from "~/store/packageStore";
 import { Crate } from "~/repository/modules/packages";
+import { KeyObject } from "crypto";
 
 
 const packagesStore = usePackagesStore();
 const selectedPackage: Crate = computed(() => packagesStore.selectedPackage);
-
-
+const selectedMap: Map<String, Object> = computed(() => packagesStore.selectedMap);
 
 </script>
 
@@ -28,25 +28,38 @@ const selectedPackage: Crate = computed(() => packagesStore.selectedPackage);
 
   </v-row>
   <v-row>
-    <v-col class=" text-center mt-5 mr-5">
-      <v-card v-if="selectedPackage !== null" :title="selectedPackage ? selectedPackage.name : 'No package selected!'"
-        subtitle="flow-project.json">
-        <v-divider></v-divider>
-        <v-expansion-panels variant="popout" class="my-4">
-          <v-expansion-panel v-for="(value, key) in selectedPackage.crates" :key="key" :title="key">
-            <v-expansion-panel-text>
-              <v-col v-for="(value2, key2) in value.modules.nodes.modules" class=" text-center mt-5 mr-5">
-                {{ key2 }}
-              </v-col>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
+    <v-col class="text-center mt-5 mr-5">
+      <v-card v-if="selectedPackage !== null" :title="selectedPackage ? selectedPackage.name : 'No package selected!'">
+        <v-divider class="mb-5"></v-divider>
+        <v-row v-if="selectedMap !== null">
+          <v-col cols="12 d-flex" class="d-flex justify-center align-center">
+            <v-chip class="ma-2" color="blue" label text-color="white">
+              <v-icon start icon="mdi-alpha-t-box-outline"></v-icon>
+              Type Parameter
+
+            </v-chip>
+            <v-chip class="ma-2" color="green" label text-color="white">
+              <v-icon start icon="mdi-arrow-right-bold-outline"></v-icon>
+              Input
+            </v-chip>
+            <v-chip class="ma-2" color="red" label text-color="white">
+              Output
+              <v-icon class="mx-1" start icon="mdi-arrow-right-bold-outline"></v-icon>
+            </v-chip>
+            
+          </v-col>
+        </v-row>
+        <v-row v-if="selectedMap !== null">
+          <v-col cols="4 d-flex" v-for="[key, value] in selectedMap">
+            <PackageCard class="flex-grow-1" :name="key" :value="value"></PackageCard>
+          </v-col>
+        </v-row>
         <v-row>
         </v-row>
         <div class=" scroll">
           <pre class="language-json">
-                          <code></code>
-                        </pre>
+                                      <code></code>
+                                    </pre>
 
         </div>
       </v-card>
