@@ -6,14 +6,14 @@ use handlebars::Handlebars;
 
 use crate::package_manager::PackageManager;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Package {
     pub name: String,
     pub version: String,
     pub crates: HashMap<String, Crate>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Crate {
     pub types: HashMap<String, Type>,
     pub modules: HashMap<String, Module>,
@@ -31,26 +31,26 @@ impl Crate {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Module {
     pub types: HashMap<String, Type>,
     pub modules: HashMap<String, Module>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Input {
     #[serde(rename = "type")]
-    input_type: TypeDescription     
+    input_type: TypeDescription
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Output {
     #[serde(rename = "type")]
-    output_type: TypeDescription     
+    output_type: TypeDescription
 }
 
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Type {
     pub inputs: Option<HashMap<String, Input>>,
     pub outputs: Option<HashMap<String, Output>>,
@@ -94,7 +94,7 @@ impl Type {
 
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Namespace {
     parts: Vec<String>,
 }
@@ -119,7 +119,7 @@ impl ToString for Namespace {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 enum ArgumentPassing {
     Reference,
     MutableReference,
@@ -127,7 +127,7 @@ enum ArgumentPassing {
     Clone,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Modifier {
     is_mutable: bool,
     is_reference: bool,
@@ -142,7 +142,7 @@ impl Modifier {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum TypeDescription {
     Type {
         name: String,
@@ -154,21 +154,42 @@ pub enum TypeDescription {
         type_parameters: Option<Vec<Box<TypeDescription>>>,
     },
 
-    //TODO: Tuple 
+    //TODO: Tuple
     // Tuple {
     //    type_parameters: Vec<Box<ArgumentType>>,
     //},
 
-    //TODO: Enum 
+    //TODO: Enum
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+impl TypeDescription {
+    fn simple_type(name: &str) -> Box<TypeDescription> {
+        Box::new(TypeDescription::Type {
+            name: name.to_string(),
+            type_parameters: None,
+        })
+    }
+
+    fn simple_type_with_simple_typ_args(name: &str, tp_names: Vec<&str>) -> Box<TypeDescription> {
+        Box::new(TypeDescription::Type {
+            name: name.to_string(),
+            type_parameters: Some(
+                tp_names
+                    .iter()
+                    .map(|name| TypeDescription::simple_type(name))
+                    .collect(),
+            ),
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum ArgumentConstruction {
     Constructor(String),
     ExistingObject()
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Argument {
     #[serde(rename = "type")]
     arg_type: Box<TypeDescription>,
@@ -235,7 +256,7 @@ impl Argument {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ObjectDescription {
     pub type_name: String,
     pub type_parameter_part: String,
@@ -244,7 +265,7 @@ pub struct ObjectDescription {
     pub is_mutable: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Constructor {
     New{function_name: Option<String>},
     NewWithObserver{function_name: Option<String>},
@@ -670,33 +691,64 @@ impl Constructor  {
     }
 }
 
-#[test]
-fn test_from_code() {
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let package_json = r#"
-    {
-        "name": "my_package",
-        "version": "1.0.0",
-        "crates": {
-          "my_crate": {
-            "types": {
-              "MyType": {
-                "type_parameters": ["U", "T"],
-                "constructors":{
-                    "New":{"NewWithObserver": {}},
-                    "FromCode":{"FromCode":{"code_template": "let {{fully_qualified_name}}:{{type_parameter_U}} = 5;"}}
-                 }
+    const PACKAGE_JSON: &str = r#"
+{
+    "name": "my_package",
+    "version": "1.0.0",
+    "crates": {
+    "my_crate": {
+        "types": {
+        "MyType": {
+            "inputs": null,
+            "outputs": null,
+            "type_parameters": ["U", "T"],
+            "constructors":{
+                "New":{"NewWithObserver": {}},
+                "FromCode":{"FromCode":{"code_template": "let {{fully_qualified_name}}:{{type_parameter_U}} = 5;"}}
             }
-            },
-            "modules": {}
-          }
         }
-      }
-    "#;
+        },
+        "modules": {}
+    }
+    }
+}
+        "#;
 
-    let package_1: Package = serde_json::from_str(&package_json).expect("wrong format.");
-    let mut pm_1 = PackageManager::new();
-    pm_1.add_package(package_1);
+        const PACKAGE_JSON_2: &str = r#"
+{
+    "name":"my_package",
+    "version":"1.0.0",
+    "crates":{
+    "my_crate":{
+        "types":{
+            "ValueNode":{
+                "type_parameters":[
+                "T"
+                ],
+                "constructors":{
+                "New":
+                {"NewWithArbitraryArgs":
+                { "arguments":
+                [
+                    {
+                        "arg_type":{
+                            "Generic":{
+                            "name":"T"
+                            }
+                        },
+                        "name":"value",
+                        "passing":"MutableReference",
+                        "construction":{"ExistingObject":[]}
+                    }
+                ]
+                    }
+                }
+                }
+            },
 
     let t_1 = pm_1.get_type("my_crate::MyType").expect("msg");
     let c_1 = t_1.constructors.get("FromCode").expect("");
@@ -712,119 +764,180 @@ fn test_from_code() {
         is_mutable: false,
     };
 
-    assert_eq!("let value:i32 = 5;", c_1.emit_code_template(&obj_1, &type_params_1, &pm_1, &ns_1).expect(""));    
+    assert_eq!("let value:i32 = 5;", c_1.emit_code_template(&obj_1, &type_params_1, &pm_1, &ns_1).expect(""));
 }
 
-#[test]
-fn test_arbitrary_args() {
-   
-    let package_json = r#"
-    {
-        "name":"flowrs-std",
-        "version":"1.0.0",
-        "crates":{
-           "flowrs_std":{
-              "types":{
-                 
-              },
-              "modules":{
-                 "nodes":{
-                    "types":{
-                       
-                    },
+        const PACKAGE_JSON_3: &str = r#"
+
+{
+    "name":"flowrs-std",
+    "version":"1.0.0",
+    "crates":{
+    "flowrs_std":{
+        "types":{
+
+        },
+        "modules":{
+            "nodes":{
+                "types":{
+
+                },
+                "modules":{
+                "debug":{
                     "modules":{
-                       "value":{
-                          "modules":{
-                             
-                          },
-                          "types":{
-                             "ValueType":{
-                                "constructors":{
-                                   "Json":"FromJson"
-                                }
-                             },
-                             "ValueNode":{
-                                "outputs":{
-                                    "output": { 
+
+                    },
+                    "types":{
+                        "DebugNode":{
+                            "inputs":[
+                            "input"
+                            ],
+                            "outputs":[
+                            "output"
+                            ],
+                            "type_parameters":[
+                            "I"
+                            ],
+                            "constructors":{
+                            "New":{"NewWithObserver": {}}
+                            }
+                        }
+                    }
+                },
+                "value":{
+                    "modules":{
+
+                    },
+                    "types":{
+                        "ValueType":{
+                            "constructors":{
+                            "Json":"FromJson"
+                            }
+                        },
+                        "ValueNode":{
+                            "inputs":[
+
+                            ],
+                            "outputs":[
+                            "output"
+                            ],
+                            "type_parameters":[
+                            "I"
+                            ],
+                            "constructors":{
+                            "New":{
+                                "NewWithArbitraryArgs":{
+                                    "arguments":[
+                                        {
                                         "type":{
                                             "Generic":{
                                                 "name":"I"
                                             }
+                                        },
+                                        "name":"value",
+                                        "passing":"Move",
+                                        "construction":{
+                                            "Constructor":"Json"
                                         }
-                                    }
-                                },
-                                "type_parameters":[
-                                   "I"
-                                ],
-                                "constructors":{
-                                   "New":{
-                                      "NewWithArbitraryArgs":{
-                                         "arguments":[
-                                            {
-                                              "name":"value",
-
-                                               "type":{
-                                                  "Generic":{
-                                                     "name":"I"
-                                                  }
-                                               },
-                                               "passing":"Move",
-                                               "construction":{
-                                                  "Constructor":"Json"
-                                               }
-                                            },
-                                            {
-                                                "name":"change_observer",
-
-                                               "type":{
-                                                  "Type":{
-                                                     "name":"()"
-                                                  }
-                                               },
-                                               "passing":"Clone",
-                                               "construction":{
-                                                  "ExistingObject":[
-                                                     
-                                                  ]
-                                               }
+                                        },
+                                        {
+                                        "type":{
+                                            "Type":{
+                                                "name":"()"
                                             }
-                                        ]
-                                      }
-                                   }
-                                }
-                             }
-                          }
-                       }
-                    }
-                 }
-              }
-           }
-        }
-     }    
-    "#;
+                                        },
+                                        "name":"change_observer",
+                                        "passing":"Clone",
+                                        "construction":{
+                                            "ExistingObject":[
 
-    let package_1: Package = serde_json::from_str(&package_json).expect("wrong format.");
+                                            ]
+                                        }
+                                        }
+                                    ]
+                                }
+                            }
+                            }
+                        }
+                    }
+                }
+                }
+            }
+        }
+    }
+    }
+}
+        "#;
+
+    #[test]
+    fn test() {
+        /*
+        let arg1 = Argument {
+            arg_type: ArgumentType::simple_type("my_crate::IntType"),
+            name: "my_argument".to_string(),
+            passing: ArgumentPassing::Move,
+            existing_object: false,
+        };
+
+        let args = vec![arg1];
+
+        let my_type = Type {
+            inputs: Option::None,
+            outputs: Option::None,
+            type_parameters: Option::None,
+            constructor: DynamicConstructor::NewWithArbitraryArgs(args),
+        };
+
+        let int_type = Type {
+            inputs: Option::None,
+            outputs: Option::None,
+            type_parameters: Option::None,
+            constructor: DynamicConstructor::New,
+        };
+        */
+
+        /*
+        let mut types = HashMap::<String, Type>::new();
+        types.insert("MyType".into(), my_type);
+        types.insert("IntType".into(), int_type);
+
+        let mut modules = HashMap::<String, Module>::new();
+
+        let my_crate = Crate{ types: types, modules: modules};
+
+        let mut crates = HashMap::<String, Crate>::new();
+        crates.insert("my_crate".into(), my_crate);
+
+        let p = Package { name: "my_package".into(), version: "1.0.0".into(), crates: crates};
+
+        let json = serde_json::to_string(&p).unwrap();
+        println!("{}", json);
+        */
+
+        let package_1: Package = serde_json::from_str(&PACKAGE_JSON).expect("wrong format.");
     let mut pm_1 = PackageManager::new();
     pm_1.add_package(package_1);
 
     let t_1 = pm_1.get_type("flowrs_std::nodes::value::ValueNode").expect("msg");
-    let c_1 = t_1.constructors.get("New").expect("");
-    let mut type_params_1 = HashMap::new();
-    type_params_1.insert("I".to_string(), "i32".to_string());
-    let mut ns_1: Namespace = Namespace::new();
+        let c_1 = t_1.constructors.get("New").expect("");
+        let mut type_params_1 = HashMap::new();
+        type_params_1.insert("I".to_string(), "i32".to_string());
+        let mut ns_1: Namespace = Namespace::new();
 
-    let obj_1 = ObjectDescription {
-        type_name: "flowrs_std::nodes::value::ValueNode".to_string(),
-        type_parameter_part: "".to_string(),
-        name: "value_node".to_string(),
+        let obj_1 = ObjectDescription {
+            type_name: "flowrs_std::nodes::value::ValueNode".to_string(),
+            type_parameter_part: "".to_string(),
+            name: "value_node".to_string(),
         is_mutable: false,
     };
 
-    let code = c_1.emit_code_template(&obj_1, &type_params_1, &pm_1, &ns_1).expect("");
+        let code = c_1.emit_code_template(&obj_1, &type_params_1, &pm_1, &ns_1).expect("");
 
     println!("{}",code);
 
-    assert_eq!(
+        assert_eq!(
         "let value_node_value: i32 = serde_json::from_value(data[\"value_node\"][\"value\"].clone()).expect(\"Could not create \'value_node_value\' from Json.\");\nlet value_node = flowrs_std::nodes::value::ValueNode::new(value_node_value, change_observer.clone());"
-        , code)    
+            , code)
+}
+
 }

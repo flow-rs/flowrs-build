@@ -177,3 +177,28 @@ impl PackageManager {
         Option::None
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_package_test() {
+        let pm = PackageManager::new();
+        let package_opt = pm.get_package("built-in");
+
+        assert!(!package_opt.is_none());
+        let package = package_opt.unwrap();
+        assert_eq!("built-in", package.name);
+    }
+
+    #[test]
+    fn get_all_packages_test() {
+        let pm = PackageManager::new();
+        let package_opt = pm.get_package("built-in");
+        let package = package_opt.unwrap();
+        let package_vec = pm.get_all_packages();
+        assert!(package_vec.contains(package));
+    }
+}
