@@ -5,12 +5,11 @@ import {ConnectionPlugin, Presets as ConnectionPresets,} from 'rete-connection-p
 
 import {Presets as VuePresets, type VueArea2D, VuePlugin} from 'rete-vue-plugin';
 
-import {DataflowEngine} from 'rete-engine';
 import {AutoArrangePlugin, Presets as ArrangePresets,} from 'rete-auto-arrange-plugin';
 
 import {type ContextMenuExtra,} from 'rete-context-menu-plugin';
 import {type MinimapExtra, MinimapPlugin} from 'rete-minimap-plugin';
-import {RerouteExtensions, type RerouteExtra, ReroutePlugin,} from 'rete-connection-reroute-plugin';
+import {type RerouteExtra, ReroutePlugin,} from 'rete-connection-reroute-plugin';
 import {type HistoryActions, HistoryExtensions, HistoryPlugin, Presets} from "rete-history-plugin";
 import {FlowrsNode} from "~/rete/flowrs/flowrsNode";
 import {ContextCreator} from "~/rete/flowrs/contextCreator";
@@ -37,9 +36,9 @@ export class Connection<A extends Node, B extends Node> extends Classic.Connecti
 
 export class DropdownControl extends Classic.Control {
     typeName: string;
-    possibleValues: TypeDefinition[];
+    possibleValues: [string, TypeDefinition][];
 
-    constructor(typeName: string, possibleValues: TypeDefinition[], onSelection: (selectedValue: string) => void) {
+    constructor(typeName: string, possibleValues: [string, TypeDefinition][], public onSelection: (selectedValue: [string, TypeDefinition]) => void) {
         super()
         this.typeName = typeName;
         this.possibleValues = possibleValues;
@@ -50,19 +49,16 @@ export async function createEditor(container: HTMLElement) {
     const editor = new NodeEditor<Schemes>();
     const area = new AreaPlugin<Schemes, AreaExtra>(container);
     const connection = new ConnectionPlugin<Schemes, AreaExtra>();
-
     const vueRender = new VuePlugin<Schemes, AreaExtra>();
-
     const minimap = new MinimapPlugin<Schemes>();
     const reroutePlugin = new ReroutePlugin<Schemes>();
     const history = new HistoryPlugin<Schemes, HistoryActions<Schemes>>();
+
     history.addPreset(Presets.classic.setup())
     HistoryExtensions.keyboard(history);
 
     editor.use(area);
-
     area.use(vueRender);
-
     area.use(connection);
     area.use(minimap);
     area.use(history);
@@ -73,7 +69,7 @@ export async function createEditor(container: HTMLElement) {
 
     vueRender.addPreset(VuePresets.classic.setup({
         customize: {
-            control (data) {
+            control(data) {
                 if (data.payload instanceof DropdownControl) {
                     return CustomDropdownControl;
                 }
@@ -100,10 +96,6 @@ export async function createEditor(container: HTMLElement) {
         })
     );
 
-    const dataflow = new DataflowEngine<Schemes>();
-
-    editor.use(dataflow);
-
     // inject all flowrs specific things into rete editor
     const contextMenu = await ContextCreator.addFlowrsElements(editor);
     area.use(contextMenu);
@@ -119,12 +111,6 @@ export async function createEditor(container: HTMLElement) {
     await AreaExtensions.zoomAt(area, editor.getNodes());
 
     AreaExtensions.simpleNodesOrder(area);
-
-    const selector = AreaExtensions.selector();
-    const accumulating = AreaExtensions.accumulateOnCtrl();
-
-    AreaExtensions.selectableNodes(area, selector, {accumulating});
-    RerouteExtensions.selectablePins(reroutePlugin, selector, accumulating);
 
     return {
         destroy: () => area.destroy(),

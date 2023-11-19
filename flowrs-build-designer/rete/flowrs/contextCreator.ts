@@ -52,7 +52,7 @@ export class ContextCreator {
                 project.flow.data[flowNode]?.value,
                 currentNode.constructor,
                 currentNode.type_parameters,
-                Object.values(typeDefinitionsMap));
+                typeDefinitionsMap);
 
             await editor.addNode(node);
             allAddedNodes.set(flowNode, node);
@@ -102,7 +102,7 @@ export class ContextCreator {
                         null,
                         "New",
                         null,
-                        Object.values(typeDefinitionsMap))]);
+                        typeDefinitionsMap)]);
             }
             if (constructorDefinition.NewWithToken) {
                 constructableNodes.push(["NewWithToken",
@@ -112,7 +112,7 @@ export class ContextCreator {
                         null,
                         "NewWithToken",
                         null,
-                        Object.values(typeDefinitionsMap))]);
+                        typeDefinitionsMap)]);
             }
             output.push([fullTypeName, constructableNodes]);
         }

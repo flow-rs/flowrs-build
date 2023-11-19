@@ -25,14 +25,14 @@ export class FlowrsNode extends Classic.Node<
     public genericsResolutionMap: Map<string, string> = new Map();
     private keyToTypeParameterMap: Map<string, string> = new Map();
     public constructor_type: string = "New";
-    private compatibleTypes: Map<string, TypeDefinition[]> = new Map();
+    private compatibleTypes: Map<string, [string, TypeDefinition][]> = new Map();
 
     constructor(name: string,
                 typeDefinition: TypeDefinition,
                 data: { [key: string]: any } | null,
                 constructor_type: string,
                 typeParameters: { [key: string]: string } | null,
-                allPossibleTypes: TypeDefinition[]
+                allPossibleTypes: Map<string, TypeDefinition>
     ) {
         super(name);
 
@@ -94,10 +94,14 @@ export class FlowrsNode extends Classic.Node<
             }
             this.addControl(
                 typeParameter,
-                new DropdownControl(typeParameter, possibleValues, selectedValue => {
-                    this.genericsResolutionMap.set(typeParameter, selectedValue)
+                new DropdownControl(typeParameter, possibleValues, (selectedValue: [string, TypeDefinition]) => {
+                    if (selectedValue?.at(0)) {
+                        this.genericsResolutionMap.set(typeParameter, selectedValue[0]);
+                        console.log("callback",selectedValue)
+                    }
                 })
             );
+            this.height += 75;
         }
     }
 
@@ -121,11 +125,13 @@ export class FlowrsNode extends Classic.Node<
         console.log("Type parameters set:", this.genericsResolutionMap);
     }
 
-    private calculateCompatibleTypes(constructorDescription: ConstructorDescription | undefined, allPossibleTypes: TypeDefinition[]) {
+    private calculateCompatibleTypes(constructorDescription: ConstructorDescription | undefined, allPossibleTypes: Map<string, TypeDefinition>) {
         if (!constructorDescription?.arguments) {
             return;
         }
+        console.log("arguments", constructorDescription.arguments)
         for (const argument of constructorDescription.arguments) {
+            console.log("check if fitting:", argument.type.Generic, argument.construction.Constructor)
             if (argument.type.Generic && argument.construction.Constructor) {
                 this.compatibleTypes.set(argument.type.Generic.name, this.filterTypesWithConstructor(argument.construction.Constructor, allPossibleTypes))
             }
@@ -179,21 +185,27 @@ export class FlowrsNode extends Classic.Node<
         return {value,};
     }
 
-    private filterTypesWithConstructor(constructorName: string, allPossibleTypes: TypeDefinition[]) {
+    private filterTypesWithConstructor(constructorName: string, allPossibleTypes: Map<string, TypeDefinition>) {
+        console.log("get types with constructor ", constructorName, allPossibleTypes)
         let filteredTypes = [];
         for (const possibleType of allPossibleTypes) {
-            let constructorDefinition = possibleType.constructors;
+            let typeDefinition = possibleType[1];
+            let constructorDefinition = typeDefinition.constructors;
+            console.log('possible type ', typeDefinition, constructorDefinition)
             for (const key in constructorDefinition.New) {
+                console.log(key, constructorName)
                 if (key == constructorName) {
                     filteredTypes.push(possibleType);
                 }
             }
             for (const key in constructorDefinition.NewWithToken) {
+                console.log(key, constructorName)
                 if (key == constructorName) {
                     filteredTypes.push(possibleType);
                 }
             }
         }
+        console.log("filtered type:", filteredTypes)
         return filteredTypes;
     }
 }
