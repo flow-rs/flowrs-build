@@ -21,13 +21,13 @@ export type TimerTokenNode = {
     value: number
 };
 
-export type FlowNode<T> = {
+export type FlowNode = {
     node_type: string;
-    type_parameters: T;
+    type_parameters: { [key: string]: string };
     constructor: string;
 };
 
-type Connection = {
+export type FlowConnection = {
     from_node: string;
     from_output: string;
     to_node: string;
@@ -48,9 +48,9 @@ export type FlowProject = {
         path: string;
     }>;
     flow: {
-        nodes: { [key: string]: FlowNode<any> };
-        connections: Connection[];
-        data: FlowData;
+        nodes: { [key: string]: FlowNode };
+        connections: FlowConnection[];
+        data: { [key: string]: any };
     };
 };
 

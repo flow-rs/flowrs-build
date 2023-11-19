@@ -1,29 +1,64 @@
 
 import FetchFactory from '../factory';
 
-type Crate = {
+export type Crate = {
     name: string;
     version: string;
     crates: Record<string, CrateType>;
 }
 
-type CrateType = {
+export type CrateType = {
     types: Record<string, TypeDefinition>;
     modules: Record<string, ModuleDefinition>;
 }
 
-type TypeDefinition = {
-    inputs: string[] | null;
-    outputs: string[] | null;
-    type_parameters: string[] | null;
-    constructors: Record<string, string>;
+export type TypeDefinition = {
+    inputs: Record<string, TypeWrapper>;
+    outputs: Record<string, TypeWrapper>;
+    type_parameters?: string[];
+    constructors: ConstructorDefinition;
 }
 
-type ModuleDefinition = {
+export type TypeDescription = {
+    Generic?: {
+        name: string;
+        type_parameters?: TypeWrapper[];
+    };
+    Type?: {
+        name: string;
+        type_parameters?: TypeWrapper[];
+    }
+};
+export type TypeWrapper = {
+    type: TypeDescription
+}
+
+export type ModuleDefinition = {
     types: Record<string, TypeDefinition>;
     modules: Record<string, ModuleDefinition>;
 }
 
+export type ConstructorDefinition = {
+    Json?: string,
+    Default?: string,
+    New?: Record<string, ConstructorDescription>,
+    NewWithToken?: Record<string, ConstructorDescription>,
+}
+
+export type ConstructorDescription = {
+    function_name: string,
+    arguments?: ArgumentDefinition[],
+}
+
+export type ArgumentDefinition = {
+    type: TypeDescription,
+    name: string,
+    passing: string,
+    construction: {
+        Constructor?: string,
+        ExistingObject?: string,
+    }
+}
 
 class PackagesModule extends FetchFactory {
     private RESOURCE = '/packages/';
@@ -32,8 +67,51 @@ class PackagesModule extends FetchFactory {
         return await this.call<Crate[]>('GET', `${this.RESOURCE}`)
     }
 
+    // returns a parsed map of all packages, where the full type name is mapped to its typeDefinition
+    async getFlowrsTypeDefinitionsMap() : Promise<Map<string, TypeDefinition>> {
+        const crates = await this.getFlowrsPackages();
+
+        console.log('mapped packages to js-objects', crates)
+        const packageMap: Map<string, TypeDefinition> = new Map<string, TypeDefinition>();
+
+
+        for (const crate of crates) {
+            if (!crate) {
+                continue
+            }
+
+            let crateTypes = crate.crates;
+
+            for (let crateName in crateTypes) {
+                let crateType = crateTypes[crateName];
+                this.populatePackageMap(crateType.modules, crateType.types, packageMap, crateName);
+            }
+        }
+
+        return packageMap
+    }
+
     async getFlowrsPackageByName(packageName : string) : Promise<Crate> {
         return await this.call<Crate>('GET', `${this.RESOURCE}${packageName}`)
+    }
+
+    // recursively constructs the name and adds all type definition underneath that name to the map
+    private populatePackageMap(moduleDefinition: Record<string, ModuleDefinition>, typeDefinition: Record<string, TypeDefinition>, packageMap: Map<string, TypeDefinition>, packagePath: string) {
+        // add all typeDefinitions under this name
+        this.addTypeDefinitions(typeDefinition, packageMap, packagePath);
+
+        // go to the next module
+        for (const moduleName in moduleDefinition) {
+            const nextPackagePath = packagePath + "::" + moduleName;
+            const nextModuleDefinition = moduleDefinition[moduleName];
+            this.populatePackageMap(nextModuleDefinition.modules, nextModuleDefinition.types, packageMap, nextPackagePath);
+        }
+    }
+
+    private addTypeDefinitions(typeDefinitions: Record<string, TypeDefinition>, packageMap: Map<string, TypeDefinition>, packagePath: string) {
+        for (const typeDefinitionName in typeDefinitions) {
+            packageMap.set(packagePath+ "::"+ typeDefinitionName, typeDefinitions[typeDefinitionName])
+        }
     }
 }
 

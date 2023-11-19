@@ -1,4 +1,4 @@
-import { BaseSchemes } from "rete";
+import {type BaseSchemes } from "rete";
 import { AreaPlugin } from "rete-area-plugin";
 import './background.css'
 
