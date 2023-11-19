@@ -20,7 +20,7 @@ import type {TypeDefinition} from "~/repository/modules/packages";
 
 type Node = FlowrsNode;
 type Conn =
-    | Connection<FlowrsNode, FlowrsNode>
+    | Connection<FlowrsNode, FlowrsNode>;
 export type Schemes = GetSchemes<Node, Conn>;
 
 type AreaExtra =
@@ -32,7 +32,6 @@ type AreaExtra =
 
 export class Connection<A extends Node, B extends Node> extends Classic.Connection<A, B> {
 }
-
 
 export class DropdownControl extends Classic.Control {
     typeName: string;
