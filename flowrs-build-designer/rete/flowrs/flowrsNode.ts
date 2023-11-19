@@ -1,4 +1,3 @@
-import {type DataflowNode} from "rete-engine";
 import {ClassicPreset, ClassicPreset as Classic} from 'rete';
 import {
     type ConstructorDefinition,
@@ -17,8 +16,7 @@ export class FlowrsNode extends Classic.Node<
         string,
         | DropdownControl
         | ClassicPreset.InputControl<"number">
-        | ClassicPreset.InputControl<"text">
-    >> implements DataflowNode {
+        | ClassicPreset.InputControl<"text">>> {
     width = 500;
     height = 140;
     public node_data: string | undefined;
