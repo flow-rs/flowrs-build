@@ -18,7 +18,9 @@ export default defineNuxtConfig({
                   secondary: '#242f57',
                   accent: '#30E3A3',
                   error: '#ff5722',
-
+                  info: '#0099CC',
+                  warning: '#ffbb33',
+                  success: '#007E33'
               }
           }
       }

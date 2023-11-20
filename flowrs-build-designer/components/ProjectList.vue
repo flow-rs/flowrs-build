@@ -61,14 +61,14 @@ defineProps({
     <v-card-actions>
       <v-row class="mb-2 mt-2">
         <v-col class="d-flex justify-space-around">
-          <v-btn prepend-icon="mdi-open-in-app" color="blue" :disabled="!projectClicked" @click="openProjectAsFlow()">
+          <v-btn prepend-icon="mdi-open-in-app" color="primary" :disabled="!projectClicked" @click="openProjectAsFlow()">
             Open
           </v-btn>
-          <v-btn prepend-icon="mdi-plus" color="green" @click="createProject()">Create flow</v-btn>
-          <v-btn prepend-icon="mdi-delete-forever" color="red" :disabled="!projectClicked" @click="deleteProject()">
+          <v-btn prepend-icon="mdi-plus" color="success" @click="createProject()">Create flow</v-btn>
+          <v-btn prepend-icon="mdi-delete-forever" color="error" :disabled="!projectClicked" @click="deleteProject()">
             Delete
           </v-btn>
-          <v-btn prepend-icon="mdi-refresh" color="orange" @click="refreshProjectList()">Refresh list</v-btn>
+          <v-btn prepend-icon="mdi-refresh" color="warning" @click="refreshProjectList()">Refresh list</v-btn>
         </v-col>
       </v-row>
     </v-card-actions>

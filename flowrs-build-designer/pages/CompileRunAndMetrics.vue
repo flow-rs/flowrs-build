@@ -1,10 +1,9 @@
 <script setup lang="ts">
 
-import {useProjectsStore} from "~/store/projectStore";
 import ProjectActionPane from "~/components/ProjectActionPane.vue";
+import Terminal from "~/components/Terminal.vue";
 
-const projectsStore = useProjectsStore()
-const logEntries = computed(() => projectsStore.logEntries);
+
 
   //TODO: extract compontens in own files
 
@@ -37,8 +36,9 @@ const logEntries = computed(() => projectsStore.logEntries);
       <ProjectActionPane></ProjectActionPane>
     </v-col>
 
-    <v-col cols="9" class="border-col">
-        <div v-for="logEntry in logEntries" :key="logEntry">{{ logEntry }}</div>
+    <v-col cols="9">
+      <Terminal></Terminal>
+
 
     </v-col>
 

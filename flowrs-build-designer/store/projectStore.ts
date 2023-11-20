@@ -8,10 +8,12 @@ export const useProjectsStore = defineStore({
         return ({
             projects: [] as FlowProject[],
             selectedProject: null as FlowProject | null,
+            selectedBuildType: 'cargo',
             loading: false,
             activeFilter: "",
             logEntries: [] as string[],
-            runningProcessesMap: new Map() as Map<string, number | -1>
+            runningProcessesMap: new Map() as Map<string, number | undefined>
+            //TODO: add all projects in runningProcessMap
         });
     },
     actions: {
@@ -50,7 +52,7 @@ export const useProjectsStore = defineStore({
             this.loading = true
             $api.projects.runProject(projectIdentifier, buildType).then(response => {
                 console.log("Flow Project is running!")
-                this.addLogEntry("Flow Project execution started!")
+                this.addLogEntry("Flow Projekt Ausführung wurde gestartet.")
                 this.runningProcessesMap.set(projectIdentifier.project_name, response.process_id)
             }).catch((error) => {
                 console.log("Error compiling projects:" + error)
@@ -69,16 +71,13 @@ export const useProjectsStore = defineStore({
                 this.loading = true
                 $api.processes.stopProcess(processIdentifier).then(response => {
                     console.log("Flow Project is stopped!")
-                    this.addLogEntry("Flow Project execution stopped!")
-                    this.runningProcessesMap.set(this.selectedProject.name, -1)
+                    this.addLogEntry("Ausführung vom Flow-Projekt gestoppt.")
+                    this.runningProcessesMap.set(this.selectedProject.name, undefined)
                 }).catch((error) => {
                     console.log("Error compiling projects:" + error)
                 })
                     .finally(() => (this.loading = false))
             }
-
-
-
         },
 
         async compileProjectRequest(projectName: string, buildType: string) {
@@ -96,10 +95,35 @@ export const useProjectsStore = defineStore({
                 .finally(() => (this.loading = false))
         },
 
+        async getLogs() {
+            const {$api} = useNuxtApp();
+
+            let processId = this.runningProcessesMap.get(this.selectedProject.name)
+            if (processId != undefined && processId != -1) {
+                const processIdentifier: ProcessIdentifier = {
+                    process_id: processId
+                }
+                this.loading = true
+                $api.processes.getProcessLogs(processIdentifier).then(response => {
+                    console.log("Getting Logs of process  with the id", processIdentifier.process_id)
+                    console.log(response)
+                    response.forEach((item) => this.addLogEntry(item))
+                }).catch((error) => {
+                    console.log("Error compiling projects:" + error)
+                })
+                    .finally(() => (this.loading = false))
+            }
+        },
+
         selectProject(project: FlowProject) {
             this.selectedProject = project;
             this.activeFilter = 'noFilter'
         },
+
+        selectBuildType(buildType: string) {
+            this.selectedBuildType = buildType;
+        },
+
         setActiveFilter(value: string) {
             this.activeFilter = value
         },
@@ -108,6 +132,13 @@ export const useProjectsStore = defineStore({
           const timestamp = new Date().toLocaleString();
           const logEntry = `[${timestamp}] ${entry}`;
           this.logEntries.push(logEntry)
+        },
+
+        getCurrentProcessId() {
+            let processId = this.runningProcessesMap.get(this.selectedProject.name)
+            if (processId != undefined) {
+                return processId
+            }
         }
     }
 })

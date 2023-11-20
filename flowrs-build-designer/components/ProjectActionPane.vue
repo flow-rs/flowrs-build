@@ -4,15 +4,19 @@ import {ref, watch} from "vue";
 import {type FlowProject} from "~/repository/modules/projects";
 
 const projectsStore = useProjectsStore()
-//TODO: new tab or new page?
+//TODO: new tab or new page?, store log messages and status of the running processes across page switch
 const selectedProject = ref(projectsStore.selectedProject);
 const loading = computed(() => projectsStore.loading);
 const projects = computed(() => projectsStore.projects);
 const buildType = ['cargo', 'wasm']
-const selectedBuildType = ref(null)
+const selectedBuildType = ref(projectsStore.selectedBuildType)
 
-// watch works directly on a ref
+//TODO: disable run button if process is started; prevent multiple processes to run for the same project
+// TODO: auto pull log messages
+
 watch(selectedProject, () => projectsStore.selectProject(selectedProject.value as FlowProject))
+
+watch(selectedBuildType, () => projectsStore.selectBuildType(selectedBuildType.value))
 
 const run = () => {
   //TODO: check that the run type is the same as the compile type
@@ -26,10 +30,15 @@ const stop = () => {
 const compile = () => {
   projectsStore.compileProjectRequest(selectedProject.value.name, selectedBuildType.value)
 }
+
+const getCurrentLogs = () => {
+  projectsStore.getLogs()
+}
+
 </script>
 
 <template>
-  <v-card title="Project Control Panel">
+  <v-card title="Control Panel">
     <v-select
         v-if="projects.length > 0"
         v-model="selectedProject"
@@ -55,18 +64,23 @@ const compile = () => {
       <v-col>
         <v-btn prepend-icon="mdi-code-braces" rounded="0" size="large" @click="compile()" class="mb-2 ml-2" :loading="loading">
           <template v-slot:loader>
-            <v-progress-linear indeterminate color="#2face2" rounded height="25"> Compiling</v-progress-linear>
+            <v-progress-linear indeterminate color="primary" rounded height="25"> Compiling</v-progress-linear>
           </template>
           Compile project
         </v-btn>
 
-        <v-btn prepend-icon="mdi-play" rounded="0" size="large" @click="run()" class="mb-2">
+        <v-btn color="success" prepend-icon="mdi-play" rounded="0" size="large" @click="run()" class="mb-2">
           Run project
         </v-btn>
 
-        <v-btn prepend-icon="mdi-stop" rounded="0" size="large" @click="stop()">
+        <v-btn color="error" prepend-icon="mdi-stop" rounded="0" size="large" @click="stop()">
           Stop execution
         </v-btn>
+
+        <v-btn color="secondary" prepend-icon="mdi-refresh" rounded="0" size="large" @click="getCurrentLogs()">
+          get current logs (Testing)
+        </v-btn>
+
       </v-col>
     </v-card-actions>
     </div>
