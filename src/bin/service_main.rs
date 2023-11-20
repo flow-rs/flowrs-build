@@ -6,14 +6,18 @@ use axum::{
     Json, Router,
 };
 use tokio::sync::broadcast;
-use tower::{Service, Layer};
+
+use dotenv::dotenv;
+
 use tower_http::cors::{Any, CorsLayer};
-use std::net::SocketAddr;
+
+use std::net::{SocketAddr, Ipv4Addr, IpAddr};
 use std::sync::{Arc, Mutex};
 use std::fs::File;
 use std::io::Read;
 use std::fs;
 use axum::handler::{Handler, HandlerWithoutStateExt};
+use axum::routing::delete;
 use clap::Parser;
 
 use flowrs_build::{
@@ -90,6 +94,14 @@ async fn handle_shutdown_signal(
 #[tokio::main]
 async fn main() {
 
+
+    // Read Environment Variables
+    dotenv().ok();
+    let host_ip:String = std::env::var("HOST_IP").expect("HOST_IP must be set correctly");
+    let host_ip_addr:IpAddr = IpAddr::V4(host_ip.parse::<Ipv4Addr>().unwrap());
+    let host_port:String = std::env::var("HOST_PORT").expect("HOST_PORT must be set correctly");
+    let host_port_u16:u16 = host_port.parse::<u16>().unwrap();
+
     let (stopper_sender, _) = broadcast::channel::<()>(1);
     let stopper_sender_clone = stopper_sender.clone();
     tokio::spawn(handle_shutdown_signal(stopper_sender_clone));
@@ -120,10 +132,7 @@ async fn main() {
        .allow_methods(Any)
        .allow_headers(Any);
 
-    let api_app = Router::new()
-        //.route("/build/:project_name", get(build_package)) // TODO merge with compile
-        //.route("/file/:project_name/:file_name", get(get_file)) // FIXME
-        //.with_state(project_manager.clone())
+    let mut app = Router::new()
         .route("/packages/:package_name", get(get_package_by_name))
         .route("/packages/", get(get_all_packages))
         .with_state(package_manager.clone())
@@ -131,6 +140,7 @@ async fn main() {
         .route("/projects/", post(create_project))
         .with_state((project_manager.clone(), package_manager.clone()))
         .route("/projects/", get(get_all_projects))
+        .route("/projects/:project_name/", delete(delete_project))
         .route("/projects/:project_name/compile", post(compile_project))
         .route("/projects/:project_name/run", post(run_project))
         .route("/processes/:process_id/stop", post(stop_process))
@@ -138,9 +148,9 @@ async fn main() {
         .with_state(project_manager.clone());
 
 
-
-    let app = Router::new().nest("/api", api_app).layer(cors);
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::new(host_ip_addr, host_port_u16);
+    app = Router::new().nest("/api", app).layer(cors);
+  
     println!("-> Listening on {}", addr);
     
     let server = axum::Server::bind(&addr)
@@ -202,6 +212,36 @@ async fn create_project(
             let response = Response::builder()
                 .status(StatusCode::CREATED)
                 .body(Body::from(serde_json::to_string(&flow_project).unwrap()))
+                .unwrap();
+
+            Ok(response)
+        }
+        Err(err) => {
+            // Return an error response with status code and error message in the body
+            let response = Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(err.to_string()))
+                .unwrap();
+
+            Ok(response)
+        }
+    }
+}
+
+async fn delete_project(
+    Path(project_name): Path<String>,
+    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
+) -> Result<Response<Body>, StatusCode> {
+    match project_manager
+        .lock()
+        .unwrap()
+        .delete_flow_project(project_name.as_str())
+    {
+        Ok(result) => {
+            // Return a success response with the created object in the body
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(result))
                 .unwrap();
 
             Ok(response)

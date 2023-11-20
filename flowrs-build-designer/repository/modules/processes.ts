@@ -1,4 +1,4 @@
-import {FetchOptions} from "ofetch";
+import {type FetchOptions} from "ofetch";
 import FetchFactory from "~/repository/factory";
 
 export type ProcessIdentifier = {

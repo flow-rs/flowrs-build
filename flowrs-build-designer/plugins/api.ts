@@ -1,6 +1,6 @@
 
 import PackagesModule from "~/repository/modules/packages";
-import {$fetch, FetchOptions} from "ofetch";
+import {$fetch, type FetchOptions} from "ofetch";
 import ProjectsModule from "~/repository/modules/projects";
 import ProcessesModule from "~/repository/modules/processes";
 
@@ -11,10 +11,8 @@ interface IApiInstance {
 }
 
 export default defineNuxtPlugin((nuxtApp) => {
-    const config = useRuntimeConfig();
-
+    useRuntimeConfig();
     const fetchOptions: FetchOptions = {
-        // baseURL: config.public.apiBaseUrl
         baseURL: "http://127.0.0.1:3000/api"
     };
 

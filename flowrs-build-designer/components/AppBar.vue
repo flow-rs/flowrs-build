@@ -12,8 +12,8 @@ console.log(currentPage)
     <v-toolbar-title>
       Flowrs - Flow Builder
     </v-toolbar-title>
-    <v-btn v-if="currentPage=='index'" variant="elevated" class="ma-1" color="primary" to="/projectSelect">Save Project</v-btn>
-    <v-btn  variant="elevated" class="ma-1" color="primary" to="/projectSelect">Project Select</v-btn>
+    <v-btn v-if="currentPage=='FlowBuilder'" variant="elevated" class="ma-1" color="primary" to="/">Save Project</v-btn>
+    <v-btn  variant="elevated" class="ma-1" color="primary" to="/">Project Select</v-btn>
     <v-btn  variant="elevated" class="ma-1" color="primary" to="/packageSelect">Package Select</v-btn>
     <v-btn  variant="elevated" class="ma-1" color="primary" to="/">Compile, Run and Metrics</v-btn>
     <v-spacer></v-spacer>
