@@ -11,7 +11,7 @@ export const useProjectsStore = defineStore({
             selectedBuildType: 'cargo',
             loading: false,
             activeFilter: "",
-            logEntries: [] as string[],
+            logEntriesMap: new Map() as Map<string, string[]>,
             runningProcessesMap: new Map() as Map<string, number | undefined>
         });
     },
@@ -51,7 +51,8 @@ export const useProjectsStore = defineStore({
             this.loading = true
             $api.projects.runProject(projectIdentifier, buildType).then(response => {
                 console.log("Flow Project is running!")
-                this.addLogEntry("Flow Projekt Ausführung wurde gestartet.")
+                let logEntries = this.logEntriesMap.get(this.selectedProject.name)
+                this.updateLogEntryMap(logEntries, "Flow Projekt Ausführung wurde gestartet.")
                 this.runningProcessesMap.set(projectIdentifier.project_name, response.process_id)
             }).catch((error) => {
                 console.log("Error compiling projects:" + error)
@@ -70,7 +71,8 @@ export const useProjectsStore = defineStore({
                 this.loading = true
                 $api.processes.stopProcess(processIdentifier).then(response => {
                     console.log("Flow Project is stopped!")
-                    this.addLogEntry("Ausführung vom Flow-Projekt gestoppt.")
+                    let logEntries = this.logEntriesMap.get(this.selectedProject.name)
+                    this.updateLogEntryMap(logEntries, "Ausführung vom Flow-Projekt gestoppt.")
                     this.runningProcessesMap.set(this.selectedProject.name, undefined)
                 }).catch((error) => {
                     console.log("Error compiling projects:" + error)
@@ -87,7 +89,8 @@ export const useProjectsStore = defineStore({
             this.loading = true
             $api.projects.compileProject(projectIdentifier, buildType).then(response => {
                 console.log("Flow Project is compiled!")
-                this.addLogEntry(response)
+                let logEntries = this.logEntriesMap.get(this.selectedProject.name)
+                this.updateLogEntryMap(logEntries, response)
             }).catch((error) => {
                 console.log("Error compiling projects:" + error)
             })
@@ -106,7 +109,10 @@ export const useProjectsStore = defineStore({
                 $api.processes.getProcessLogs(processIdentifier).then(response => {
                     console.log("Getting Logs of process  with the id", processIdentifier.process_id)
                     console.log(response)
-                    response.forEach((item) => this.addLogEntry(item))
+                    response.forEach((item) => {
+                        let logEntries = this.logEntriesMap.get(this.selectedProject.name)
+                        this.updateLogEntryMap(logEntries, item)
+                    })
                 }).catch((error) => {
                     console.log("Error compiling projects:" + error)
                 })
@@ -127,10 +133,22 @@ export const useProjectsStore = defineStore({
             this.activeFilter = value
         },
 
-        addLogEntry(entry: string) {
-          const timestamp = new Date().toLocaleString();
-          const logEntry = `[${timestamp}] ${entry}`;
-          this.logEntries.push(logEntry)
+        updateLogEntryMap(entries: string[] | undefined, entryToAdd: string) {
+            if (entries != undefined) {
+                const updatedEntries = this.addLogEntry(entryToAdd, entries)
+                this.logEntriesMap.set(this.selectedProject.name, updatedEntries)
+            } else {
+                const entries: string[] = []
+                const updatedEntries = this.addLogEntry(entryToAdd, entries)
+                this.logEntriesMap.set(this.selectedProject.name, updatedEntries)
+            }
+        },
+
+        addLogEntry(entry: string, entryList: string[]): string[] {
+            const timestamp = new Date().toLocaleString();
+            const logEntry = `[${timestamp}] ${entry}`;
+            entryList.push(logEntry)
+            return entryList
         },
 
         getCurrentProcessId() {
@@ -138,6 +156,10 @@ export const useProjectsStore = defineStore({
             if (processId != undefined) {
                 return processId
             }
+        },
+
+        getCurrentLogEntries() {
+            return this.logEntriesMap.get(this.selectedProject.name)
         }
     }
 })

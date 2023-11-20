@@ -2,7 +2,7 @@
 import {useProjectsStore} from "~/store/projectStore";
 
 const projectsStore = useProjectsStore()
-const logEntries = computed(() => projectsStore.logEntries);
+const logEntries = computed(() => projectsStore.getCurrentLogEntries());
 projectsStore.getAll()
 
 
