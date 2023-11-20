@@ -3,6 +3,7 @@ import {useProjectsStore} from "~/store/projectStore";
 
 const projectsStore = useProjectsStore()
 const logEntries = computed(() => projectsStore.logEntries);
+projectsStore.getAll()
 
 
 //TODO: Autoscrolling
@@ -11,7 +12,9 @@ const logEntries = computed(() => projectsStore.logEntries);
 <template>
   <v-card title="Log Panel" >
     <div class="pb-2 pl-2 flex-content" >
+      <div v-if="projectsStore.selectedProject != null" class="flex-content">
         <v-chip color="primary" class="mr-2" label>Project name: {{projectsStore.selectedProject.name}}</v-chip>
+      </div>
       <v-chip color="primary" class="mr-2" label>Build/Run type: {{projectsStore.selectedBuildType}}</v-chip>
       <div v-if="projectsStore.getCurrentProcessId() != undefined" class="flex-content">
         <v-chip color="primary" class="mr-2" label>Process id: {{projectsStore.getCurrentProcessId()}}</v-chip>

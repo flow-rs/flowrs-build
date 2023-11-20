@@ -13,7 +13,6 @@ export const useProjectsStore = defineStore({
             activeFilter: "",
             logEntries: [] as string[],
             runningProcessesMap: new Map() as Map<string, number | undefined>
-            //TODO: add all projects in runningProcessMap
         });
     },
     actions: {

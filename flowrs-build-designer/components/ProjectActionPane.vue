@@ -14,6 +14,8 @@ const selectedBuildType = ref(projectsStore.selectedBuildType)
 //TODO: disable run button if process is started; prevent multiple processes to run for the same project
 // TODO: auto pull log messages
 
+//TODO: add "status led" which indicates if one project is running / List of running projects?
+
 watch(selectedProject, () => projectsStore.selectProject(selectedProject.value as FlowProject))
 
 watch(selectedBuildType, () => projectsStore.selectBuildType(selectedBuildType.value))

@@ -2,7 +2,7 @@
 
 import ProjectActionPane from "~/components/ProjectActionPane.vue";
 import Terminal from "~/components/Terminal.vue";
-
+import {useProjectsStore} from "~/store/projectStore";
 
 
   //TODO: extract compontens in own files
@@ -13,37 +13,44 @@ import Terminal from "~/components/Terminal.vue";
 </script>
 
 <template>
-
-  <v-row class="mt-2 ml-2 mb-2 mr-2">
-      <v-col col="4" class="border-col">
-        Metrik 1
+  <v-container fluid>
+  <v-row align-content="center">
+    <v-col>
+      <v-card title="Metric Panel"></v-card>
+    </v-col>
+  </v-row>
+  <v-row align-content="center">
+      <v-col col="4">
+        <v-card title="Metric XY">
+          <v-img src="~assets/images/1340003.png" aspect-ratio="2.5"></v-img>
+        </v-card>
       </v-col>
-      <v-col col="3" class="border-col">
-        Metrik2
+      <v-col col="3">
+        <v-card title="Metric XY">
+          <v-img src="~assets/images/1340003.png" aspect-ratio="2.5"></v-img>
+        </v-card>
     </v-col>
-    <v-col col="2" class="border-col">
-      Metrik3
+    <v-col col="2">
+      <v-card title="Metric XY">
+        <v-img src="~assets/images/1340003.png" aspect-ratio="2.5"></v-img>
+      </v-card>
     </v-col>
-    <v-col col="3" class="border-col">
-      Metrik4
+    <v-col col="3">
+      <v-card title="Metric XY">
+        <v-img src="~assets/images/1340003.png" aspect-ratio="2.5"></v-img>
+      </v-card>
     </v-col>
   </v-row>
 
-  <v-row class="ml-2 mb-2 mr-2">
-
-
+  <v-row>
     <v-col cols="3">
       <ProjectActionPane></ProjectActionPane>
     </v-col>
-
     <v-col cols="9">
       <Terminal></Terminal>
-
-
     </v-col>
-
   </v-row>
-
+  </v-container>
 </template>
 
 <style scoped>
