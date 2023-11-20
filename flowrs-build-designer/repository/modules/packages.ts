@@ -91,6 +91,29 @@ class PackagesModule extends FetchFactory {
         return packageMap
     }
 
+    async getFlowrsTypeDefinitionsMapByName(name: string) : Promise<Map<string, TypeDefinition>> {
+        const obj = await this.getFlowrsPackageByName(name);
+        const crates = [obj]
+        console.log('mapped packages to js-objects by Name', crates)
+        const packageMap: Map<string, TypeDefinition> = new Map<string, TypeDefinition>();
+
+
+        for (const crate of crates) {
+            if (!crate) {
+                continue
+            }
+
+            let crateTypes = crate.crates;
+
+            for (let crateName in crateTypes) {
+                let crateType = crateTypes[crateName];
+                this.populatePackageMap(crateType.modules, crateType.types, packageMap, crateName);
+            }
+        }
+
+        return packageMap
+    }
+    
     async getFlowrsPackageByName(packageName : string) : Promise<Crate> {
         return await this.call<Crate>('GET', `${this.RESOURCE}${packageName}`)
     }

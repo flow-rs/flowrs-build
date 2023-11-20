@@ -26,6 +26,7 @@
     "@pinia/nuxt": "^0.5.1",
     "@types/three": "^0.156.0",
     "elkjs": "^0.8.2",
+    "pinia": "^2.1.7",
     "rete": "^2.0.2",
     "rete-area-3d-plugin": "^2.0.3",
     "rete-area-plugin": "^2.0.1",
