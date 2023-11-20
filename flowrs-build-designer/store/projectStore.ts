@@ -1,5 +1,6 @@
 import {defineStore} from 'pinia'
-import {FlowProject, ProjectIdentifier} from "~/repository/modules/projects";
+import {type FlowProject, type ProjectIdentifier} from "~/repository/modules/projects";
+import type {ProcessIdentifier} from "~/repository/modules/processes";
 
 export const useProjectsStore = defineStore({
     id: 'projects',
@@ -9,7 +10,8 @@ export const useProjectsStore = defineStore({
             selectedProject: null as FlowProject | null,
             loading: false,
             activeFilter: "",
-            logEntries: []
+            logEntries: [] as string[],
+            runningProcessesMap: new Map() as Map<string, number | -1>
         });
     },
     actions: {
@@ -40,14 +42,53 @@ export const useProjectsStore = defineStore({
 
         },
 
-        async compileProjectRequest(projectName: String, buildType: String) {
+        async runProjectRequest(projectName: string, buildType: string) {
+            const {$api} = useNuxtApp();
+            const projectIdentifier: ProjectIdentifier = {
+                project_name: projectName
+            }
+            this.loading = true
+            $api.projects.runProject(projectIdentifier, buildType).then(response => {
+                console.log("Flow Project is running!")
+                this.addLogEntry("Flow Project execution started!")
+                this.runningProcessesMap.set(projectIdentifier.project_name, response.process_id)
+            }).catch((error) => {
+                console.log("Error compiling projects:" + error)
+            })
+                .finally(() => (this.loading = false))
+        },
+
+        async stopProcessRequest() {
+            const {$api} = useNuxtApp();
+
+            let processId = this.runningProcessesMap.get(this.selectedProject.name)
+            if (processId != undefined && processId != -1) {
+                const processIdentifier: ProcessIdentifier = {
+                    process_id: processId
+                }
+                this.loading = true
+                $api.processes.stopProcess(processIdentifier).then(response => {
+                    console.log("Flow Project is stopped!")
+                    this.addLogEntry("Flow Project execution stopped!")
+                    this.runningProcessesMap.set(this.selectedProject.name, -1)
+                }).catch((error) => {
+                    console.log("Error compiling projects:" + error)
+                })
+                    .finally(() => (this.loading = false))
+            }
+
+
+
+        },
+
+        async compileProjectRequest(projectName: string, buildType: string) {
             const {$api} = useNuxtApp();
             const projectIdentifier: ProjectIdentifier = {
                 project_name: projectName
             }
             this.loading = true
             $api.projects.compileProject(projectIdentifier, buildType).then(response => {
-                console.log("Flow Project is compiling!")
+                console.log("Flow Project is compiled!")
                 this.addLogEntry(response)
             }).catch((error) => {
                 console.log("Error compiling projects:" + error)
@@ -63,7 +104,7 @@ export const useProjectsStore = defineStore({
             this.activeFilter = value
         },
 
-        addLogEntry(entry) {
+        addLogEntry(entry: string) {
           const timestamp = new Date().toLocaleString();
           const logEntry = `[${timestamp}] ${entry}`;
           this.logEntries.push(logEntry)
