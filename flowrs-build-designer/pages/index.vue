@@ -15,6 +15,11 @@ const handleFilterSelection = (value: string) => {
 
 
 <template>
+   <v-row>
+    <v-col class="mt-5 ml-5">
+      <AppBar></AppBar>
+    </v-col>
+  </v-row>
   <v-row>
     <v-col class="text-center mt-5 ml-5">
       <ProjectList :card-title="'Projects'" :card-subtitle="'Choose your project'"></ProjectList>

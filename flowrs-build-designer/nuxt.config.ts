@@ -2,6 +2,7 @@
 import vuetify, {transformAssetUrls} from 'vite-plugin-vuetify'
 
 export default defineNuxtConfig({
+    css: ['~/assets/scss/main.scss'],
     devtools: {enabled: true},
     buildModules: [
         '@nuxtjs/vuetfiy',
@@ -44,8 +45,8 @@ export default defineNuxtConfig({
         (_options, nuxt) => {
             nuxt.hooks.hook('vite:extendConfig', (config) => {
                 // @ts-expect-error
-                config.plugins.push(vuetify({autoImport: true}));
-            });
+                config.plugins.push(vuetify({autoImport: true}))
+            })
         },
     ],
     vite: {
@@ -56,3 +57,4 @@ export default defineNuxtConfig({
         },
     },
 });
+
