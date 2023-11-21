@@ -15,12 +15,14 @@ export const newFlowProject: FlowProject = {
         {
             name: 'flowrs',
             version: '1.0.0',
-            path: '../../../flowrs',
+            git:"https://github.com/flow-rs/flowrs",
+            branch:"dev"
         },
         {
             name: 'flowrs-std',
             version: '1.0.0',
-            path: '../../../flowrs-std',
+            git:"https://github.com/flow-rs/flowrs-std",
+            branch:"feature-project1"
         },
     ],
     flow: {
