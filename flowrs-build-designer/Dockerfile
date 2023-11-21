@@ -7,7 +7,7 @@ COPY yarn.lock ./
 COPY nuxt.config.ts ./
 
 RUN yarn cache clean
-RUN yarn install --frozen-lockfile
+RUN yarn install
 
 COPY . ./app/
 

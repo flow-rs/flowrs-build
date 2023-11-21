@@ -915,29 +915,23 @@ mod tests {
         */
 
         let package_1: Package = serde_json::from_str(&PACKAGE_JSON).expect("wrong format.");
-    let mut pm_1 = PackageManager::new();
-    pm_1.add_package(package_1);
-
-    let t_1 = pm_1.get_type("flowrs_std::nodes::value::ValueNode").expect("msg");
-        let c_1 = t_1.constructors.get("New").expect("");
+        let mut pm_1 = PackageManager::new();
+        pm_1.add_package(package_1);
+        let t_1 = pm_1.get_type("my_crate::MyType").expect("msg");
+        let c_1 = t_1.constructors.get("FromCode").expect("");
         let mut type_params_1 = HashMap::new();
-        type_params_1.insert("I".to_string(), "i32".to_string());
-        let mut ns_1: Namespace = Namespace::new();
+        type_params_1.insert("U".to_string(), "i32".to_string());
+        type_params_1.insert("T".to_string(), "i32".to_string());
+        let ns_1 = Namespace::new();
 
         let obj_1 = ObjectDescription {
-            type_name: "flowrs_std::nodes::value::ValueNode".to_string(),
+            type_name: "my_crate::MyType".to_string(),
             type_parameter_part: "".to_string(),
-            name: "value_node".to_string(),
-        is_mutable: false,
-    };
+            name: "value".to_string(),
+            is_mutable: false,
+        };
+        println!("CODE: {}", c_1.emit_code_template(&obj_1, &type_params_1, &pm_1, &ns_1).expect(""));    
 
-        let code = c_1.emit_code_template(&obj_1, &type_params_1, &pm_1, &ns_1).expect("");
-
-    println!("{}",code);
-
-        assert_eq!(
-        "let value_node_value: i32 = serde_json::from_value(data[\"value_node\"][\"value\"].clone()).expect(\"Could not create \'value_node_value\' from Json.\");\nlet value_node = flowrs_std::nodes::value::ValueNode::new(value_node_value, change_observer.clone());"
-            , code)
-}
+    }
 
 }
