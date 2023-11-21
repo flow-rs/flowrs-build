@@ -301,38 +301,54 @@ mod tests {
    "crates":{
       "flowrs_std":{
          "types":{
-
+            
          },
          "modules":{
             "nodes":{
                "types":{
-
+                  
                },
                "modules":{
                   "debug":{
                      "modules":{
-
+                        
                      },
                      "types":{
                         "DebugNode":{
-                           "inputs":[
-                              "input"
-                           ],
-                           "outputs":[
-                              "output"
-                           ],
+                           "inputs":{
+                              "input":{
+                                 "type":{
+                                    "Generic":{
+                                       "name":"I"
+                                    }
+                                 }
+                              }
+                           },
+                           "outputs":{
+                              "output":{
+                                 "type":{
+                                    "Generic":{
+                                       "name":"I"
+                                    }
+                                 }
+                              }
+                           },
                            "type_parameters":[
                               "I"
                            ],
                            "constructors":{
-                              "New":{"NewWithObserver": {}}
+                              "New":{
+                                 "NewWithObserver":{
+                                    
+                                 }
+                              }
                            }
                         }
                      }
                   },
                   "value":{
                      "modules":{
-
+                        
                      },
                      "types":{
                         "ValueType":{
@@ -341,12 +357,15 @@ mod tests {
                            }
                         },
                         "ValueNode":{
-                           "inputs":[
-
-                           ],
-                           "outputs":[
-                              "output"
-                           ],
+                           "outputs":{
+                              "output":{
+                                 "type":{
+                                    "Generic":{
+                                       "name":"I"
+                                    }
+                                 }
+                              }
+                           },
                            "type_parameters":[
                               "I"
                            ],
@@ -376,7 +395,7 @@ mod tests {
                                           "passing":"Clone",
                                           "construction":{
                                              "ExistingObject":[
-
+                                                
                                              ]
                                           }
                                        }
@@ -387,62 +406,84 @@ mod tests {
                         }
                      }
                   },
-
                   "timer":{
                      "modules":{
-
+                        
                      },
                      "types":{
-
                         "TimerNodeConfig":{
                            "constructors":{
                               "Json":"FromJson"
                            }
                         },
-
                         "PollTimer":{
                            "type_parameters":[
                               "U"
                            ],
                            "constructors":{
-                              "New":{"New": {}}
+                              "New":{
+                                 "New":{
+                                    
+                                 }
+                              }
                            }
                         },
-
                         "SelectedTimer":{
                            "type_parameters":[
                               "U"
                            ],
                            "constructors":{
-                              "New":{"New": {}}
+                              "New":{
+                                 "New":{
+                                    
+                                 }
+                              }
                            }
                         },
-
                         "TimerNode":{
-                           "inputs":[
-                              "config_input",
-                              "token_input"
-
-                           ],
-                           "outputs":[
-                              "token_output"
-                           ],
+                           "inputs":{
+                              "config_input":{
+                                 "type":{
+                                    "Type":{
+                                       "name":"flowrs_std::nodes::timer::TimerNodeConfig"
+                                    }
+                                 }
+                              },
+                              "token_input":{
+                                 "type":{
+                                    "Generic":{
+                                       "name":"U"
+                                    }
+                                 }
+                              }
+                           },
+                           "outputs":{
+                              "token_output":{
+                                 "type":{
+                                    "Generic":{
+                                       "name":"U"
+                                    }
+                                 }
+                              }
+                           },
                            "type_parameters":[
-                              "T", "U"
+                              "T",
+                              "U"
                            ],
                            "constructors":{
                               "NewWithToken":{
                                  "NewWithArbitraryArgs":{
-                                    "function_name": "new_with_token",
+                                    "function_name":"new_with_token",
                                     "arguments":[
                                        {
                                           "type":{
                                              "Generic":{
                                                 "name":"T",
-                                                "type_parameters":[{
-                                                   "Generic":{
-                                                       "name":"U"
-                                                       }
+                                                "type_parameters":[
+                                                   {
+                                                      "Generic":{
+                                                         "name":"U"
+                                                      }
                                                    }
                                                 ]
                                              }
@@ -475,7 +516,7 @@ mod tests {
                                           "passing":"Clone",
                                           "construction":{
                                              "ExistingObject":[
-
+                                                
                                              ]
                                           }
                                        }
@@ -489,10 +530,11 @@ mod tests {
                                           "type":{
                                              "Generic":{
                                                 "name":"T",
-                                                "type_parameters":[{
-                                                   "Generic":{
-                                                       "name":"U"
-                                                       }
+                                                "type_parameters":[
+                                                   {
+                                                      "Generic":{
+                                                         "name":"U"
+                                                      }
                                                    }
                                                 ]
                                              }
@@ -513,7 +555,7 @@ mod tests {
                                           "passing":"Clone",
                                           "construction":{
                                              "ExistingObject":[
-
+                                                
                                              ]
                                           }
                                        }
@@ -524,7 +566,6 @@ mod tests {
                         }
                      }
                   }
-
                }
             }
          }
