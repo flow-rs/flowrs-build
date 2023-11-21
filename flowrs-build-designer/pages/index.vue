@@ -15,35 +15,34 @@ const handleFilterSelection = (value: string) => {
 
 
 <template>
-   <v-row>
-    <v-col class="mt-5 ml-5">
-      <AppBar></AppBar>
-    </v-col>
-  </v-row>
-  <v-row>
-    <v-col class="text-center mt-5 ml-5">
-      <ProjectList :card-title="'Projects'" :card-subtitle="'Choose your project'"></ProjectList>
-    </v-col>
+  <v-container fluid>
+    <v-row>
+      <v-col class="text-center">
+        <ProjectList :card-title="
+      'Projects'" :card-subtitle="'Choose your project'"></ProjectList>
+      </v-col>
 
-    <v-col class="mt-5 mr-5">
-      <v-card :title="selectedProject ? selectedProject.name : 'No project selected!'" subtitle="flow-project.json">
-        <v-divider></v-divider>
-        <v-row>
-          <v-col>
-            <v-btn-toggle mandatory>
-              <v-btn @click="handleFilterSelection('noFilter')" :active="activeFilter==='noFilter'">
-                No filter
-              </v-btn>
-              <v-btn @click="handleFilterSelection('packages')" :active="activeFilter==='packages'">
-                Only Packages
-              </v-btn>
-              <v-btn @click="handleFilterSelection('flow')" :active="activeFilter==='flow'">
-                Only Flow
-              </v-btn>
-            </v-btn-toggle>
-          </v-col>
-        </v-row>
-        <div class=" scroll">
+      <v-col>
+        <v-card
+            :title="selectedProject && projectsStore.projectClickedInList ? selectedProject.name : 'No project selected!'"
+            subtitle="flow-project.json">
+          <v-divider></v-divider>
+          <v-row>
+            <v-col>
+              <v-btn-toggle mandatory>
+                <v-btn @click="handleFilterSelection('noFilter')" :active="activeFilter==='noFilter'">
+                  No filter
+                </v-btn>
+                <v-btn @click="handleFilterSelection('packages')" :active="activeFilter==='packages'">
+                  Only Packages
+                </v-btn>
+                <v-btn @click="handleFilterSelection('flow')" :active="activeFilter==='flow'">
+                  Only Flow
+                </v-btn>
+              </v-btn-toggle>
+            </v-col>
+          </v-row>
+          <div class=" scroll">
           <pre class="language-json">
             <template v-if="activeFilter==='noFilter'">
               <code>{{ selectedProject }}</code>
@@ -55,15 +54,13 @@ const handleFilterSelection = (value: string) => {
               <code>{{ selectedProject ? selectedProject.flow : "nothing to show" }}</code>
             </template>
           </pre>
-        </div>
+          </div>
 
-      </v-card>
+        </v-card>
 
-    </v-col>
-
-
-  </v-row>
-
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <style scoped>

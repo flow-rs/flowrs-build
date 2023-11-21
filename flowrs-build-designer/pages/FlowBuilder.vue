@@ -4,7 +4,6 @@
 </script>
 
 <template>
-  <AppBar></AppBar>
   <Rete/>
 </template>
 

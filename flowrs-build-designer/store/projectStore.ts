@@ -12,7 +12,8 @@ export const useProjectsStore = defineStore({
             loading: false,
             activeFilter: "",
             logEntriesMap: new Map() as Map<string, string[]>,
-            runningProcessesMap: new Map() as Map<string, number | undefined>
+            runningProcessesMap: new Map() as Map<string, number | undefined>,
+            projectClickedInList: false
         });
     },
     actions: {
@@ -20,6 +21,7 @@ export const useProjectsStore = defineStore({
             const {$api} = useNuxtApp();
             $api.projects.getProjects().then(listOfFlowProjects => {
                 this.projects = listOfFlowProjects;
+                this.selectedProject = listOfFlowProjects[0]
             }).catch((error) => console.log("Error fetching projects!"))
                 .finally(() => (this.loading = false));
         },
@@ -35,6 +37,7 @@ export const useProjectsStore = defineStore({
                     return object.name != this.selectedProject!.name
                 })
                 this.selectedProject = null
+                this.projectClickedInList = false
             }).catch((error) => {
                 console.log("Error deleting projects:" + error)
             })
@@ -121,7 +124,8 @@ export const useProjectsStore = defineStore({
 
         selectProject(project: FlowProject) {
             this.selectedProject = project;
-            this.activeFilter = 'noFilter'
+            this.activeFilter = 'noFilter';
+            this.projectClickedInList = true
         },
 
         selectBuildType(buildType: string) {
@@ -159,6 +163,7 @@ export const useProjectsStore = defineStore({
 
         getCurrentLogEntries() {
             return this.logEntriesMap.get(this.selectedProject.name)
-        }
+        },
+
     }
 })

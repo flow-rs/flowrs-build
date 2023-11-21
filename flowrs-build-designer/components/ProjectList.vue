@@ -7,13 +7,12 @@ import {newFlowProject} from "~/repository/api_sample_data";
 
 const projectsStore = useProjectsStore()
 projectsStore.getAll()
-
-const projectClicked = ref(false)
+const loading = computed(() => projectsStore.loading);
+const projectClicked = computed(() => projectsStore.projectClickedInList);
 
 const selectProject = (project: FlowProject) => {
   console.log("Project was selected: " + project.name)
   projectsStore.selectProject(project)
-  projectClicked.value = true;
 }
 
 const openProjectAsFlow = () => {
@@ -22,7 +21,6 @@ const openProjectAsFlow = () => {
 
 const deleteProject = () => {
   console.log("Deletion of flow project was triggered")
-  projectClicked.value = false;
   projectsStore.deleteProject();
 }
 
@@ -45,6 +43,10 @@ defineProps({
 </script>
 
 <template>
+  <v-overlay :value="loading">
+    <v-progress-circular indeterminate color="primary"></v-progress-circular>
+  </v-overlay>
+
   <v-card :title="cardTitle" :subtitle="cardSubtitle" variant="elevated">
     <v-divider></v-divider>
     <v-list>
@@ -61,7 +63,8 @@ defineProps({
     <v-card-actions>
       <v-row class="mb-2 mt-2">
         <v-col class="d-flex justify-space-around">
-          <v-btn prepend-icon="mdi-open-in-app" color="primary" :disabled="!projectClicked" @click="openProjectAsFlow()">
+          <v-btn prepend-icon="mdi-open-in-app" color="primary" :disabled="!projectClicked"
+                 @click="openProjectAsFlow()">
             Open
           </v-btn>
           <v-btn prepend-icon="mdi-plus" color="success" @click="createProject()">Create flow</v-btn>
