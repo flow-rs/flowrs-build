@@ -3,6 +3,8 @@ import {useProjectsStore} from "~/store/projectStore";
 
 const projectsStore = useProjectsStore()
 const logEntries = computed(() => projectsStore.getCurrentLogEntries());
+const projects = computed(() => projectsStore.projects);
+const selectedProject = computed(() => projectsStore.selectedProject)
 
 //TODO: Autoscrolling
 </script>
@@ -10,7 +12,8 @@ const logEntries = computed(() => projectsStore.getCurrentLogEntries());
 <template>
   <v-card title="Log Panel">
     <div class="pb-2 pl-2 flex-content">
-      <v-chip color="primary" class="mr-2" label>Project name: {{ projectsStore.selectedProject.name }}</v-chip>
+      <div v-if="projects.length!==0" class="flex-content">
+      <v-chip color="primary" class="mr-2" label>Project name: {{ selectedProject.name }}</v-chip>
       <v-chip color="primary" class="mr-2" label>Build/Run type: {{ projectsStore.selectedBuildType }}</v-chip>
       <div v-if="projectsStore.getCurrentProcessId() != undefined" class="flex-content">
         <v-chip color="primary" class="mr-2" label>Process id: {{ projectsStore.getCurrentProcessId() }}</v-chip>
@@ -18,6 +21,7 @@ const logEntries = computed(() => projectsStore.getCurrentLogEntries());
       </div>
       <div v-else>
         <v-chip color="warning" label>Status: No process running</v-chip>
+      </div>
       </div>
     </div>
 

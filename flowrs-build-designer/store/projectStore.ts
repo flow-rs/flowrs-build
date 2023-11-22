@@ -2,13 +2,19 @@ import {defineStore} from 'pinia'
 import {type FlowProject, type ProjectIdentifier} from "~/repository/modules/projects";
 import type {ProcessIdentifier} from "~/repository/modules/processes";
 
+
+export enum BuildType {
+    Wasm = "wasm",
+    Cargo = "cargo",
+}
+
 export const useProjectsStore = defineStore({
     id: 'projects',
     state: () => {
         return ({
             projects: [] as FlowProject[],
             selectedProject: null as FlowProject | null,
-            selectedBuildType: 'cargo',
+            selectedBuildType: BuildType.Cargo,
             loading: false,
             activeFilter: "",
             logEntriesMap: new Map() as Map<string, string[]>,
@@ -94,7 +100,9 @@ export const useProjectsStore = defineStore({
                 let logEntries = this.logEntriesMap.get(this.selectedProject.name)
                 this.updateLogEntryMap(logEntries, response)
             }).catch((error) => {
-                console.log("Error compiling projects:" + error)
+                let logEntries = this.logEntriesMap.get(this.selectedProject.name)
+                this.updateLogEntryMap(logEntries, error)
+                console.log("Error compiling projects: " + error)
             })
                 .finally(() => (this.loading = false))
         },
@@ -162,8 +170,15 @@ export const useProjectsStore = defineStore({
         },
 
         getCurrentLogEntries() {
+            if (this.selectedProject === null) {
+                return []
+            }
             return this.logEntriesMap.get(this.selectedProject.name)
         },
+
+        getBuildTypeArray(): string[] {
+            return Object.values(BuildType) as string[];
+        }
 
     }
 })

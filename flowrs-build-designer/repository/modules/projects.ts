@@ -55,11 +55,6 @@ export type FlowProject = {
     };
 };
 
-export enum BuildType {
-    Wasm = "wasm",
-    Cargo = "cargo",
-}
-
 class ProjectsModule extends FetchFactory {
     private RESOURCE: string = '/projects/';
     private PROJECT_PATH: string = this.RESOURCE + '{project_name}/';

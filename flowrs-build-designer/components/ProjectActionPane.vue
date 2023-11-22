@@ -8,7 +8,7 @@ const projectsStore = useProjectsStore()
 const selectedProject = ref(projectsStore.selectedProject);
 const loading = computed(() => projectsStore.loading);
 const projects = computed(() => projectsStore.projects);
-const buildType = ['cargo', 'wasm']
+const buildType = ref(projectsStore.getBuildTypeArray());
 const selectedBuildType = ref(projectsStore.selectedBuildType)
 
 //TODO: disable run button if process is started; prevent multiple processes to run for the same project
