@@ -4,6 +4,15 @@ import vuetify, {transformAssetUrls} from 'vite-plugin-vuetify'
 export default defineNuxtConfig({
     css: ['~/assets/scss/main.scss'],
     devtools: {enabled: true},
+    plugins: [
+      '~/plugins/api.ts'
+    ],
+    runtimeConfig: {
+        public: {
+            BASE_URL_API: process.env.BASE_URL_API,
+            BASE_URL_METRICS: process.env.BASE_URL_METRIC
+        }
+    },
     buildModules: [
         '@nuxtjs/vuetfiy',
     ],
@@ -27,7 +36,7 @@ export default defineNuxtConfig({
       }
     },
     devServer: {
-        port: 3001,
+        port: process.env.FLOW_BUILDER_PORT ? parseInt(process.env.FLOW_BUILDER_PORT, 10) : 3001,
         host: '0.0.0.0'
     },
     imports: {

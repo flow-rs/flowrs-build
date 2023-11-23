@@ -15,24 +15,24 @@
     </v-row>
     <v-row align-content="center">
       <v-col col="4">
-        <v-card title="Metric XY">
-          <v-img src="~assets/images/1340003.png" aspect-ratio="2.5"></v-img>
-        </v-card>
+        <div class="container">
+          <iframe class="responsive-iframe" src="http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&from=1700771461023&to=1700771761023&panelId=1&theme=light" frameborder="0"></iframe>
+        </div>
       </v-col>
       <v-col col="3">
-        <v-card title="Metric XY">
-          <v-img src="~assets/images/1340003.png" aspect-ratio="2.5"></v-img>
-        </v-card>
+        <div class="container">
+          <iframe class="responsive-iframe" src="http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&from=1700772274381&to=1700772574381&theme=light&panelId=2" frameborder="0"></iframe>
+        </div>
       </v-col>
       <v-col col="2">
-        <v-card title="Metric XY">
-          <v-img src="~assets/images/1340003.png" aspect-ratio="2.5"></v-img>
-        </v-card>
+        <div class="container">
+          <iframe class="responsive-iframe" src="http://127.0.0.1:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&from=1700772347957&to=1700772647957&theme=light&panelId=3" frameborder="0"></iframe>
+        </div>
       </v-col>
       <v-col col="3">
-        <v-card title="Metric XY">
-          <v-img src="~assets/images/1340003.png" aspect-ratio="2.5"></v-img>
-        </v-card>
+        <div class="container">
+          <iframe class="responsive-iframe" src="http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&from=1700772377913&to=1700772677913&theme=light&panelId=4" frameborder="0"></iframe>
+        </div>
       </v-col>
     </v-row>
 
@@ -48,5 +48,20 @@
 </template>
 
 <style scoped>
+.responsive-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+}
 
+.container {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 Aspect Ratio (divide 9 by 16 = 0.5625) */
+}
 </style>
