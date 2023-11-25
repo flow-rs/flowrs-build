@@ -37,7 +37,7 @@ export class DropdownControl extends Classic.Control {
     typeName: string;
     possibleValues: [string, TypeDefinition][];
 
-    constructor(typeName: string, possibleValues: [string, TypeDefinition][], public onSelection: (selectedValue: [string, TypeDefinition]) => void) {
+    constructor(typeName: string, possibleValues: [string, TypeDefinition][], public onSelection: (selectedTypeName: string) => void) {
         super()
         this.typeName = typeName;
         this.possibleValues = possibleValues;

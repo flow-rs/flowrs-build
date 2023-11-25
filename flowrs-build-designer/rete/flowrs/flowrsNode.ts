@@ -23,7 +23,6 @@ export class FlowrsNode extends Classic.Node<
     public genericsResolutionMap: Map<string, string> = new Map();
     private keyToTypeParameterMap: Map<string, string> = new Map();
     public constructor_type: string = "New";
-    private compatibleTypes: Map<string, [string, TypeDefinition][]> = new Map();
 
     constructor(name: string,
                 typeDefinition: TypeDefinition,
@@ -32,17 +31,38 @@ export class FlowrsNode extends Classic.Node<
                 typeParameters: { [key: string]: string } | null,
                 allPossibleTypes: Map<string, TypeDefinition>
     ) {
+        // TODO: @mafried Ich sollte davon ausgehen, dass der name eindeutig sein muss oder?
         super(name);
 
         this.constructor_type = constructor_type;
         this.setNodeData(data);
         this.setTypeParameters(typeParameters);
         let constructorDescription = this.getConstructorDescription(typeDefinition.constructors);
-        this.calculateCompatibleTypes(constructorDescription, allPossibleTypes);
+        // TODO @mafried bei Json constructorDescription füg ich ein TextInputField hinzu --> richtig ?
         this.addControlInputs(constructorDescription);
-        this.addDropdownControlsForGenericTypeParameters(typeDefinition.type_parameters);
+        this.addDropdownControlsForGenericTypeParameters(typeDefinition.type_parameters, constructorDescription, allPossibleTypes);
         this.addInputs(typeDefinition);
         this.addOutputs(typeDefinition);
+    }
+
+    private setNodeData(data: { [key: string]: any } | null) {
+        if (!data) {
+            return
+        }
+
+        this.node_data = JSON.stringify(data, null, 2);
+    }
+
+    private setTypeParameters(typeParameters: { [p: string]: string } | null) {
+        if (!typeParameters) {
+            return;
+        }
+
+        for (const typeParametersKey in typeParameters) {
+            this.genericsResolutionMap.set(typeParametersKey, typeParameters[typeParametersKey]);
+        }
+
+        console.log("Type parameters set:", this.genericsResolutionMap);
     }
 
     private getConstructorDescription(constructorDefinition: ConstructorDefinition) {
@@ -80,60 +100,92 @@ export class FlowrsNode extends Classic.Node<
         }
     }
 
-    private addDropdownControlsForGenericTypeParameters(type_parameters: string[] | undefined) {
+    private addDropdownControlsForGenericTypeParameters(type_parameters: string[] | undefined, constructorDescription: undefined | ConstructorDescription, allPossibleTypes: Map<string, TypeDefinition>) {
         if (!type_parameters) {
             return;
         }
 
         for (const typeParameter of type_parameters) {
-            let possibleValues = this.compatibleTypes.get(typeParameter);
-            if (!possibleValues) {
-                continue
-            }
+            let constructorNameToFilterFor: string | null = this.getConstructorNameToFilterFor(constructorDescription, typeParameter);
+            let possibleTypes: [string, TypeDefinition][] = this.chooseMethodAndGetPossibleTypes(constructorNameToFilterFor, allPossibleTypes);
             this.addControl(
                 typeParameter,
-                new DropdownControl(typeParameter, possibleValues, (selectedValue: [string, TypeDefinition]) => {
-                    if (selectedValue?.at(0)) {
-                        this.genericsResolutionMap.set(typeParameter, selectedValue[0]);
-                        console.log("callback",selectedValue)
-                    }
+                new DropdownControl(typeParameter, possibleTypes, (selectedTypeName: string) => {
+                    this.genericsResolutionMap.set(typeParameter, selectedTypeName);
+                    // TODO remove not valid inputs OR start somehow middleware logic over everything ?
                 })
             );
             this.height += 75;
         }
     }
 
-    private setNodeData(data: { [key: string]: any } | null) {
-        if (!data) {
-            return
-        }
-
-        this.node_data = JSON.stringify(data, null, 2);
-    }
-
-    private setTypeParameters(typeParameters: { [p: string]: string } | null) {
-        if (!typeParameters) {
-            return;
-        }
-
-        for (const typeParametersKey in typeParameters) {
-            this.genericsResolutionMap.set(typeParametersKey, typeParameters[typeParametersKey]);
-        }
-
-        console.log("Type parameters set:", this.genericsResolutionMap);
-    }
-
-    private calculateCompatibleTypes(constructorDescription: ConstructorDescription | undefined, allPossibleTypes: Map<string, TypeDefinition>) {
+    private getConstructorNameToFilterFor(constructorDescription: ConstructorDescription | undefined, typeParameter: string): string | null {
         if (!constructorDescription?.arguments) {
-            return;
+            return null;
         }
-        console.log("arguments", constructorDescription.arguments)
+        // TODO @mafried: gibts immer nur eine möglichkeit ?
+        let restrictingConstructorType: string | null = null;
         for (const argument of constructorDescription.arguments) {
-            console.log("check if fitting:", argument.type.Generic, argument.construction.Constructor)
-            if (argument.type.Generic && argument.construction.Constructor) {
-                this.compatibleTypes.set(argument.type.Generic.name, this.filterTypesWithConstructor(argument.construction.Constructor, allPossibleTypes))
+            console.log("Checking for restrictingConstructorType for", typeParameter, "\n", argument)
+            if (argument.type.Generic && argument.type.Generic.name == typeParameter && argument.construction.Constructor) {
+                restrictingConstructorType = argument.construction.Constructor;
+                break;
             }
         }
+        return restrictingConstructorType;
+    }
+
+    private chooseMethodAndGetPossibleTypes(constructorNameToFilterFor: null | string, allPossibleTypes: Map<string, TypeDefinition>): [string, TypeDefinition][] {
+        if (constructorNameToFilterFor) {
+            let possibleTypes = this.getFilteredTypesList(constructorNameToFilterFor, allPossibleTypes);
+            console.log("RestrictingConstructorType resulted into filtered list", possibleTypes);
+            return possibleTypes;
+        } else {
+            let possibleTypes = Array.from(allPossibleTypes.entries());
+            console.log("Full list available", possibleTypes);
+            return possibleTypes;
+        }
+    }
+
+    // TODO @mafried: Wie soll ich aus dem TimerNode Fall rausfiltern, das für T ein Debug Node ein gültiger Timer sein kann?
+    // Idee 1: Prüfen obs ein Type ist oder ein Node ? --> Wären Nodes denn auch gültige Generic Types in Nodes ?
+    // Idee 2: Muss ich dann auch von restrictingConstructorTypeArgument für den Generic dessen type_parameters prüfen, und mit denen dann auch filtern ? --> Prüfung worauf: Namen oder nur Anzahl der Type Parameters
+    private getFilteredTypesList(constructorNameToFilterFor: string, allPossibleTypes: Map<string, TypeDefinition>): [string, TypeDefinition][] {
+        let filteredTypes: [string, TypeDefinition][] = [];
+        for (const possibleType of allPossibleTypes) {
+            let typeDefinition = possibleType[1];
+            let constructorDefinition = typeDefinition.constructors;
+
+            switch (constructorNameToFilterFor) {
+                case "Json":
+                    if (constructorDefinition.Json) {
+                        filteredTypes.push(possibleType);
+                        continue;
+                    }
+                    break;
+                case "Default":
+                    if (constructorDefinition.Default) {
+                        filteredTypes.push(possibleType);
+                        continue;
+                    }
+                    break;
+                case "New":
+                    if (constructorDefinition.New) {
+                        filteredTypes.push(possibleType);
+                        continue;
+                    }
+                    break;
+                case "NewWithToken":
+                    if (constructorDefinition.NewWithToken) {
+                        filteredTypes.push(possibleType);
+                        continue;
+                    }
+                    break;
+                default:
+                    console.error("Error in the filtering for types based on restriction of constructor argument constructor. ConstructorDefinitions don't know about:", constructorNameToFilterFor, "This is probably a business logic error and");
+            }
+        }
+        return filteredTypes;
     }
 
     private addOutputs(types: TypeDefinition) {
@@ -181,29 +233,5 @@ export class FlowrsNode extends Classic.Node<
     data() {
         const value = this.node_data;
         return {value,};
-    }
-
-    private filterTypesWithConstructor(constructorName: string, allPossibleTypes: Map<string, TypeDefinition>) {
-        console.log("get types with constructor ", constructorName, allPossibleTypes)
-        let filteredTypes = [];
-        for (const possibleType of allPossibleTypes) {
-            let typeDefinition = possibleType[1];
-            let constructorDefinition = typeDefinition.constructors;
-            console.log('possible type ', typeDefinition, constructorDefinition)
-            for (const key in constructorDefinition.New) {
-                console.log(key, constructorName)
-                if (key == constructorName) {
-                    filteredTypes.push(possibleType);
-                }
-            }
-            for (const key in constructorDefinition.NewWithToken) {
-                console.log(key, constructorName)
-                if (key == constructorName) {
-                    filteredTypes.push(possibleType);
-                }
-            }
-        }
-        console.log("filtered type:", filteredTypes)
-        return filteredTypes;
     }
 }
