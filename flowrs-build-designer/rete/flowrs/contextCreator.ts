@@ -119,6 +119,7 @@ export class ContextCreator {
         return output;
     }
 
+    // TODO would be nicer if it would prevent the dropping of the connection onto the wrong socket --> smth like https://retejs.org/docs/guides/connections --> How do i get from socket to node ?
     private static preventTypeIncompatibleConnections(editor: NodeEditor<Schemes>) {
         editor.addPipe(context => {
             if (context.type == "connectioncreate") {
