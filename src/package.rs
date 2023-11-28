@@ -163,24 +163,24 @@ pub enum TypeDescription {
 }
 
 impl TypeDescription {
-    fn simple_type(name: &str) -> Box<TypeDescription> {
-        Box::new(TypeDescription::Type {
-            name: name.to_string(),
-            type_parameters: None,
-        })
-    }
+    // fn simple_type(name: &str) -> Box<TypeDescription> {
+    //     Box::new(TypeDescription::Type {
+    //         name: name.to_string(),
+    //         type_parameters: None,
+    //     })
+    // }
 
-    fn simple_type_with_simple_typ_args(name: &str, tp_names: Vec<&str>) -> Box<TypeDescription> {
-        Box::new(TypeDescription::Type {
-            name: name.to_string(),
-            type_parameters: Some(
-                tp_names
-                    .iter()
-                    .map(|name| TypeDescription::simple_type(name))
-                    .collect(),
-            ),
-        })
-    }
+    // fn simple_type_with_simple_typ_args(name: &str, tp_names: Vec<&str>) -> Box<TypeDescription> {
+    //     Box::new(TypeDescription::Type {
+    //         name: name.to_string(),
+    //         type_parameters: Some(
+    //             tp_names
+    //                 .iter()
+    //                 .map(|name| TypeDescription::simple_type(name))
+    //                 .collect(),
+    //         ),
+    //     })
+    // }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -300,37 +300,37 @@ impl Constructor {
             .join(", ")
     }
 
-    fn get_resolved_arg_type_parameters(
-        &self,
-        arg_type: &Box<TypeDescription>,
-        already_resolved_tps: &HashMap<String, String>,
-        resolved_tps: &mut HashMap<String, String>,
-    ) {
+    // fn get_resolved_arg_type_parameters(
+    //     &self,
+    //     arg_type: &Box<TypeDescription>,
+    //     already_resolved_tps: &HashMap<String, String>,
+    //     resolved_tps: &mut HashMap<String, String>,
+    // ) {
 
-        let mut type_params: &Option<Vec<Box<TypeDescription>>> = &None;
+    //     let mut type_params: &Option<Vec<Box<TypeDescription>>> = &None;
 
-        match arg_type.as_ref() {
-            TypeDescription::Type { type_parameters, ..} => {
-                type_params = type_parameters;
-            }
+    //     match arg_type.as_ref() {
+    //         TypeDescription::Type { type_parameters, ..} => {
+    //             type_params = type_parameters;
+    //         }
             
-            TypeDescription::Generic { type_parameters, name } => {
-                if let Some(resolved_name) = already_resolved_tps.get(name) {
-                    resolved_tps.insert(name.clone(), resolved_name.clone());
-                }
-                type_params = type_parameters; 
-            }
-        }
-
-    //     if let Some(params) = type_params {
-    //         for param in params {
-    //             self.get_resolved_arg_type_parameters(
-    //                 &param,
-    //                 already_resolved_tps,
-    //                 resolved_tps,
-    //             );
+    //         TypeDescription::Generic { type_parameters, name } => {
+    //             if let Some(resolved_name) = already_resolved_tps.get(name) {
+    //                 resolved_tps.insert(name.clone(), resolved_name.clone());
+    //             }
+    //             type_params = type_parameters; 
     //         }
     //     }
+
+    // //     if let Some(params) = type_params {
+    // //         for param in params {
+    // //             self.get_resolved_arg_type_parameters(
+    // //                 &param,
+    // //                 already_resolved_tps,
+    // //                 resolved_tps,
+    // //             );
+    // //         }
+    // //     }
 
     // }
 
@@ -340,7 +340,7 @@ impl Constructor {
         argument_type: &Box<TypeDescription>,
         resolved_type_parameters: &HashMap<String, String>,
     ) {
-        let mut arg_type_params: &Option<Vec<Box<TypeDescription>>> = &None;
+        let arg_type_params: &Option<Vec<Box<TypeDescription>>>;
 
         match argument_type.as_ref() {
 
