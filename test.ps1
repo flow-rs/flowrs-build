@@ -7,6 +7,7 @@ cargo build
 cargo test
 llvm-profdata merge -sparse default_*.profraw -o coverage.profdata
 Get-ChildItem -Filter *.profraw | Remove-Item
+
 # Run cargo test and parse the output
 $cargoTestOutput = cargo test --tests --no-run --message-format=json | ConvertFrom-Json
 $testFiles = $cargoTestOutput | Where-Object { $_.profile.test -eq $true } | Select-Object -ExpandProperty filenames
