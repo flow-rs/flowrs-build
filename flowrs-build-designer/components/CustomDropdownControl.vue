@@ -2,7 +2,7 @@
   <v-autocomplete
       :label="data.typeName"
       :items="data.possibleValues"
-      :item-title="getItemText"
+      v-model="modelValue"
       @pointerdown.stop=""
       @dblclick.stop=""
       @update:modelValue="data.onSelection"
@@ -16,10 +16,14 @@ import 'vuetify/styles'
 import {createVuetify} from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-import type {TypeDefinition} from "~/repository/modules/packages";
 
 export default {
   props: ['data'],
+  data() {
+    return {
+      modelValue: this.data.currentValue
+    }
+  },
   created() {
     // load vuetify --> https://github.com/retejs/rete/issues/656
     const ctx = getCurrentInstance()
@@ -33,17 +37,12 @@ export default {
     }
     console.log('Data', this.data)
   },
-  methods: {
-    getItemText(item: [string, TypeDefinition]): string {
-      return `${item[0]}`;
-    },
-  }
 }
 </script>
 
 <style>
 .v-input__control {
-background-color: white !important;
+  background-color: white !important;
   border-radius: 15px;
 }
 </style>

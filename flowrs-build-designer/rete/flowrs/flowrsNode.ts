@@ -20,8 +20,8 @@ export class FlowrsNode extends Classic.Node<
     width = 500;
     height = 140;
     public node_data: string | undefined;
-    public genericsResolutionMap: Map<string, string> = new Map();
-    private keyToTypeParameterMap: Map<string, string> = new Map();
+    public typeParameters: Map<string, string> = new Map();
+    private inAndOutputToTypeParameterMap: Map<string, string> = new Map();
     public constructor_type: string = "New";
 
     constructor(name: string,
@@ -59,10 +59,10 @@ export class FlowrsNode extends Classic.Node<
         }
 
         for (const typeParametersKey in typeParameters) {
-            this.genericsResolutionMap.set(typeParametersKey, typeParameters[typeParametersKey]);
+            this.typeParameters.set(typeParametersKey, typeParameters[typeParametersKey]);
         }
 
-        console.log("Type parameters set:", this.genericsResolutionMap);
+        console.log("Type parameters set:", this.typeParameters);
     }
 
     private getConstructorDescription(constructorDefinition: ConstructorDefinition) {
@@ -108,10 +108,12 @@ export class FlowrsNode extends Classic.Node<
         for (const typeParameter of type_parameters) {
             let constructorNameToFilterFor: string | null = this.getConstructorNameToFilterFor(constructorDescription, typeParameter);
             let possibleTypes: [string, TypeDefinition][] = this.chooseMethodAndGetPossibleTypes(constructorNameToFilterFor, allPossibleTypes);
+            let possibleTypeNames: string[] = possibleTypes.map(([typeName, typeDefinition]) => typeName);
             this.addControl(
                 typeParameter,
-                new DropdownControl(typeParameter, possibleTypes, (selectedTypeName: string) => {
-                    this.genericsResolutionMap.set(typeParameter, selectedTypeName);
+                new DropdownControl(typeParameter, possibleTypeNames, this.typeParameters.get(typeParameter),(selectedTypeName: string) => {
+                    console.log("Callback")
+                    this.typeParameters.set(typeParameter, selectedTypeName);
                     // TODO remove not valid inputs OR start somehow middleware logic over everything ?
                 })
             );
@@ -123,7 +125,6 @@ export class FlowrsNode extends Classic.Node<
         if (!constructorDescription?.arguments) {
             return null;
         }
-        // TODO @mafried: gibts immer nur eine möglichkeit ?
         let restrictingConstructorType: string | null = null;
         for (const argument of constructorDescription.arguments) {
             console.log("Checking for restrictingConstructorType for", typeParameter, "\n", argument)
@@ -180,7 +181,7 @@ export class FlowrsNode extends Classic.Node<
                     }
                     break;
                 default:
-                    console.error("Error in the filtering for types based on restriction of constructor argument constructor. ConstructorDefinitions don't know about:", constructorNameToFilterFor, "This is probably a business logic error and");
+                    console.error("Error in the filtering for types based on restriction of constructor argument constructor. ConstructorDefinitions don't know about:", constructorNameToFilterFor, "This is probably a business logic error");
             }
         }
         return filteredTypes;
@@ -191,7 +192,7 @@ export class FlowrsNode extends Classic.Node<
             let typeDescription = types.outputs[outputName].type;
             let typeName = this.getTypeName(typeDescription);
             this.addOutput(outputName, new Classic.Output(socket, outputName + ':' + typeName, false));
-            this.keyToTypeParameterMap.set(outputName, typeName);
+            this.inAndOutputToTypeParameterMap.set(outputName, typeName);
         }
     }
 
@@ -200,7 +201,7 @@ export class FlowrsNode extends Classic.Node<
             let typeDescription = types.inputs[inputName].type;
             let typeName = this.getTypeName(typeDescription);
             this.addInput(inputName, new Classic.Input(socket, inputName + ':' + typeName, false));
-            this.keyToTypeParameterMap.set(inputName, typeName);
+            this.inAndOutputToTypeParameterMap.set(inputName, typeName);
             this.height += 20;
         }
     }
@@ -217,11 +218,11 @@ export class FlowrsNode extends Classic.Node<
     }
 
     public getTypeForKey(key: string): string | undefined {
-        let typeName = this.keyToTypeParameterMap.get(key);
+        let typeName = this.inAndOutputToTypeParameterMap.get(key);
         if (!typeName) {
             return;
         }
-        let genericResolutionType = this.genericsResolutionMap.get(typeName);
+        let genericResolutionType = this.typeParameters.get(typeName);
         if (genericResolutionType) {
             return genericResolutionType
         }
