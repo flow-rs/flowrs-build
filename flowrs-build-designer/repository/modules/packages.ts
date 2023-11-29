@@ -39,6 +39,7 @@ export type ModuleDefinition = {
 }
 
 export type ConstructorDefinition = {
+    // TODO generalise
     Json?: string,
     Default?: string,
     New?: Record<string, ConstructorDescription>,

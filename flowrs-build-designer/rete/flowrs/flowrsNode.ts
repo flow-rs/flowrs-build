@@ -31,14 +31,14 @@ export class FlowrsNode extends Classic.Node<
                 typeParameters: { [key: string]: string } | null,
                 allPossibleTypes: Map<string, TypeDefinition>
     ) {
-        // TODO: @mafried Ich sollte davon ausgehen, dass der name eindeutig sein muss oder?
+        // TODO eindeutige namen
         super(name);
 
         this.constructor_type = constructor_type;
         this.setNodeData(data);
         this.setTypeParameters(typeParameters);
         let constructorDescription = this.getConstructorDescription(typeDefinition.constructors);
-        // TODO @mafried bei Json constructorDescription füg ich ein TextInputField hinzu --> richtig ?
+        // TODO bei Json constructorDescription füg ich ein TextInputField hinzu --> richtig ? Prüfen abhängig vom gewählten typen Constructor --> Key == Json und Value == FromJson
         this.addControlInputs(constructorDescription);
         this.addDropdownControlsForGenericTypeParameters(typeDefinition.type_parameters, constructorDescription, allPossibleTypes);
         this.addInputs(typeDefinition);
@@ -147,9 +147,7 @@ export class FlowrsNode extends Classic.Node<
         }
     }
 
-    // TODO @mafried: Wie soll ich aus dem TimerNode Fall rausfiltern, das für T ein Debug Node ein gültiger Timer sein kann?
-    // Idee 1: Prüfen obs ein Type ist oder ein Node ? --> Wären Nodes denn auch gültige Generic Types in Nodes ?
-    // Idee 2: Muss ich dann auch von restrictingConstructorTypeArgument für den Generic dessen type_parameters prüfen, und mit denen dann auch filtern ? --> Prüfung worauf: Namen oder nur Anzahl der Type Parameters
+    // Man müsste nach Traits filtern --> Information noch nicht im code enthalten
     private getFilteredTypesList(constructorNameToFilterFor: string, allPossibleTypes: Map<string, TypeDefinition>): [string, TypeDefinition][] {
         let filteredTypes: [string, TypeDefinition][] = [];
         for (const possibleType of allPossibleTypes) {
