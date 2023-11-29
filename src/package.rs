@@ -133,15 +133,6 @@ pub struct Modifier {
     is_reference: bool,
 }
 
-impl Modifier {
-    // fn nothing() -> Self {
-    //     Self {
-    //         is_mutable: false,
-    //         is_reference: false,
-    //     }
-    // }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum TypeDescription {
     Type {
@@ -153,35 +144,8 @@ pub enum TypeDescription {
         name: String,
         type_parameters: Option<Vec<Box<TypeDescription>>>,
     },
-
-    //TODO: Tuple
-    // Tuple {
-    //    type_parameters: Vec<Box<ArgumentType>>,
-    //},
-
-    //TODO: Enum
 }
 
-impl TypeDescription {
-    // fn simple_type(name: &str) -> Box<TypeDescription> {
-    //     Box::new(TypeDescription::Type {
-    //         name: name.to_string(),
-    //         type_parameters: None,
-    //     })
-    // }
-
-    // fn simple_type_with_simple_typ_args(name: &str, tp_names: Vec<&str>) -> Box<TypeDescription> {
-    //     Box::new(TypeDescription::Type {
-    //         name: name.to_string(),
-    //         type_parameters: Some(
-    //             tp_names
-    //                 .iter()
-    //                 .map(|name| TypeDescription::simple_type(name))
-    //                 .collect(),
-    //         ),
-    //     })
-    // }
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum ArgumentConstruction {
@@ -300,40 +264,6 @@ impl Constructor {
             .join(", ")
     }
 
-    // fn get_resolved_arg_type_parameters(
-    //     &self,
-    //     arg_type: &Box<TypeDescription>,
-    //     already_resolved_tps: &HashMap<String, String>,
-    //     resolved_tps: &mut HashMap<String, String>,
-    // ) {
-
-    //     let mut type_params: &Option<Vec<Box<TypeDescription>>> = &None;
-
-    //     match arg_type.as_ref() {
-    //         TypeDescription::Type { type_parameters, ..} => {
-    //             type_params = type_parameters;
-    //         }
-            
-    //         TypeDescription::Generic { type_parameters, name } => {
-    //             if let Some(resolved_name) = already_resolved_tps.get(name) {
-    //                 resolved_tps.insert(name.clone(), resolved_name.clone());
-    //             }
-    //             type_params = type_parameters; 
-    //         }
-    //     }
-
-    // //     if let Some(params) = type_params {
-    // //         for param in params {
-    // //             self.get_resolved_arg_type_parameters(
-    // //                 &param,
-    // //                 already_resolved_tps,
-    // //                 resolved_tps,
-    // //             );
-    // //         }
-    // //     }
-
-    // }
-
     fn emit_arg_type_parameters_part_rec(
         &self,
         tp_part: &mut String,
@@ -438,19 +368,7 @@ impl Constructor {
             }
 
             TypeDescription::Generic { name , type_parameters: arg_type_parameters }=> {
-
-                // get resolved type parameters.
                 
-                /*
-                let mut type_parameters_for_arg_type = HashMap::<String, String>::new();
-                self.get_resolved_arg_type_parameters(
-                    &arg.arg_type,
-                    type_parameters,
-                    &mut type_parameters_for_arg_type,
-                );
-                 */
-                
-
                 // check if generic was already resolved. if so, try to get type and emit constructor code.
                 // TODO: Think about what should happen if it is not yet resolved.
                 if let Some(type_name) = type_parameters.get(name) {
