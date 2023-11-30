@@ -25,7 +25,7 @@ class FetchFactory {
             url,
             {
                 method,
-                body: data,
+                body: data ? JSON.stringify(data) : undefined,
                 ...fetchOptions
             }
         );

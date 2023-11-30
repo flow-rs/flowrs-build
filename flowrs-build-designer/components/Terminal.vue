@@ -5,6 +5,7 @@ const projectsStore = useProjectsStore()
 const logEntries = computed(() => projectsStore.getCurrentLogEntries());
 const projects = computed(() => projectsStore.projects);
 const selectedProject = computed(() => projectsStore.selectedProject)
+const compileError = computed(() => projectsStore.compileError)
 
 //TODO: Autoscrolling
 </script>
@@ -20,8 +21,11 @@ const selectedProject = computed(() => projectsStore.selectedProject)
         <v-chip color="success" label>Status: Runnning</v-chip>
       </div>
       <div v-else>
-        <v-chip color="warning" label>Status: No process running</v-chip>
+        <v-chip color="warning"  class="mr-2" label>Status: No process running</v-chip>
       </div>
+        <div v-if="compileError">
+          <v-chip color="error" class="mr-2" label>Compile error</v-chip>
+        </div>
       </div>
     </div>
 

@@ -84,13 +84,13 @@ class ProjectsModule extends FetchFactory {
         return await this.call<string>('DELETE', `${this.PROJECT_PATH.replace("{project_name}", project.project_name)}`, project, fetchOptions)
     }
 
-    async compileProject(project: ProjectIdentifier, buildType: string): Promise<string> {
+    async compileProject(project: ProjectIdentifier, buildType: string): Promise<Response> {
         const fetchOptions: FetchOptions<'json'> = {
             headers: {
                 'Content-Type': 'application/json',
             }
         }
-        return await this.call<string>('POST', `${this.COMPILE_PATH.replace("{project_name}", project.project_name)}${buildType}`, project, fetchOptions)
+        return await this.call<Response>('POST', `${this.COMPILE_PATH.replace("{project_name}", project.project_name)}${buildType}`, project, fetchOptions)
     }
 
     async runProject(project: ProjectIdentifier, buildType: string): Promise<ProcessIdentifier> {

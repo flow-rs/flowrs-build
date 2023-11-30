@@ -22,6 +22,7 @@ export const useProjectsStore = defineStore({
             projectClickedInList: false,
             errorMessage: "",
             showDialog: false,
+            compileError: false
         });
     },
     actions: {
@@ -105,10 +106,21 @@ export const useProjectsStore = defineStore({
             this.loading = true
             $api.projects.compileProject(projectIdentifier, buildType).then(response => {
                 console.log("Flow Project is compiled!")
-                this.writeLogEntry(response)
+                // this.writeLogEntry(response)
             }).catch((error) => {
-                this.writeLogEntry(error)
-                console.log("Error compiling project: " + error)
+                console.log(error.data)
+                this.compileError = true;
+                // Handle error response
+                // if (error instanceof Response) {
+                //     const errorBody = error.text();
+                //     console.error('Error body:', errorBody);
+                //     // return Promise.reject(errorBody); // You might want to customize how you handle the error here
+                // } else {
+                //     console.error('Unexpected error:', error);
+                //     //return Promise.reject('Unexpected error occurred');
+                // }
+                this.writeLogEntry(error.data)
+                // console.log("Error compiling project: " + error)
             })
                 .finally(() => (this.loading = false))
         },
