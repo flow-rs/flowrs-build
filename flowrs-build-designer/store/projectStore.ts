@@ -22,7 +22,8 @@ export const useProjectsStore = defineStore({
             projectClickedInList: false,
             errorMessage: "",
             showDialog: false,
-            compileError: false
+            compileError: false,
+            compileErrorText: ''
         });
     },
     actions: {
@@ -104,23 +105,23 @@ export const useProjectsStore = defineStore({
                 project_name: projectName
             }
             this.loading = true
+            this.compileError = false;
             $api.projects.compileProject(projectIdentifier, buildType).then(response => {
                 console.log("Flow Project is compiled!")
-                // this.writeLogEntry(response)
+                const response_txt = `${response}`
+                this.writeLogEntry(response_txt)
             }).catch((error) => {
-                console.log(error.data)
+                console.log("error compiling project")
                 this.compileError = true;
-                // Handle error response
-                // if (error instanceof Response) {
-                //     const errorBody = error.text();
-                //     console.error('Error body:', errorBody);
-                //     // return Promise.reject(errorBody); // You might want to customize how you handle the error here
-                // } else {
-                //     console.error('Unexpected error:', error);
-                //     //return Promise.reject('Unexpected error occurred');
-                // }
-                this.writeLogEntry(error.data)
-                // console.log("Error compiling project: " + error)
+                let converted = error.data as string
+                converted = converted.replace(/(?:\r\n|\r|\n)/g, '<br>');
+                console.log(converted)
+                const errorMessages = error.data
+                    .split('\\n')
+                    .filter((line: string | string[]) => line.includes('error['));
+                // console.log(errorMessages)
+                this.compileErrorText = errorMessages
+                this.writeLogEntry(converted)
             })
                 .finally(() => (this.loading = false))
         },

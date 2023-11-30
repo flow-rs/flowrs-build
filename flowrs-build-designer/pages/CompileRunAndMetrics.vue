@@ -1,13 +1,47 @@
 <script setup lang="ts">
+import {useProjectsStore} from "~/store/projectStore";
 
+const projectsStore = useProjectsStore()
+const errorMessageText = computed(() => projectsStore.compileErrorText);
+let openCompileErrorDialog = ref(false);
+const handleCompileErrorButtonClick = () => {
+  console.log('catch event')
+  openCompileErrorDialog.value = true
+}
 
-//TODO: extract compontens in own files
+const closeDialog = () => {
+  openCompileErrorDialog.value = false;
+}
 
-//TODO: add prefix for logs which project was executed/compiled etc.
 </script>
 
 <template>
   <v-container fluid>
+    <v-row justify="center">
+    <v-dialog
+        v-model="openCompileErrorDialog"
+        scrollable>
+      <v-card title="Compile Error Overview">
+        <v-card-actions>
+          <v-btn prepend-icon="mdi-close" color="primary"
+                 @click="closeDialog">
+            Close
+          </v-btn>
+        </v-card-actions>
+        <v-expansion-panels>
+          <v-expansion-panel
+              v-for="i in errorMessageText"
+              :key="i"
+          >
+            <v-expansion-panel-title>{{i}}</v-expansion-panel-title>
+            <v-expansion-panel-text>Blabla</v-expansion-panel-text>
+          </v-expansion-panel>
+
+        </v-expansion-panels>
+
+      </v-card>
+    </v-dialog>
+    </v-row>
     <v-row>
       <v-col>
         <v-card title="Metric Panel"></v-card>
@@ -41,7 +75,7 @@
         <ProjectActionPane></ProjectActionPane>
       </v-col>
       <v-col cols="9">
-        <Terminal></Terminal>
+        <Terminal @compile-error-button-clicked="handleCompileErrorButtonClick"></Terminal>
       </v-col>
     </v-row>
   </v-container>
