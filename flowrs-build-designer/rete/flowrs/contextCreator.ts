@@ -13,8 +13,11 @@ export class ContextCreator {
 
     private static editor: NodeEditor<Schemes> | undefined;
 
+    private static nodeTypeCount: Map<string, number> = new Map<string, number>();
+
     public static async addFlowrsElements(editor: NodeEditor<Schemes>) {
         this.editor = editor;
+        this.nodeTypeCount = new Map<string, number>();
 
         const selectedProject = this.getCurrentlySelectedProject();
 
@@ -50,14 +53,19 @@ export class ContextCreator {
                 console.error("TypeDefinition for", currentNodeType, "not found")
                 continue
             }
+
+            let countOfType = this.nodeTypeCount.get(flowNode);
+
             const node = new FlowrsNode(
-                flowNode,
+                flowNode + (countOfType || ""),
                 typeDefinition,
                 project.flow.data[flowNode]?.value,
                 currentNode.constructor,
                 currentNode.type_parameters,
                 typeDefinitionsMap,
                 editor);
+
+            this.nodeTypeCount.set(flowNode, (countOfType || 0) + 1);
 
             await editor.addNode(node);
             allAddedNodes.set(flowNode, node);
@@ -108,14 +116,20 @@ export class ContextCreator {
                 }
 
                 constructableNodes.push([constructorDefinitionKey,
-                    () => new FlowrsNode(
-                        fullTypeName,
-                        typeDefinition!,
-                        null,
-                        constructorDefinitionKey,
-                        null,
-                        typeDefinitionsMap,
-                        this.editor!)]);
+                    () => {
+
+                        let countOfType = this.nodeTypeCount.get(fullTypeName);
+                        let node = new FlowrsNode(
+                            fullTypeName + (countOfType || ""),
+                            typeDefinition!,
+                            null,
+                            constructorDefinitionKey,
+                            null,
+                            typeDefinitionsMap,
+                            this.editor!);
+                        this.nodeTypeCount.set(fullTypeName, (countOfType || 0) + 1);
+                        return node;
+                    }]);
             }
             output.push([fullTypeName, constructableNodes]);
         }

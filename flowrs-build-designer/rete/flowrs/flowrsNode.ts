@@ -34,7 +34,6 @@ export class FlowrsNode extends Classic.Node<
                 allPossibleTypes: Map<string, TypeDefinition>,
                 editor: NodeEditor<Schemes>
     ) {
-        // TODO eindeutige namen
         super(name);
 
         this.editor = editor;
