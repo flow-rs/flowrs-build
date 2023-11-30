@@ -42,7 +42,6 @@ export class FlowrsNode extends Classic.Node<
         this.setNodeData(data);
         this.setTypeParameters(typeParameters);
         let constructorDescription = this.getConstructorDescription(typeDefinition.constructors);
-        // TODO bei Json constructorDescription füg ich ein TextInputField hinzu --> richtig ? Prüfen abhängig vom gewählten typen Constructor --> Key == Json und Value == FromJson
         this.addControlInputs(constructorDescription);
         this.addDropdownControlsForGenericTypeParameters(typeDefinition.type_parameters, constructorDescription, allPossibleTypes);
         this.addInputs(typeDefinition);
@@ -95,6 +94,8 @@ export class FlowrsNode extends Classic.Node<
             return
         }
         for (const argument of constructor.arguments) {
+            // TODO streng genommen müsste bei Json constructorDescription ein TextInputField hinzu gefügt werden genau dann wenn Key == Json und gewählter generic typ den constructor value FromJson hat --> "Json": "FromJson"
+            // ist aber ein riesen aufwand mit reaktivität vom dropdown auf mögliche x inputfelder --> darum nur auf json fürs erste prüfen
             if (argument.construction.Constructor == "Json") {
                 this.addControl(
                     'data',
