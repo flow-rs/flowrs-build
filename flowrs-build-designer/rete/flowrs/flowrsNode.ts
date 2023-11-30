@@ -1,11 +1,11 @@
-import {ClassicPreset, ClassicPreset as Classic} from 'rete';
+import {ClassicPreset, ClassicPreset as Classic, NodeEditor} from 'rete';
 import {
     type ConstructorDefinition,
     type ConstructorDescription,
     type TypeDefinition,
     type TypeDescription
 } from "~/repository/modules/packages";
-import {DropdownControl} from "~/rete/flowrs/editor";
+import {DropdownControl, type Schemes} from "~/rete/flowrs/editor";
 
 const socket = new Classic.Socket('socket');
 
@@ -24,16 +24,20 @@ export class FlowrsNode extends Classic.Node<
     private inAndOutputToTypeParameterMap: Map<string, string> = new Map();
     public constructor_type: string = "New";
 
+    private editor: NodeEditor<Schemes>;
+
     constructor(name: string,
                 typeDefinition: TypeDefinition,
                 data: { [key: string]: any } | null,
                 constructor_type: string,
                 typeParameters: { [key: string]: string } | null,
-                allPossibleTypes: Map<string, TypeDefinition>
+                allPossibleTypes: Map<string, TypeDefinition>,
+                editor: NodeEditor<Schemes>
     ) {
         // TODO eindeutige namen
         super(name);
 
+        this.editor = editor;
         this.constructor_type = constructor_type;
         this.setNodeData(data);
         this.setTypeParameters(typeParameters);
@@ -111,10 +115,14 @@ export class FlowrsNode extends Classic.Node<
             let possibleTypeNames: string[] = possibleTypes.map(([typeName, typeDefinition]) => typeName);
             this.addControl(
                 typeParameter,
-                new DropdownControl(typeParameter, possibleTypeNames, this.typeParameters.get(typeParameter),(selectedTypeName: string) => {
-                    console.log("Callback")
+                new DropdownControl(typeParameter, possibleTypeNames, this.typeParameters.get(typeParameter), (selectedTypeName: string) => {
                     this.typeParameters.set(typeParameter, selectedTypeName);
-                    // TODO remove not valid inputs OR start somehow middleware logic over everything ?
+
+                    for (let connection of this.editor.getConnections()) {
+                        if (this.id == connection.target || this.id == connection.source) {
+                            this.editor.removeConnection(connection.id);
+                        }
+                    }
                 })
             );
             this.height += 75;

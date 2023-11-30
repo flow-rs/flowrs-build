@@ -11,7 +11,11 @@ import type {TypeDefinition} from "~/repository/modules/packages";
 
 export class ContextCreator {
 
+    private static editor: NodeEditor<Schemes>|undefined;
+
     public static async addFlowrsElements(editor: NodeEditor<Schemes>) {
+        this.editor = editor;
+
         const selectedProject = this.getCurrentlySelectedProject();
 
         // get (typename,typeDefinition) Map
@@ -52,7 +56,8 @@ export class ContextCreator {
                 project.flow.data[flowNode]?.value,
                 currentNode.constructor,
                 currentNode.type_parameters,
-                typeDefinitionsMap);
+                typeDefinitionsMap,
+                editor);
 
             await editor.addNode(node);
             allAddedNodes.set(flowNode, node);
@@ -102,7 +107,8 @@ export class ContextCreator {
                         null,
                         "New",
                         null,
-                        typeDefinitionsMap)]);
+                        typeDefinitionsMap,
+                        this.editor!)]);
             }
             if (constructorDefinition.NewWithToken) {
                 constructableNodes.push(["NewWithToken",
@@ -112,7 +118,8 @@ export class ContextCreator {
                         null,
                         "NewWithToken",
                         null,
-                        typeDefinitionsMap)]);
+                        typeDefinitionsMap,
+                        this.editor!)]);
             }
             output.push([fullTypeName, constructableNodes]);
         }
