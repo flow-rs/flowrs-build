@@ -7,8 +7,7 @@ const logEntries = computed(() => projectsStore.getCurrentLogEntries());
 const projects = computed(() => projectsStore.projects);
 const selectedProject = computed(() => projectsStore.selectedProject)
 const compileError = computed(() => projectsStore.compileError)
-const emits = defineEmits();
-const props = defineProps(['onButtonClick']);
+const emits = defineEmits(['compile-error-button-clicked']);
 const emitCompileErrorButtonClickEvent = () => {
   console.log("emit event")
   emits('compile-error-button-clicked')

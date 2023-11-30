@@ -153,7 +153,12 @@ impl FlowProjectManager {
         if build_type.eq("cargo") {
             match Self::compile_cargo(flow_project_path.clone()) {
                 Err(value) => return Err(anyhow::Error::from(value)),
-                _ => {}
+                Ok(result) => {
+                    let result_str = format!("{:?}", result);
+                    if result_str.contains("error: could not compile") {
+                        return Err(anyhow::anyhow!("{}", result_str))
+                    }
+                }
             };
         } else if build_type.eq("wasm") {
             match Self::compile_wasm(flow_project_path.clone()) {
@@ -178,7 +183,6 @@ impl FlowProjectManager {
         if !cfg!(debug_assertions) {
             command.arg("--release");
         }
-
         command.output()
     }
 
@@ -470,13 +474,13 @@ impl FlowProjectManager {
           <body>
             <script type="module">
               import init, {wasm_run} from '/pkg/{{project_name}}.js'
-        
+
               // Always required for wasm.
               await init();
 
               // Running flow.
               wasm_run();
-              
+
             </script>
           </body>
         </html>
@@ -632,7 +636,7 @@ mod tests {
     const PROJECT_NAME_3: &str = "flow_project_03";
 
     fn create_test_config(path:String) -> FlowProjectManagerConfig {
-        FlowProjectManagerConfig { 
+        FlowProjectManagerConfig {
             project_folder: path,
             project_json_file_name: project_json_file_name_default(),
             builtin_dependencies: builtin_dependencies_default(),
@@ -694,7 +698,7 @@ mod tests {
         let mut fpm= FlowProjectManager::new(create_test_config(TEST_DIR_PATH_2.to_string()));
         let create_result = create_test_directory(TEST_DIR_PATH_2.to_string());
         assert!(!create_result.is_err());
-        
+
         let build_type = "cargo".to_string();
         let flow_project_res= serde_json::from_str(PROJECT_JSON_3);
         assert!(!flow_project_res.is_err());

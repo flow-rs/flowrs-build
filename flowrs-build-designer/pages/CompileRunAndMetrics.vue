@@ -2,7 +2,7 @@
 import {useProjectsStore} from "~/store/projectStore";
 
 const projectsStore = useProjectsStore()
-const errorMessageText = computed(() => projectsStore.compileErrorText);
+const compileErrorObjects = computed(() => projectsStore.compileErrorObjects);
 let openCompileErrorDialog = ref(false);
 const handleCompileErrorButtonClick = () => {
   console.log('catch event')
@@ -30,11 +30,11 @@ const closeDialog = () => {
         </v-card-actions>
         <v-expansion-panels>
           <v-expansion-panel
-              v-for="i in errorMessageText"
+              v-for="i in compileErrorObjects"
               :key="i"
           >
-            <v-expansion-panel-title>{{i}}</v-expansion-panel-title>
-            <v-expansion-panel-text>Blabla</v-expansion-panel-text>
+            <v-expansion-panel-title>{{i.title}}</v-expansion-panel-title>
+            <v-expansion-panel-text>{{i.message}}</v-expansion-panel-text>
           </v-expansion-panel>
 
         </v-expansion-panels>

@@ -1,5 +1,5 @@
 import {defineStore} from 'pinia'
-import {type FlowProject, type ProjectIdentifier} from "~/repository/modules/projects";
+import {type FlowProject, type ProjectIdentifier, type CompileError} from "~/repository/modules/projects";
 import type {ProcessIdentifier} from "~/repository/modules/processes";
 
 
@@ -7,6 +7,8 @@ export enum BuildType {
     Wasm = "wasm",
     Cargo = "cargo",
 }
+
+
 
 export const useProjectsStore = defineStore({
     id: 'projects',
@@ -23,7 +25,7 @@ export const useProjectsStore = defineStore({
             errorMessage: "",
             showDialog: false,
             compileError: false,
-            compileErrorText: ''
+            compileErrorObjects: [] as CompileError[]
         });
     },
     actions: {
@@ -32,8 +34,7 @@ export const useProjectsStore = defineStore({
             $api.projects.getProjects().then(listOfFlowProjects => {
                 this.projects = listOfFlowProjects;
                 this.selectedProject = listOfFlowProjects[0]
-            }).catch((error) =>
-            {
+            }).catch((error) => {
                 const errorString = "Error fetching projects " + error
                 this.setCurrentErrorMessage(errorString)
                 console.log("Error fetching projects!")
@@ -114,16 +115,25 @@ export const useProjectsStore = defineStore({
                 console.log("error compiling project")
                 this.compileError = true;
                 let converted = error.data as string
-                converted = converted.replace(/(?:\r\n|\r|\n)/g, '<br>');
-                console.log(converted)
-                const errorMessages = error.data
-                    .split('\\n')
-                    .filter((line: string | string[]) => line.includes('error['));
-                // console.log(errorMessages)
-                this.compileErrorText = errorMessages
-                this.writeLogEntry(converted)
+                let result = [] as CompileError[]
+                const rawValues = this.extractErrors(converted)
+                for (error in rawValues) {
+                    const errorTitle = rawValues[error].split('\\n').filter((line: string | string[]) => line.includes('error['));
+                    const object: CompileError  = {
+                        title: errorTitle[0],
+                        message: rawValues[error].replace(errorTitle[0], "")
+                    }
+                    result.push(object)
+                }
+                this.compileErrorObjects = result
             })
                 .finally(() => (this.loading = false))
+        },
+
+        extractErrors(text: string) : string[] {
+            const pattern = /error\[\s*([\s\S]*?)(?=error\[)/g;
+            const matches = text.match(pattern);
+            return matches || [];
         },
 
         async getLogs() {

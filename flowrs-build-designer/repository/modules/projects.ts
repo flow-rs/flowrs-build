@@ -34,6 +34,11 @@ export type FlowConnection = {
     to_input: string;
 };
 
+export type CompileError = {
+    title: string,
+    message: string,
+}
+
 type FlowData = {
     timer_config_node: TimerConfigNode | null
     timer_token_node: TimerTokenNode | null
