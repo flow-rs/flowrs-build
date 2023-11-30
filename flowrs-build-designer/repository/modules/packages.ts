@@ -1,4 +1,3 @@
-
 import FetchFactory from '../factory';
 
 export type Crate = {
@@ -38,13 +37,8 @@ export type ModuleDefinition = {
     modules: Record<string, ModuleDefinition>;
 }
 
-export type ConstructorDefinition = {
-    // TODO generalise
-    Json?: string,
-    Default?: string,
-    New?: Record<string, ConstructorDescription>,
-    NewWithToken?: Record<string, ConstructorDescription>,
-}
+//TODO @mafried change to one to one relation ?
+export type ConstructorDefinition = Record<string, string | Record<string, ConstructorDescription>>
 
 export type ConstructorDescription = {
     function_name: string,
@@ -64,12 +58,12 @@ export type ArgumentDefinition = {
 class PackagesModule extends FetchFactory {
     private RESOURCE = '/packages/';
 
-    async getFlowrsPackages() : Promise<Crate[]> {
+    async getFlowrsPackages(): Promise<Crate[]> {
         return await this.call<Crate[]>('GET', `${this.RESOURCE}`)
     }
 
     // returns a parsed map of all packages, where the full type name is mapped to its typeDefinition
-    async getFlowrsTypeDefinitionsMap() : Promise<Map<string, TypeDefinition>> {
+    async getFlowrsTypeDefinitionsMap(): Promise<Map<string, TypeDefinition>> {
         const crates = await this.getFlowrsPackages();
 
         console.log('mapped packages to js-objects', crates)
@@ -92,7 +86,7 @@ class PackagesModule extends FetchFactory {
         return packageMap
     }
 
-    async getFlowrsTypeDefinitionsMapByName(name: string) : Promise<Map<string, TypeDefinition>> {
+    async getFlowrsTypeDefinitionsMapByName(name: string): Promise<Map<string, TypeDefinition>> {
         const obj = await this.getFlowrsPackageByName(name);
         const crates = [obj]
         console.log('mapped packages to js-objects by Name', crates)
@@ -114,8 +108,8 @@ class PackagesModule extends FetchFactory {
 
         return packageMap
     }
-    
-    async getFlowrsPackageByName(packageName : string) : Promise<Crate> {
+
+    async getFlowrsPackageByName(packageName: string): Promise<Crate> {
         return await this.call<Crate>('GET', `${this.RESOURCE}${packageName}`)
     }
 
@@ -134,7 +128,7 @@ class PackagesModule extends FetchFactory {
 
     private addTypeDefinitions(typeDefinitions: Record<string, TypeDefinition>, packageMap: Map<string, TypeDefinition>, packagePath: string) {
         for (const typeDefinitionName in typeDefinitions) {
-            packageMap.set(packagePath+ "::"+ typeDefinitionName, typeDefinitions[typeDefinitionName])
+            packageMap.set(packagePath + "::" + typeDefinitionName, typeDefinitions[typeDefinitionName])
         }
     }
 }

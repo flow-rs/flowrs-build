@@ -19,7 +19,7 @@ import * as directives from 'vuetify/directives'
 
 export default {
   props: ['data'],
-  data() {
+  data(): any{
     return {
       modelValue: this.data.currentValue
     }

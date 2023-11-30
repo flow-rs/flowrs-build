@@ -11,7 +11,7 @@ import type {TypeDefinition} from "~/repository/modules/packages";
 
 export class ContextCreator {
 
-    private static editor: NodeEditor<Schemes>|undefined;
+    private static editor: NodeEditor<Schemes> | undefined;
 
     public static async addFlowrsElements(editor: NodeEditor<Schemes>) {
         this.editor = editor;
@@ -99,24 +99,20 @@ export class ContextCreator {
             }
             let constructorDefinition = typeDefinition.constructors;
             let constructableNodes: ItemDefinition<Schemes>[] = [];
-            if (constructorDefinition.New) {
-                constructableNodes.push(["New",
+            for (const constructorDefinitionKey in constructorDefinition) {
+                let constructorDefinitionElement = constructorDefinition[constructorDefinitionKey];
+                console.log("Here1", constructorDefinitionElement, constructorDefinitionKey, constructorDefinition)
+                if (typeof constructorDefinitionElement == "string") {
+                    console.error("Current constructor is a string constructor", constructorDefinitionElement, constructorDefinition.types)
+                    continue;
+                }
+
+                constructableNodes.push([constructorDefinitionKey,
                     () => new FlowrsNode(
                         fullTypeName,
                         typeDefinition!,
                         null,
-                        "New",
-                        null,
-                        typeDefinitionsMap,
-                        this.editor!)]);
-            }
-            if (constructorDefinition.NewWithToken) {
-                constructableNodes.push(["NewWithToken",
-                    () => new FlowrsNode(
-                        fullTypeName,
-                        typeDefinition!,
-                        null,
-                        "NewWithToken",
+                        constructorDefinitionKey,
                         null,
                         typeDefinitionsMap,
                         this.editor!)]);

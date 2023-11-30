@@ -70,13 +70,17 @@ export class FlowrsNode extends Classic.Node<
     }
 
     private getConstructorDescription(constructorDefinition: ConstructorDefinition) {
-        let currentConstructor: Record<string, ConstructorDescription> | undefined;
-        if (this.constructor_type == "New") {
-            currentConstructor = constructorDefinition.New;
-        } else if (this.constructor_type == "NewWithToken") {
-            currentConstructor = constructorDefinition.NewWithToken;
+        if (!constructorDefinition) {
+            return;
         }
+        console.log(constructorDefinition, this.constructor_type)
+        let currentConstructor = constructorDefinition[this.constructor_type];
         if (!currentConstructor) {
+            console.error("Current constructor doesnt exist", this.constructor_type, constructorDefinition)
+            return;
+        }
+        if (typeof currentConstructor == "string") {
+            console.error("Current constructor is a string constructor", this.constructor_type, constructorDefinition)
             return;
         }
         let recordKeys = Object.keys(currentConstructor);
@@ -161,35 +165,10 @@ export class FlowrsNode extends Classic.Node<
         let filteredTypes: [string, TypeDefinition][] = [];
         for (const possibleType of allPossibleTypes) {
             let typeDefinition = possibleType[1];
-            let constructorDefinition = typeDefinition.constructors;
-
-            switch (constructorNameToFilterFor) {
-                case "Json":
-                    if (constructorDefinition.Json) {
-                        filteredTypes.push(possibleType);
-                        continue;
-                    }
-                    break;
-                case "Default":
-                    if (constructorDefinition.Default) {
-                        filteredTypes.push(possibleType);
-                        continue;
-                    }
-                    break;
-                case "New":
-                    if (constructorDefinition.New) {
-                        filteredTypes.push(possibleType);
-                        continue;
-                    }
-                    break;
-                case "NewWithToken":
-                    if (constructorDefinition.NewWithToken) {
-                        filteredTypes.push(possibleType);
-                        continue;
-                    }
-                    break;
-                default:
-                    console.error("Error in the filtering for types based on restriction of constructor argument constructor. ConstructorDefinitions don't know about:", constructorNameToFilterFor, "This is probably a business logic error");
+            let constructorDefinition = typeDefinition.constructors[constructorNameToFilterFor];
+            if (constructorDefinition) {
+                filteredTypes.push(possibleType);
+                continue;
             }
         }
         return filteredTypes;
