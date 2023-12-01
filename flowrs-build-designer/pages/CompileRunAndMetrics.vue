@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import {useProjectsStore} from "~/store/projectStore";
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+
+
+// Set up an interval variable
+let interval: NodeJS.Timeout;
 
 const projectsStore = useProjectsStore()
 const compileErrorObjects = computed(() => projectsStore.compileErrorObjects);
+const currentProcessId = computed(() => projectsStore.getCurrentProcessId());
 let openCompileErrorDialog = ref(false);
 const handleCompileErrorButtonClick = () => {
   console.log('catch event')
@@ -12,6 +18,21 @@ const handleCompileErrorButtonClick = () => {
 const closeDialog = () => {
   openCompileErrorDialog.value = false;
 }
+
+const getCurrentLogs = () => {
+  projectsStore.getLogs()
+}
+
+onMounted(() => {
+  getCurrentLogs(); // Fetch data immediately when the component is mounted
+  interval = setInterval(getCurrentLogs, 5000);
+});
+
+onBeforeUnmount(() => {
+  clearInterval(interval);
+});
+
+
 
 </script>
 
@@ -50,22 +71,22 @@ const closeDialog = () => {
     <v-row align-content="center">
       <v-col col="4">
         <div class="container">
-          <iframe class="responsive-iframe" src="http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&from=1700771461023&to=1700771761023&panelId=1&theme=light" frameborder="0"></iframe>
+          <iframe class="responsive-iframe" :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&panelId=1&theme=light`" frameborder="0"></iframe>
         </div>
       </v-col>
       <v-col col="3">
         <div class="container">
-          <iframe class="responsive-iframe" src="http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&from=1700772274381&to=1700772574381&theme=light&panelId=2" frameborder="0"></iframe>
+          <iframe class="responsive-iframe" :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=2`" frameborder="0"></iframe>
         </div>
       </v-col>
       <v-col col="2">
         <div class="container">
-          <iframe class="responsive-iframe" src="http://127.0.0.1:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&from=1700772347957&to=1700772647957&theme=light&panelId=3" frameborder="0"></iframe>
+          <iframe class="responsive-iframe" :src="`http://127.0.0.1:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=3`" frameborder="0"></iframe>
         </div>
       </v-col>
       <v-col col="3">
         <div class="container">
-          <iframe class="responsive-iframe" src="http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-4883&from=now-5m&to=now&theme=light&panelId=1" frameborder="0"></iframe>
+          <iframe class="responsive-iframe" :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=4`" frameborder="0"></iframe>
         </div>
       </v-col>
     </v-row>

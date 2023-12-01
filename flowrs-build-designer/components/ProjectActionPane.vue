@@ -12,7 +12,6 @@ const buildType = ref(projectsStore.getBuildTypeArray());
 const selectedBuildType = ref(projectsStore.selectedBuildType)
 
 //TODO: disable run button if process is started; prevent multiple processes to run for the same project
-// TODO: auto pull log messages
 
 //TODO: add "status led" which indicates if one project is running / List of running projects?
 
@@ -31,10 +30,6 @@ const stop = () => {
 
 const compile = () => {
   projectsStore.compileProjectRequest(selectedProject.value.name, selectedBuildType.value)
-}
-
-const getCurrentLogs = () => {
-  projectsStore.getLogs()
 }
 
 </script>
@@ -77,10 +72,6 @@ const getCurrentLogs = () => {
 
         <v-btn color="error" prepend-icon="mdi-stop" rounded="0" size="large" @click="stop()">
           Stop execution
-        </v-btn>
-
-        <v-btn color="secondary" prepend-icon="mdi-refresh" rounded="0" size="large" @click="getCurrentLogs()">
-          get current logs (Testing)
         </v-btn>
 
       </v-col>

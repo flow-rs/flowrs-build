@@ -191,7 +191,7 @@ export const useProjectsStore = defineStore({
         addLogEntry(entry: string, entryList: string[]): string[] {
             const timestamp = new Date().toLocaleString();
             const logEntry = `[${timestamp}] ${entry}`;
-            entryList.push(logEntry)
+            entryList.unshift(logEntry)
             return entryList
         },
 
