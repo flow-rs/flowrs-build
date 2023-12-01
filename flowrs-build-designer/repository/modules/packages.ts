@@ -128,7 +128,11 @@ class PackagesModule extends FetchFactory {
 
     private addTypeDefinitions(typeDefinitions: Record<string, TypeDefinition>, packageMap: Map<string, TypeDefinition>, packagePath: string) {
         for (const typeDefinitionName in typeDefinitions) {
-            packageMap.set(packagePath + "::" + typeDefinitionName, typeDefinitions[typeDefinitionName])
+            let prefix = packagePath + "::";
+            if (prefix == "primitives::") {
+                prefix = ""
+            }
+            packageMap.set(prefix + typeDefinitionName, typeDefinitions[typeDefinitionName]);
         }
     }
 }
