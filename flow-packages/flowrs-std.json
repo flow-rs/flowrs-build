@@ -206,7 +206,7 @@
                                           "name":"token_object",
                                           "passing":"Move",
                                           "construction":{
-                                             "Constructor":"New"
+                                             "Constructor":"Json"
                                           }
                                        },
                                        {

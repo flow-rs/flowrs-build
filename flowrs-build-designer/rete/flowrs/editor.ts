@@ -35,12 +35,14 @@ export class Connection<A extends Node, B extends Node> extends Classic.Connecti
 
 export class DropdownControl extends Classic.Control {
     typeName: string;
-    possibleValues: [string, TypeDefinition][];
+    possibleValues:string[];
+    currentValue: string|undefined;
 
-    constructor(typeName: string, possibleValues: [string, TypeDefinition][], public onSelection: (selectedValue: [string, TypeDefinition]) => void) {
+    constructor(typeName: string, possibleValues: string[], currentValue: string|undefined, public onSelection: (selectedTypeName: string) => void) {
         super()
         this.typeName = typeName;
         this.possibleValues = possibleValues;
+        this.currentValue = currentValue;
     }
 }
 
