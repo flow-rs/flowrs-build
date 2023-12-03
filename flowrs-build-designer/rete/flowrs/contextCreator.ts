@@ -109,7 +109,6 @@ export class ContextCreator {
             let constructableNodes: ItemDefinition<Schemes>[] = [];
             for (const constructorDefinitionKey in constructorDefinition) {
                 let constructorDefinitionElement = constructorDefinition[constructorDefinitionKey];
-                console.log("Here1", constructorDefinitionElement, constructorDefinitionKey, constructorDefinition)
                 if (typeof constructorDefinitionElement == "string") {
                     console.error("Current constructor is a string constructor", constructorDefinitionElement, constructorDefinition.types)
                     continue;
