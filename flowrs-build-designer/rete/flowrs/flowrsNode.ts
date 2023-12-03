@@ -17,8 +17,8 @@ export class FlowrsNode extends Classic.Node<
         | DropdownControl
         | ClassicPreset.InputControl<"number">
         | ClassicPreset.InputControl<"text">>> {
-    width = 500;
-    height = 140;
+    width = 470;
+    height = 60;
     public node_data: string | undefined;
     public typeParameters: Map<string, string> = new Map();
     private inAndOutputToTypeParameterMap: Map<string, string> = new Map();
@@ -104,6 +104,7 @@ export class FlowrsNode extends Classic.Node<
                         }
                     })
                 );
+                this.height += 38;
             }
         }
     }
@@ -129,7 +130,7 @@ export class FlowrsNode extends Classic.Node<
                     }
                 })
             );
-            this.height += 75;
+            this.height += 90;
         }
     }
 
@@ -180,6 +181,7 @@ export class FlowrsNode extends Classic.Node<
             let typeName = this.getTypeName(typeDescription);
             this.addOutput(outputName, new Classic.Output(socket, outputName + ':' + typeName, false));
             this.inAndOutputToTypeParameterMap.set(outputName, typeName);
+            this.height += 36;
         }
     }
 
@@ -189,7 +191,7 @@ export class FlowrsNode extends Classic.Node<
             let typeName = this.getTypeName(typeDescription);
             this.addInput(inputName, new Classic.Input(socket, inputName + ':' + typeName, false));
             this.inAndOutputToTypeParameterMap.set(inputName, typeName);
-            this.height += 20;
+            this.height += 36;
         }
     }
 
