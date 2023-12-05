@@ -31,7 +31,7 @@
 
                             <v-list-item-title><v-chip class="ma-2" color="green" label text-color="white">
                                     <v-icon start icon="mdi-arrow-right-bold-outline"></v-icon>
-                                    {{ i }}
+                                    input
                                 </v-chip></v-list-item-title>
                         </v-list-item>
                     </v-list>
@@ -43,7 +43,7 @@
                         <v-list-item v-for="i in value.outputs" :key="i" :value="i" color="primary" rounded="xl" disabled>
 
                             <v-list-item-title><v-chip class="ma-2" color="red" label text-color="white">
-                                    {{ i }}
+                                    output
                                     <v-icon class="mx-1" start icon="mdi-arrow-right-bold-outline"></v-icon>
                                 </v-chip></v-list-item-title>
                         </v-list-item>

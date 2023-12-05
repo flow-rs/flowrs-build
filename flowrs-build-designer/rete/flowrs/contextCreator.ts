@@ -7,8 +7,9 @@ import {ContextMenuPlugin, Presets as ContextMenuPresets} from "rete-context-men
 import type {Schemes} from "~/rete/flowrs/editor";
 import {Connection} from "~/rete/flowrs/editor";
 import type {TypeDefinition} from "~/repository/modules/packages";
+import { usePackagesStore } from "~/store/packageStore.js";
 
-
+const packagesStore = usePackagesStore()
 export class ContextCreator {
 
     public static async addFlowrsElements(editor: NodeEditor<Schemes>) {
@@ -24,10 +25,25 @@ export class ContextCreator {
         }
 
         this.preventTypeIncompatibleConnections(editor);
-
+        typeDefinitionsMap=this.filterInActive(typeDefinitionsMap);
         return await this.createContextMenuWithConstructableNodes(typeDefinitionsMap);
     }
-
+    private static filterInActive(map:Map<string,TypeDefinition>){
+        const keysToRemove: string[] = [];
+        console.log(toRaw(packagesStore.currentActive))
+            map.forEach((value, key) => {
+                let keyToSearch=(key.substring(0, key.indexOf("::")).replace("_","-")); 
+                if(!toRaw(packagesStore.currentActive).includes(keyToSearch)){
+                    console.log(key)
+                    keysToRemove.push(key);
+                }
+            });
+        keysToRemove.forEach(key => {
+                map.delete(key);
+        });   
+        console.log(map)
+        return map;
+    }
     private static getCurrentlySelectedProject() {
         const projectsStore = useProjectsStore();
         const selectedProjectUnwrapped = computed(() => projectsStore.selectedProject);
