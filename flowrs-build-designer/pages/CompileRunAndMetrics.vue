@@ -69,24 +69,24 @@ onBeforeUnmount(() => {
       </v-col>
     </v-row>
     <v-row align-content="center">
-      <v-col col="4">
+      <v-col col="3">
         <div class="container">
-          <iframe class="responsive-iframe" :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&panelId=1&theme=light`" frameborder="0"></iframe>
+          <iframe v-if="currentProcessId" class="responsive-iframe" :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&panelId=1&theme=light`" frameborder="0"></iframe>
         </div>
       </v-col>
       <v-col col="3">
         <div class="container">
-          <iframe class="responsive-iframe" :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=2`" frameborder="0"></iframe>
-        </div>
-      </v-col>
-      <v-col col="2">
-        <div class="container">
-          <iframe class="responsive-iframe" :src="`http://127.0.0.1:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=3`" frameborder="0"></iframe>
+          <iframe v-if="currentProcessId" class="responsive-iframe" :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=2`" frameborder="0"></iframe>
         </div>
       </v-col>
       <v-col col="3">
         <div class="container">
-          <iframe class="responsive-iframe" :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=4`" frameborder="0"></iframe>
+          <iframe v-if="currentProcessId" class="responsive-iframe" :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=3`" frameborder="0"></iframe>
+        </div>
+      </v-col>
+      <v-col col="3">
+        <div class="container">
+          <iframe v-if="currentProcessId" class="responsive-iframe" :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=4`" frameborder="0"></iframe>
         </div>
       </v-col>
     </v-row>

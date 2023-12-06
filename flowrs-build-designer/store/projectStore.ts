@@ -90,8 +90,8 @@ export const useProjectsStore = defineStore({
                 this.loading = true
                 $api.processes.stopProcess(processIdentifier).then(response => {
                     console.log("Flow Project is stopped!")
-                    this.writeLogEntry("Ausführung vom Flow-Projekt gestoppt.")
                     this.runningProcessesMap.set(this.selectedProject.name, undefined)
+                    this.writeLogEntry("Ausführung vom Flow-Projekt gestoppt.")
                 }).catch((error) => {
                     this.writeLogEntry(error)
                     console.log("Error stopping project:" + error)
