@@ -50,8 +50,9 @@ export type FlowProject = {
     packages: Array<{
         name: string;
         version: string;
-        git: string;
-        branch: string;
+        path?: string;
+        git?: string;
+        branch?: string;
     }>;
     flow: {
         nodes: { [key: string]: FlowNode };
