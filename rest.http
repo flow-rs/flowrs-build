@@ -1,47 +1,47 @@
-http://127.0.0.1:3000/api/projects/
+http://127.0.0.1:3002/api/projects/
 
 ###
 
-http://127.0.0.1:3000/api/packages/
+http://127.0.0.1:3002/api/packages/
 
 ####
 
-POST http://127.0.0.1:3000/api/projects/flow_project_01/compile?build_type=cargo
+POST http://127.0.0.1:3002/api/projects/flow_project_01/compile?build_type=cargo
 
 ####
 
-POST http://127.0.0.1:3000/api/projects/flow_project_01/compile?build_type=wasm
+POST http://127.0.0.1:3002/api/projects/flow_project_01/compile?build_type=wasm
 
 ###
 
-POST http://127.0.0.1:3000/api/projects/flow_project_01/run?build_type=cargo
+POST http://127.0.0.1:3002/api/projects/flow_project_01/run?build_type=cargo
 
 #--> Response: {"process_id":18940}
 
 ###
 
-POST http://127.0.0.1:3000/api/projects/flow_project_01/run?build_type=wasm
+POST http://127.0.0.1:3002/api/projects/flow_project_01/run?build_type=wasm
 
 #--> Response: {"process_id":18940}
 
 ###
 
-POST http://127.0.0.1:3000/api/processes/18940/stop
+POST http://127.0.0.1:3002/api/processes/18940/stop
 
 ###
 
-GET http://127.0.0.1:3000/api/processes/18940/logs
+GET http://127.0.0.1:3002/api/processes/18940/logs
 
 ###
 
-POST http://127.0.0.1:3000/api/projects/ HTTP/1.1
+POST http://127.0.0.1:3002/api/projects/ HTTP/1.1
 content-type: application/json
 
 {
-  "name": "flow_project_01",
+  "name": "flow_project_02",
   "version": "1.0.0",
   "packages": [
-    {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"dev"},
+    {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"feature-project7"},
     {"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}
     ],
   "flow":{        
@@ -101,4 +101,4 @@ content-type: application/json
     }
 }
 
-DELETE http://127.0.0.1:3000/api/projects/flow_project_79/ HTTP/1.1
+DELETE http://127.0.0.1:3002/api/projects/flow_project_79/ HTTP/1.1
