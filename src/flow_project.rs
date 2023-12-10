@@ -6,7 +6,7 @@ use crate::package_manager::PackageManager;
 use std::collections::{HashMap, VecDeque};
 use std::{fs, thread};
 use std::io;
-use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
+use std::io::{BufRead, BufReader, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 use std::sync::{Arc, Mutex};

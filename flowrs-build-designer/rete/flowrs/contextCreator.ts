@@ -11,7 +11,14 @@ import type {TypeDefinition} from "~/repository/modules/packages";
 
 export class ContextCreator {
 
+    private static editor: NodeEditor<Schemes> | undefined;
+
+    private static nodeTypeCount: Map<string, number> = new Map<string, number>();
+
     public static async addFlowrsElements(editor: NodeEditor<Schemes>) {
+        this.editor = editor;
+        this.nodeTypeCount = new Map<string, number>();
+
         const selectedProject = this.getCurrentlySelectedProject();
 
         // get (typename,typeDefinition) Map
@@ -46,13 +53,19 @@ export class ContextCreator {
                 console.error("TypeDefinition for", currentNodeType, "not found")
                 continue
             }
+
+            let countOfType = this.nodeTypeCount.get(flowNode);
+
             const node = new FlowrsNode(
-                flowNode,
+                flowNode + (countOfType || ""),
                 typeDefinition,
                 project.flow.data[flowNode]?.value,
                 currentNode.constructor,
                 currentNode.type_parameters,
-                typeDefinitionsMap);
+                typeDefinitionsMap,
+                editor);
+
+            this.nodeTypeCount.set(flowNode, (countOfType || 0) + 1);
 
             await editor.addNode(node);
             allAddedNodes.set(flowNode, node);
@@ -94,25 +107,28 @@ export class ContextCreator {
             }
             let constructorDefinition = typeDefinition.constructors;
             let constructableNodes: ItemDefinition<Schemes>[] = [];
-            if (constructorDefinition.New) {
-                constructableNodes.push(["New",
-                    () => new FlowrsNode(
-                        fullTypeName,
-                        typeDefinition!,
-                        null,
-                        "New",
-                        null,
-                        typeDefinitionsMap)]);
-            }
-            if (constructorDefinition.NewWithToken) {
-                constructableNodes.push(["NewWithToken",
-                    () => new FlowrsNode(
-                        fullTypeName,
-                        typeDefinition!,
-                        null,
-                        "NewWithToken",
-                        null,
-                        typeDefinitionsMap)]);
+            for (const constructorDefinitionKey in constructorDefinition) {
+                let constructorDefinitionElement = constructorDefinition[constructorDefinitionKey];
+                if (typeof constructorDefinitionElement == "string") {
+                    console.error("Current constructor is a string constructor", constructorDefinitionElement, constructorDefinition.types)
+                    continue;
+                }
+
+                constructableNodes.push([constructorDefinitionKey,
+                    () => {
+
+                        let countOfType = this.nodeTypeCount.get(fullTypeName);
+                        let node = new FlowrsNode(
+                            fullTypeName + (countOfType || ""),
+                            typeDefinition!,
+                            null,
+                            constructorDefinitionKey,
+                            null,
+                            typeDefinitionsMap,
+                            this.editor!);
+                        this.nodeTypeCount.set(fullTypeName, (countOfType || 0) + 1);
+                        return node;
+                    }]);
             }
             output.push([fullTypeName, constructableNodes]);
         }

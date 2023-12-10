@@ -16,7 +16,6 @@ use std::sync::{Arc, Mutex};
 use std::fs::File;
 use std::io::Read;
 use std::fs;
-use axum::handler::{Handler, HandlerWithoutStateExt};
 use axum::routing::delete;
 use clap::Parser;
 

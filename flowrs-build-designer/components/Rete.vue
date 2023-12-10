@@ -7,7 +7,7 @@
 import {createEditor} from "~/rete";
 
 export default {
-  mounted() { // TODO add a wait cycle
+  mounted() {
     createEditor(this.$refs.rete).then(() => {
       console.log("Rete Editor loaded!")
     });
