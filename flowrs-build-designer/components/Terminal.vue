@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {useProjectsStore} from "~/store/projectStore";
-import { defineEmits } from 'vue';
 
 const projectsStore = useProjectsStore()
 const logEntries = computed(() => projectsStore.getCurrentLogEntries());
