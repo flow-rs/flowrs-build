@@ -31,9 +31,9 @@ fn main() {
 
     // Load the dynamic library
     println!("-> Load flow from {}.",args.flow);
-    let lib = libloading::Library::new(args.flow).expect("Failed to load the dynamic library");
-       
+    
     unsafe {
+        let lib = libloading::Library::new(args.flow).expect("Failed to load the dynamic library");
 
         let init_func: libloading::Symbol<unsafe extern fn() -> *mut ExecutionContextHandle> = lib.get(b"native_init").expect("Not load.");
         let run_func: libloading::Symbol<unsafe extern fn(usize, *mut ExecutionContextHandle) -> *const c_char> = lib.get(b"native_run").expect("Not load.");
