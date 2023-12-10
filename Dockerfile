@@ -13,6 +13,9 @@ RUN apt-get install python3 -y
 RUN echo '#!/bin/bash\npython3 $@' > /usr/bin/python && chmod +x /usr/bin/python
 RUN cargo install wasm-pack
 
+# install missing openssl depndency
+RUN apt-get install pkg-config -y
+RUN apt-get install libssl-dev -y
 
 # copy cargo files to build dependencies
 COPY ./Cargo.toml ./

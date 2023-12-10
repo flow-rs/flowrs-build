@@ -11,9 +11,9 @@ interface IApiInstance {
 }
 
 export default defineNuxtPlugin((nuxtApp) => {
-    useRuntimeConfig();
+    const config = useRuntimeConfig();
     const fetchOptions: FetchOptions = {
-        baseURL: "http://127.0.0.1:3000/api"
+        baseURL: config.public.BASE_URL_API
     };
 
     // Create a new instance of $fetcher with custom option

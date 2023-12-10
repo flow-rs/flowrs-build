@@ -9,6 +9,7 @@ const projectsStore = useProjectsStore()
 projectsStore.getAll()
 const loading = computed(() => projectsStore.loading);
 const projectClicked = computed(() => projectsStore.projectClickedInList);
+const errorMessage = computed(() => projectsStore.errorMessage);
 
 const selectProject = (project: FlowProject) => {
   console.log("Project was selected: " + project.name)
@@ -46,6 +47,8 @@ defineProps({
   <v-overlay :value="loading">
     <v-progress-circular indeterminate color="primary"></v-progress-circular>
   </v-overlay>
+<div>
+  <ErrorPopup :error-message="errorMessage"></ErrorPopup>
 
   <v-card :title="cardTitle" :subtitle="cardSubtitle" variant="elevated">
     <v-divider></v-divider>
@@ -76,6 +79,7 @@ defineProps({
       </v-row>
     </v-card-actions>
   </v-card>
+</div>
 </template>
 
 <style scoped lang="scss">

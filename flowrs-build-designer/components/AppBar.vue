@@ -25,7 +25,6 @@ const route = useRoute()
         Run and Metrics
       </v-btn>
       <v-spacer></v-spacer>
-      <v-app-bar-nav-icon class="hidden-md-and-up"/>
     </v-app-bar>
   </div>
 </template>

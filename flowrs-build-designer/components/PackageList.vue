@@ -1,40 +1,28 @@
 <script setup lang="ts">
 
-import { usePackagesStore } from "~/store/packageStore.js";
-import {Crate} from "~/repository/modules/packages";
+import {usePackagesStore} from "~/store/packageStore";
+import type {Crate} from "~/repository/modules/packages";
 
 const packagesStore = usePackagesStore()
-await packagesStore.getAll()
-console.log(packagesStore.packagesMap)
-console.log(packagesStore.packages)
-const projectClicked = ref(false)
-
-function selectPackage(packageE){
-  const p : Crate = packageE
-  console.log(packageE)
-  console.log("Package was selected: " + p.name)
-  packagesStore.selectPackage(packageE)
-  packagesStore.getByName(p.name)
-  console.log(toRaw(packagesStore.selectedMap))
-  console.log(packagesStore.selectedPackage.name)
-  projectClicked.value = true;
+const selectPackage = (crate: Crate) => {
+  console.log("Project was selected: " + crate.name)
+  packagesStore.selectPackage(crate)
+  packagesStore.getByName(crate.name)
 }
 
 const refreshPackageList = () => {
   console.log("Refreshing list of packages...")
   packagesStore.getAll()
 }
-defineProps({
-  cardTitle: { type: String, default: "Packages" }
-});
+const {cardTitle: string} = defineProps(['cardTitle']);
 </script>
 
 <template>
-  <v-card :title="cardTitle" :subtitle="cardSubtitle" variant="elevated">
+  <v-card :title="cardTitle" subtitle="Test" variant="elevated">
     <v-divider></v-divider>
     <v-list>
-      <v-list-item v-for="packageE in packagesStore.packages" :key="packageE.name" :value="packageE" color="primary"
-        :title="packageE.name" :subtitle="packageE.version" @click="selectPackage(packageE)"></v-list-item>
+      <v-list-item v-for="crate in packagesStore.packages" :key="crate.name" :value="crate" color="primary"
+                   :title="crate.name" :subtitle="crate.version" @click="selectPackage(crate)"></v-list-item>
     </v-list>
     <v-card-actions>
       <v-row class="mb-2 mt-2">
