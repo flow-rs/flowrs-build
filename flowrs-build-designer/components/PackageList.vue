@@ -20,11 +20,7 @@ function selectPackage(packageE) {
   console.log(packagesStore.selectedPackage.name)
   projectClicked.value = true;
 }
-const updateSelected =()=>{
-  console.log(packages)
-  packagesStore.currentActive=toRaw(packages).values
-  console.log(packagesStore.currentActive)
-}
+
 const refreshPackageList = () => {
   console.log("Refreshing list of packages...")
   packagesStore.getAll()
@@ -33,8 +29,7 @@ defineProps({
   cardTitle: { type: String, default: "Packages" }
 });
 
-const packages = reactive({ values: [] });
-packages.values=packagesStore.currentActive
+
 </script>
 
 <template>
@@ -42,9 +37,7 @@ packages.values=packagesStore.currentActive
     <v-divider></v-divider>
     <v-list>
       <v-list-item v-for="packageE in packagesStore.packages" :key="packageE.name" :value="packageE" color="primary"
-        :title="packageE.name" :subtitle="packageE.version" @click="selectPackage(packageE)">
-        <v-switch  :value="packageE.name" v-model="packages.values" @change="updateSelected()" v-if="packageE.name!=='flowrs' && packageE.name!=='built-in'" color="primary" class="d-flex justify-center" @click.stop label="Active"
-          inset></v-switch></v-list-item>
+        :title="packageE.name" :subtitle="packageE.version" @click="selectPackage(packageE)"></v-list-item>
     </v-list>
     <v-card-actions>
       <v-row class="mb-2 mt-2">

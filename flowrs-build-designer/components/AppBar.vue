@@ -19,7 +19,7 @@ const route = useRoute()
       </v-btn>
       <v-btn prepend-icon="mdi-package-variant" variant="elevated" class="ma-1" color="primary" to="/packageSelect">
         Package
-        Select
+        Info
       </v-btn>
       <v-btn prepend-icon="mdi-run" variant="elevated" class="ma-1" color="primary" to="/compileRunAndMetrics">Compile,
         Run and Metrics

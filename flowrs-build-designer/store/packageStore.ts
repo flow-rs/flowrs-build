@@ -18,6 +18,7 @@ export const usePackagesStore = defineStore({
             }).then( ()=>{
                 return $api.packages.getFlowrsPackages();
             }).then( packages =>{
+                console.log(packages)
                 this.packages=packages;
             })
             .catch((error) => console.log("Error fetching packages!"))
