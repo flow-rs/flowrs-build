@@ -1,5 +1,5 @@
 import {defineStore} from 'pinia'
-import {type FlowProject, type ProjectIdentifier, type CompileError} from "~/repository/modules/projects";
+import {type CompileError, type FlowProject, type ProjectIdentifier} from "~/repository/modules/projects";
 import type {ProcessIdentifier} from "~/repository/modules/processes";
 
 
@@ -7,7 +7,6 @@ export enum BuildType {
     Wasm = "wasm",
     Cargo = "cargo",
 }
-
 
 
 export const useProjectsStore = defineStore({
@@ -22,6 +21,7 @@ export const useProjectsStore = defineStore({
             logEntriesMap: new Map() as Map<string, string[]>,
             runningProcessesMap: new Map() as Map<string, number | undefined>,
             compileErrorMap: new Map() as Map<string, CompileError[] | undefined>,
+            compileTimestampMap: new Map() as Map<string, string | undefined>,
             projectClickedInList: false,
             errorMessage: "",
             showDialog: false,
@@ -111,6 +111,7 @@ export const useProjectsStore = defineStore({
                 const response_txt = `${response}`
                 this.writeLogEntry(response_txt)
                 this.setCurrentCompileErrorsOfProject(projectName, undefined)
+                this.compileTimestampMap.set(this.selectedProject.name, this.getCurrentTimestamp())
             }).catch((error) => {
                 console.log("error compiling project")
                 let converted = error.data as string
@@ -118,7 +119,7 @@ export const useProjectsStore = defineStore({
                 const rawValues = this.extractErrors(converted)
                 for (error in rawValues) {
                     const errorTitle = rawValues[error].split('\\n').filter((line: string | string[]) => line.includes('error['));
-                    const object: CompileError  = {
+                    const object: CompileError = {
                         title: errorTitle[0],
                         message: rawValues[error].replace(errorTitle[0], "")
                     }
@@ -129,7 +130,7 @@ export const useProjectsStore = defineStore({
                 .finally(() => (this.loading = false))
         },
 
-        extractErrors(text: string) : string[] {
+        extractErrors(text: string): string[] {
             const pattern = /error\[\s*([\s\S]*?)(?=error\[|error: could not|$)/g;
             const matches = text.match(pattern);
             return matches || [];
@@ -208,17 +209,36 @@ export const useProjectsStore = defineStore({
             return this.logEntriesMap.get(this.selectedProject.name)
         },
 
-        getCurrentCompileErrorsOfProject() : CompileError[] | undefined {
-           return this.compileErrorMap.get(this.selectedProject.name)
+        getCurrentCompileErrorsOfProject(): CompileError[] | undefined {
+            return this.compileErrorMap.get(this.selectedProject.name)
         },
 
-        compileErrorForSelectedProjectExist() : boolean {
+        compileErrorForSelectedProjectExist(): boolean {
             const compileErrors = this.compileErrorMap.get(this.selectedProject.name)
             return compileErrors !== undefined;
         },
 
         setCurrentCompileErrorsOfProject(projectName: string, compileErrors: CompileError[] | undefined) {
             this.compileErrorMap.set(projectName, compileErrors)
+        },
+
+        getLastCompileTimeOfProject(): string | undefined {
+            return this.compileTimestampMap.get(this.selectedProject.name)
+        },
+
+        getCurrentTimestamp(): string {
+            const currentDate = new Date();
+            const formatter = new Intl.DateTimeFormat('de-DE', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false, // 24-hour format
+            });
+
+            return formatter.format(currentDate);
         },
 
         getBuildTypeArray(): string[] {

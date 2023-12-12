@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {useProjectsStore} from "~/store/projectStore";
-import {ref, onMounted, onBeforeUnmount} from 'vue';
+import {onBeforeUnmount, onMounted, ref} from 'vue';
 import MetricPanelPlaceholder from "~/components/MetricPanelPlaceholder.vue";
 import MetricPanel from "~/components/MetricPanel.vue";
 
@@ -77,7 +77,7 @@ onBeforeUnmount(() => {
         <ControlPanel></ControlPanel>
       </v-col>
       <v-col cols="9">
-        <Terminal @compile-error-button-clicked="handleCompileErrorButtonClick"></Terminal>
+        <LogPanel @compile-error-button-clicked="handleCompileErrorButtonClick"></LogPanel>
       </v-col>
     </v-row>
   </v-container>
@@ -89,7 +89,6 @@ onBeforeUnmount(() => {
 .preserve-whitespace {
   white-space: pre-wrap;
 }
-
 
 
 </style>
