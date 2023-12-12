@@ -11,7 +11,6 @@ const compileErrorObjects = computed(() => projectsStore.compileErrorObjects);
 const currentProcessId = computed(() => projectsStore.getCurrentProcessId());
 let openCompileErrorDialog = ref(false);
 const handleCompileErrorButtonClick = () => {
-  console.log('catch event')
   openCompileErrorDialog.value = true
 }
 
@@ -21,6 +20,11 @@ const closeDialog = () => {
 
 const getCurrentLogs = () => {
   projectsStore.getLogs()
+}
+
+const formattedErrorMessage = (message: string) => {
+  const formatted = message.replace(/\\n/g, '<br>');
+  return formatted
 }
 
 onMounted(() => {
@@ -55,7 +59,7 @@ onBeforeUnmount(() => {
               :key="i"
           >
             <v-expansion-panel-title>{{i.title}}</v-expansion-panel-title>
-            <v-expansion-panel-text>{{i.message}}</v-expansion-panel-text>
+            <v-expansion-panel-text><div v-html="formattedErrorMessage(i.message)" class="preserve-whitespace"></div></v-expansion-panel-text>
           </v-expansion-panel>
 
         </v-expansion-panels>
@@ -111,6 +115,10 @@ onBeforeUnmount(() => {
   right: 0;
   width: 100%;
   height: 100%;
+}
+
+.preserve-whitespace {
+  white-space: pre-wrap;
 }
 
 .container {
