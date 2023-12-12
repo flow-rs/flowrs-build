@@ -34,6 +34,7 @@ export const useProjectsStore = defineStore({
             $api.projects.getProjects().then(listOfFlowProjects => {
                 this.projects = listOfFlowProjects;
                 this.selectedProject = listOfFlowProjects[0]
+                this.setCurrentErrorMessage("")
             }).catch((error) => {
                 const errorString = "Error fetching projects " + error
                 this.setCurrentErrorMessage(errorString)

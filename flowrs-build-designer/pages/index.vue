@@ -3,10 +3,10 @@
 import {useProjectsStore} from "~/store/projectStore";
 
 const projectsStore = useProjectsStore();
+projectsStore.getAll()
 const selectedProject = computed(() => projectsStore.selectedProject);
-
 const activeFilter = computed(() => projectsStore.activeFilter);
-
+const errorMessage = computed(() => projectsStore.errorMessage);
 const handleFilterSelection = (value: string) => {
   projectsStore.setActiveFilter(value)
 };
@@ -23,6 +23,9 @@ const handleFilterSelection = (value: string) => {
       </v-col>
 
       <v-col>
+        <div v-if="errorMessage.length != 0">
+        <ErrorPopup :error-message="errorMessage"></ErrorPopup>
+        </div>
         <v-card
             :title="selectedProject && projectsStore.projectClickedInList ? selectedProject.name : 'No project selected!'"
             subtitle="flow-project.json">
