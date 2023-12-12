@@ -132,7 +132,7 @@ export const useProjectsStore = defineStore({
         },
 
         extractErrors(text: string) : string[] {
-            const pattern = /error\[\s*([\s\S]*?)(?=error\[)/g;
+            const pattern = /error\[\s*([\s\S]*?)(?=error\[|error: could not|$)/g;
             const matches = text.match(pattern);
             return matches || [];
         },
