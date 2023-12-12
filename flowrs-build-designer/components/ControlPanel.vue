@@ -8,6 +8,7 @@ const projectsStore = useProjectsStore()
 const selectedProject = ref(projectsStore.selectedProject);
 const loading = computed(() => projectsStore.loading);
 const projects = computed(() => projectsStore.projects);
+const processes = computed(() => projectsStore.runningProcessesMap);
 const buildType = ref(projectsStore.getBuildTypeArray());
 const selectedBuildType = ref(projectsStore.selectedBuildType)
 
@@ -26,6 +27,15 @@ const run = () => {
 
 const stop = () => {
   projectsStore.stopProcessRequest()
+}
+
+const getStatus = () => {
+  const valuesArray = [...processes.value.values()];
+  const containsNumber = valuesArray.some(value => typeof value === 'number');
+  if (containsNumber) {
+    return "green"
+  }
+  return "red"
 }
 
 const compile = () => {
@@ -73,14 +83,29 @@ const compile = () => {
         <v-btn color="error" prepend-icon="mdi-stop" rounded="0" size="large" @click="stop()">
           Stop execution
         </v-btn>
-
       </v-col>
     </v-card-actions>
+      <v-divider></v-divider>
+      <v-col>
+        <div class="mt-2 ml-2">Overall status:</div>
+        <div class="flex-content">
+          <v-icon class="mt-2 ml-2" :color="getStatus()" icon="mdi-circle"></v-icon>
+          <div class="mt-2 ml-2" v-if="getStatus() === 'green'">Running project</div>
+          <div class="mt-2 ml-2" v-if="getStatus() !== 'green'">No running project</div>
+        </div>
+
+      </v-col>
+
+
+
     </div>
 
   </v-card>
 </template>
 
 <style scoped lang="scss">
-
+.flex-content {
+  display: flex;
+  align-items: center
+}
 </style>

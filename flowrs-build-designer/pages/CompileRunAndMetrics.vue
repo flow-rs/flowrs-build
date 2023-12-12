@@ -64,7 +64,6 @@ onBeforeUnmount(() => {
                 <div v-html="formattedErrorMessage(i.message)" class="preserve-whitespace"></div>
               </v-expansion-panel-text>
             </v-expansion-panel>
-
           </v-expansion-panels>
 
         </v-card>
@@ -75,7 +74,7 @@ onBeforeUnmount(() => {
 
     <v-row>
       <v-col cols="3">
-        <ProjectActionPane></ProjectActionPane>
+        <ControlPanel></ControlPanel>
       </v-col>
       <v-col cols="9">
         <Terminal @compile-error-button-clicked="handleCompileErrorButtonClick"></Terminal>
