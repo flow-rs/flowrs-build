@@ -21,11 +21,10 @@ export const useProjectsStore = defineStore({
             activeFilter: "",
             logEntriesMap: new Map() as Map<string, string[]>,
             runningProcessesMap: new Map() as Map<string, number | undefined>,
+            compileErrorMap: new Map() as Map<string, CompileError[] | undefined>,
             projectClickedInList: false,
             errorMessage: "",
             showDialog: false,
-            compileError: false,
-            compileErrorObjects: [] as CompileError[]
         });
     },
     actions: {
@@ -107,14 +106,13 @@ export const useProjectsStore = defineStore({
                 project_name: projectName
             }
             this.loading = true
-            this.compileError = false;
             $api.projects.compileProject(projectIdentifier, buildType).then(response => {
                 console.log("Flow Project is compiled!")
                 const response_txt = `${response}`
                 this.writeLogEntry(response_txt)
+                this.setCurrentCompileErrorsOfProject(projectName, undefined)
             }).catch((error) => {
                 console.log("error compiling project")
-                this.compileError = true;
                 let converted = error.data as string
                 let result = [] as CompileError[]
                 const rawValues = this.extractErrors(converted)
@@ -126,7 +124,7 @@ export const useProjectsStore = defineStore({
                     }
                     result.push(object)
                 }
-                this.compileErrorObjects = result
+                this.setCurrentCompileErrorsOfProject(projectName, result)
             })
                 .finally(() => (this.loading = false))
         },
@@ -208,6 +206,19 @@ export const useProjectsStore = defineStore({
                 return []
             }
             return this.logEntriesMap.get(this.selectedProject.name)
+        },
+
+        getCurrentCompileErrorsOfProject() : CompileError[] | undefined {
+           return this.compileErrorMap.get(this.selectedProject.name)
+        },
+
+        compileErrorForSelectedProjectExist() : boolean {
+            const compileErrors = this.compileErrorMap.get(this.selectedProject.name)
+            return compileErrors !== undefined;
+        },
+
+        setCurrentCompileErrorsOfProject(projectName: string, compileErrors: CompileError[] | undefined) {
+            this.compileErrorMap.set(projectName, compileErrors)
         },
 
         getBuildTypeArray(): string[] {

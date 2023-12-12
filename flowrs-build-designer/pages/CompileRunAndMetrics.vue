@@ -7,7 +7,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue';
 let interval: NodeJS.Timeout;
 
 const projectsStore = useProjectsStore()
-const compileErrorObjects = computed(() => projectsStore.compileErrorObjects);
+const compileErrorObjects = computed(() => projectsStore.getCurrentCompileErrorsOfProject());
 const currentProcessId = computed(() => projectsStore.getCurrentProcessId());
 let openCompileErrorDialog = ref(false);
 const handleCompileErrorButtonClick = () => {

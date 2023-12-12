@@ -5,14 +5,12 @@ const projectsStore = useProjectsStore()
 const logEntries = computed(() => projectsStore.getCurrentLogEntries());
 const projects = computed(() => projectsStore.projects);
 const selectedProject = computed(() => projectsStore.selectedProject)
-const compileError = computed(() => projectsStore.compileError)
+const compileError = computed(() => projectsStore.compileErrorForSelectedProjectExist())
 const emits = defineEmits(['compile-error-button-clicked']);
 const emitCompileErrorButtonClickEvent = () => {
-  console.log("emit event")
   emits('compile-error-button-clicked')
 }
 
-//TODO: Autoscrolling
 </script>
 
 <template>
