@@ -4,7 +4,7 @@ import {ref, watch} from "vue";
 import {type FlowProject} from "~/repository/modules/projects";
 
 const projectsStore = useProjectsStore()
-//TODO: new tab or new page?, store log messages and status of the running processes across page switch
+
 const selectedProject = ref(projectsStore.selectedProject);
 const loading = computed(() => projectsStore.loading);
 const projects = computed(() => projectsStore.projects);
