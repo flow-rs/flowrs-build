@@ -25,7 +25,7 @@ export class ContextCreator {
         }
 
         this.preventTypeIncompatibleConnections(editor);
-        typeDefinitionsMap=this.filterInActive(typeDefinitionsMap);
+        //typeDefinitionsMap=this.filterInActive(typeDefinitionsMap);
         return await this.createContextMenuWithConstructableNodes(typeDefinitionsMap);
     }
     private static filterInActive(map:Map<string,TypeDefinition>){

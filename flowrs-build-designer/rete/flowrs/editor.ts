@@ -17,7 +17,9 @@ import {ContextCreator} from "~/rete/flowrs/contextCreator";
 import CustomDropdownControl from "../../components/CustomDropdownControl.vue";
 
 import type {TypeDefinition} from "~/repository/modules/packages";
+import { usePackagesStore } from "~/store/packageStore.js";
 
+const packagesStore = usePackagesStore()
 type Node = FlowrsNode;
 type Conn =
     | Connection<FlowrsNode, FlowrsNode>;
@@ -110,7 +112,8 @@ export async function createEditor(container: HTMLElement) {
     await AreaExtensions.zoomAt(area, editor.getNodes());
 
     AreaExtensions.simpleNodesOrder(area);
-
+    packagesStore.NodeEditor=editor;    
+    packagesStore.ContextMenu=contextMenu;
     return {
         destroy: () => area.destroy(),
     };

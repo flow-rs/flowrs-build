@@ -7,7 +7,9 @@ export const usePackagesStore = defineStore({
         packagesMap: null,
         packages: [],
         selectedMap:[],
-        currentActive: ["primitives","flowrs"] as string,
+        currentActive: [],
+        NodeEditor: null,
+        ContextMenu: null,
         loading: false
     }),
     actions: {
