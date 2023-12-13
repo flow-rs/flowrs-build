@@ -24,9 +24,11 @@ services:
       - nodemodules:/app/node_modules
     networks:
       - flowrs
+    depends_on:
+      - service-main
 
 volumes:
-    nodemodules:
+  nodemodules:
 
 networks:
   flowrs:
