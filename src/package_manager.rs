@@ -13,7 +13,7 @@ impl PackageManager {
             packages: HashMap::new(),
         };
 
-        pm.add_built_in_package();
+        pm.add_std_package();
 
         pm
     }
@@ -63,24 +63,24 @@ impl PackageManager {
 
         
         let mut pm = PackageManager { packages: packages };
-        pm.add_built_in_package();
+        pm.add_std_package();
 
         pm
     }
 
-    fn add_built_in_package(&mut self) {
+    fn add_std_package(&mut self) {
 
-        // primitive types.
-        let prims: [&str; 16] = [
+        // prelude types (not all, just a selection, see https://doc.rust-lang.org/stable/std/prelude/index.html).
+        let prelude_types: [&str; 18] = [
             "i8", "i16", "i32", "i64", "i128", "u8", "u16", "u32", "u64", "u128", "isize", "usize",
-            "f32", "f64", "bool", "char",
+            "f32", "f64", "bool", "char", "String", "Vec"
         ];
 
         let mut types = HashMap::new();
-        for prim in prims {
+        for pt in prelude_types {
             types.insert(
-                prim.to_string(),
-                Type::new_primitive_type(),
+                pt.to_string(),
+                Type::new_prelude_type(),
             );
         }
 
@@ -88,10 +88,10 @@ impl PackageManager {
         types.insert("()".to_string(), Type::new_simple());
 
         let mut crates = HashMap::new();
-        crates.insert("primitives".to_string(), Crate::new_with_types(types));
+        crates.insert("prelude".to_string(), Crate::new_with_types(types));
 
         self.add_package(Package {
-            name: "built-in".to_string(),
+            name: "std".to_string(),
             version: "1.0.0".to_string(),
             crates: crates,
         })
@@ -114,15 +114,15 @@ impl PackageManager {
     pub fn get_type(&self, type_name: &str) -> Option<&Type> {
         let type_ids: Vec<&str> = type_name.split("::").collect();
 
-        // check built-in types.
+        // check prelude types.
         if type_ids.len() == 1 {
             return self
                 .packages
-                .get("built-in")
-                .expect("built-in package not available.")
+                .get("std")
+                .expect("std package not available.")
                 .crates
-                .get("primitives")
-                .expect("primitives crate not available.")
+                .get("prelude")
+                .expect("prelude crate not available.")
                 .types
                 .get(type_ids[0]);
         }
