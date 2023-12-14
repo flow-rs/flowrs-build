@@ -9,6 +9,7 @@ const selectedProject = computed(() => projectsStore.selectedProject);
 const errorMessage = computed(() => projectsStore.errorMessage);
 const loading = computed(() => projectsStore.loading);
 let json = ref()
+const saveDisabled = ref(true);
 
 onMounted(() => {
   if (selectedProject.value != null) {
@@ -24,6 +25,7 @@ const saveProject = () => {
 
 const handleProjectSelection = () => {
   json.value = selectedProject.value
+  saveDisabled.value = false;
 }
 
 
@@ -45,16 +47,15 @@ const handleProjectSelection = () => {
         <v-card>
           <v-row>
             <v-col>
-              <v-card-title>
+              <v-card-title>Editor:
                 {{
                   selectedProject !== null ? selectedProject.name : 'No project selected!'
                 }}
               </v-card-title>
               <v-card-subtitle>flow-project.json</v-card-subtitle>
             </v-col>
-            <v-col class="align-content-center">
-              <v-btn @click="saveProject()">Klick hier</v-btn>
-
+            <v-col class="d-flex align-center justify-end mr-4">
+              <v-btn :disabled="saveDisabled" color="success" @click="saveProject()">Save</v-btn>
             </v-col>
 
           </v-row>
