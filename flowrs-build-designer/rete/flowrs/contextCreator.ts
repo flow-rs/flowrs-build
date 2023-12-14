@@ -58,7 +58,7 @@ export class ContextCreator {
 
             const node = new FlowrsNode(
                 flowNode + (countOfType || ""),
-                typeDefinition,
+                currentNodeType,
                 project.flow.data[flowNode]?.value,
                 currentNode.constructor,
                 currentNode.type_parameters,
@@ -120,7 +120,7 @@ export class ContextCreator {
                         let countOfType = this.nodeTypeCount.get(fullTypeName);
                         let node = new FlowrsNode(
                             fullTypeName + (countOfType || ""),
-                            typeDefinition!,
+                            fullTypeName,
                             null,
                             constructorDefinitionKey,
                             null,
