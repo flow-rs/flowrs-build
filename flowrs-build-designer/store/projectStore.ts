@@ -17,7 +17,6 @@ export const useProjectsStore = defineStore({
             selectedProject: null as FlowProject | null,
             selectedBuildType: BuildType.Cargo,
             loading: false,
-            activeFilter: "",
             logEntriesMap: new Map() as Map<string, string[]>,
             runningProcessesMap: new Map() as Map<string, number | undefined>,
             compileErrorMap: new Map() as Map<string, CompileError[] | undefined>,
@@ -160,16 +159,15 @@ export const useProjectsStore = defineStore({
 
         selectProject(project: FlowProject) {
             this.selectedProject = project;
-            this.activeFilter = 'noFilter';
             this.projectClickedInList = true
+        },
+
+        saveProject(project: FlowProject | null) {
+            this.selectedProject = project;
         },
 
         selectBuildType(buildType: string) {
             this.selectedBuildType = buildType;
-        },
-
-        setActiveFilter(value: string) {
-            this.activeFilter = value
         },
 
         writeLogEntry(logEntryToAdd: string) {

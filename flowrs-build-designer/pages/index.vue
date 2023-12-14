@@ -1,67 +1,76 @@
 <script setup lang="ts">
 
 import {useProjectsStore} from "~/store/projectStore";
+import JsonEditorVue from 'json-editor-vue'
 
 const projectsStore = useProjectsStore();
 projectsStore.getAll()
 const selectedProject = computed(() => projectsStore.selectedProject);
-const activeFilter = computed(() => projectsStore.activeFilter);
 const errorMessage = computed(() => projectsStore.errorMessage);
-const handleFilterSelection = (value: string) => {
-  projectsStore.setActiveFilter(value)
-};
+const loading = computed(() => projectsStore.loading);
+let json = ref()
+
+onMounted(() => {
+  json.value = selectedProject.value
+  // // Code to run when the component is mounted
+  // console.log('Component is mounted');
+});
+
+const saveProject = () => {
+  // projectsStore.saveProject(json)
+  console.log(json.value)
+}
+
+const handleProjectSelection = () => {
+  json.value = selectedProject.value
+}
+
 
 </script>
 
 
 <template>
   <v-container fluid>
+    <v-progress-circular indeterminate model-value=false></v-progress-circular>
     <v-row>
       <v-col class="text-center">
         <ProjectList :card-title="
-      'Projects'" :card-subtitle="'Choose your project'"></ProjectList>
+      'Projects'" :card-subtitle="'Choose your project'" @project-selected="handleProjectSelection"></ProjectList>
       </v-col>
 
       <v-col>
         <div v-if="errorMessage.length != 0">
-        <ErrorPopup :error-message="errorMessage"></ErrorPopup>
+          <ErrorPopup :error-message="errorMessage"></ErrorPopup>
         </div>
-        <v-card
-            :title="selectedProject && projectsStore.projectClickedInList ? selectedProject.name : 'No project selected!'"
-            subtitle="flow-project.json">
-          <v-divider></v-divider>
+        <v-card>
           <v-row>
             <v-col>
-              <v-btn-toggle mandatory>
-                <v-btn @click="handleFilterSelection('noFilter')" :active="activeFilter==='noFilter'">
-                  No filter
-                </v-btn>
-                <v-btn @click="handleFilterSelection('packages')" :active="activeFilter==='packages'">
-                  Only Packages
-                </v-btn>
-                <v-btn @click="handleFilterSelection('flow')" :active="activeFilter==='flow'">
-                  Only Flow
-                </v-btn>
-              </v-btn-toggle>
+              <v-card-title>
+                {{
+                  selectedProject && projectsStore.projectClickedInList ? selectedProject.name : 'No project selected!'
+                }}
+              </v-card-title>
+              <v-card-subtitle>flow-project.json</v-card-subtitle>
             </v-col>
+            <v-col class="align-content-center">
+              <v-btn @click="saveProject()">Klick hier</v-btn>
+
+            </v-col>
+
           </v-row>
-          <div class=" scroll">
-          <pre class="language-json">
-            <template v-if="activeFilter==='noFilter'">
-              <code>{{ selectedProject }}</code>
-            </template>
-            <template v-else-if="activeFilter==='packages'">
-              <code>{{ selectedProject ? selectedProject.packages : "nothing to show" }}</code>
-            </template>
-            <template v-else-if="activeFilter==='flow'">
-              <code>{{ selectedProject ? selectedProject.flow : "nothing to show" }}</code>
-            </template>
-          </pre>
-          </div>
+
+          <v-divider></v-divider>
+
+          <client-only>
+            <JsonEditorVue class="scroll" v-model="json" mode='text'/>
+          </client-only>
 
         </v-card>
 
       </v-col>
+    </v-row>
+    <v-row>
+
     </v-row>
   </v-container>
 </template>
