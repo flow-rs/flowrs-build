@@ -19,7 +19,7 @@ onMounted(() => {
 
 const saveProject = () => {
   //TODO:
-  // projectsStore.saveProject(json)
+  projectsStore.saveProject(json.value)
   console.log(json.value)
 }
 

@@ -164,8 +164,18 @@ export const useProjectsStore = defineStore({
             this.projectClickedInList = true
         },
 
-        saveProject(project: FlowProject | null) {
-            this.selectedProject = project;
+        createProject(project: FlowProject) {
+            const {$api} = useNuxtApp();
+            $api.projects.createProject(project).then(() => {
+                console.log("Project created!")
+            }).catch((error) => {
+                console.log("Error creating a project!")
+            });
+        },
+
+        saveProject(project: FlowProject) {
+            this.createProject(project)
+            // this.selectedProject = project;
         },
 
         selectBuildType(buildType: string) {
@@ -252,6 +262,17 @@ export const useProjectsStore = defineStore({
             });
 
             return formatter.format(currentDate);
+        },
+
+        getRunningFlowProjects(): string[] {
+            const stringsWithDefinedNumbers: string[] = [];
+
+            this.runningProcessesMap.forEach((value, key) => {
+                if (value !== undefined) {
+                    stringsWithDefinedNumbers.push(key);
+                }
+            });
+            return stringsWithDefinedNumbers;
         },
 
         getBuildTypeArray(): string[] {

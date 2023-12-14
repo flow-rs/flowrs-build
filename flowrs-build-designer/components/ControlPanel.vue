@@ -12,6 +12,7 @@ const processes = computed(() => projectsStore.runningProcessesMap);
 const lastCompiled = computed(() => projectsStore.getLastCompileTimeOfProject());
 const buildType = ref(projectsStore.getBuildTypeArray());
 const selectedBuildType = ref(projectsStore.selectedBuildType)
+const runningProcesses = computed(() => projectsStore.getRunningFlowProjects());
 
 //TODO: disable run button if process is started; prevent multiple processes to run for the same project
 
@@ -97,8 +98,15 @@ const compile = () => {
   <v-card title="Overall status" class="mt-3">
     <div class="flex-content">
       <v-icon class="mt-2 ml-2 mb-2" :color="getStatus()" icon="mdi-circle"></v-icon>
-      <div class="mt-2 ml-2 mb-2" v-if="getStatus() === 'green'">Running flow</div>
+      <div class="mt-2 ml-2 mb-2" v-if="getStatus() === 'green'">Running flow:</div>
       <div class="mt-2 ml-2 mb-2" v-if="getStatus() !== 'green'">No running flow</div>
+    </div>
+    <div class="ml-5">
+      <ul>
+        <li v-for="projectName in runningProcesses" :key="projectName">
+          {{ projectName }}
+        </li>
+      </ul>
     </div>
   </v-card>
 </template>
