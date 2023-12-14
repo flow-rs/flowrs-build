@@ -7,8 +7,8 @@ import MetricPanel from "~/components/MetricPanel.vue";
 
 // Set up an interval variable
 let interval: NodeJS.Timeout;
-
 const projectsStore = useProjectsStore()
+projectsStore.getAll()
 const compileErrorObjects = computed(() => projectsStore.getCurrentCompileErrorsOfProject());
 const currentProcessId = computed(() => projectsStore.getCurrentProcessId());
 let openCompileErrorDialog = ref(false);

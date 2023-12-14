@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {useProjectsStore} from "~/store/projectStore";
-import {ref, watch} from "vue";
-import {type FlowProject} from "~/repository/modules/projects";
+import {ref} from "vue";
+import {FlowProject} from "~/repository/modules/projects";
 
 const projectsStore = useProjectsStore()
 
@@ -16,14 +16,16 @@ const selectedBuildType = ref(projectsStore.selectedBuildType)
 //TODO: disable run button if process is started; prevent multiple processes to run for the same project
 
 //TODO: add "status led" which indicates if one project is running / List of running projects?
-
+//
 watch(selectedProject, () => projectsStore.selectProject(selectedProject.value as FlowProject))
 
 watch(selectedBuildType, () => projectsStore.selectBuildType(selectedBuildType.value))
 
 const run = () => {
   //TODO: check that the run type is the same as the compile type
-  projectsStore.runProjectRequest(selectedProject.value.name, selectedBuildType.value)
+  if (selectedProject.value != null) {
+    projectsStore.runProjectRequest(selectedProject.value.name, selectedBuildType.value)
+  }
 }
 
 const stop = () => {
@@ -40,7 +42,9 @@ const getStatus = () => {
 }
 
 const compile = () => {
-  projectsStore.compileProjectRequest(selectedProject.value.name, selectedBuildType.value)
+  if (selectedProject.value != null) {
+    projectsStore.compileProjectRequest(selectedProject.value.name, selectedBuildType.value)
+  }
 }
 
 </script>

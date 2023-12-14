@@ -31,7 +31,6 @@ export const useProjectsStore = defineStore({
             const {$api} = useNuxtApp();
             $api.projects.getProjects().then(listOfFlowProjects => {
                 this.projects = listOfFlowProjects;
-                this.selectedProject = listOfFlowProjects[0]
                 this.setCurrentErrorMessage("")
             }).catch((error) => {
                 const errorString = "Error fetching projects " + error
@@ -80,22 +79,25 @@ export const useProjectsStore = defineStore({
 
         async stopProcessRequest() {
             const {$api} = useNuxtApp();
-
-            let processId = this.runningProcessesMap.get(this.selectedProject.name)
-            if (processId != undefined && processId != -1) {
-                const processIdentifier: ProcessIdentifier = {
-                    process_id: processId
+            if (this.selectedProject !== null) {
+                let processId = this.runningProcessesMap.get(this.selectedProject.name)
+                if (processId != undefined && processId != -1) {
+                    const processIdentifier: ProcessIdentifier = {
+                        process_id: processId
+                    }
+                    this.loading = true
+                    $api.processes.stopProcess(processIdentifier).then(response => {
+                        console.log("Flow Project is stopped!")
+                        if (this.selectedProject !== null) {
+                            this.runningProcessesMap.set(this.selectedProject.name, undefined)
+                        }
+                        this.writeLogEntry("Ausführung vom Flow-Projekt gestoppt.")
+                    }).catch((error) => {
+                        this.writeLogEntry(error)
+                        console.log("Error stopping project:" + error)
+                    })
+                        .finally(() => (this.loading = false))
                 }
-                this.loading = true
-                $api.processes.stopProcess(processIdentifier).then(response => {
-                    console.log("Flow Project is stopped!")
-                    this.runningProcessesMap.set(this.selectedProject.name, undefined)
-                    this.writeLogEntry("Ausführung vom Flow-Projekt gestoppt.")
-                }).catch((error) => {
-                    this.writeLogEntry(error)
-                    console.log("Error stopping project:" + error)
-                })
-                    .finally(() => (this.loading = false))
             }
         },
 
@@ -194,10 +196,14 @@ export const useProjectsStore = defineStore({
         },
 
         getCurrentProcessId() {
-            let processId = this.runningProcessesMap.get(this.selectedProject.name)
-            if (processId != undefined) {
-                return processId
+            if (this.selectedProject != null) {
+                let processId = this.runningProcessesMap.get(this.selectedProject.name)
+                if (processId != undefined) {
+                    return processId
+                }
             }
+            return undefined
+
         },
 
         getCurrentLogEntries() {
@@ -208,12 +214,18 @@ export const useProjectsStore = defineStore({
         },
 
         getCurrentCompileErrorsOfProject(): CompileError[] | undefined {
-            return this.compileErrorMap.get(this.selectedProject.name)
+            if (this.selectedProject !== null) {
+                return this.compileErrorMap.get(this.selectedProject.name)
+            }
+            return undefined
         },
 
         compileErrorForSelectedProjectExist(): boolean {
-            const compileErrors = this.compileErrorMap.get(this.selectedProject.name)
-            return compileErrors !== undefined;
+            if (this.selectedProject !== null) {
+                const compileErrors = this.compileErrorMap.get(this.selectedProject.name)
+                return compileErrors !== undefined;
+            }
+            return false;
         },
 
         setCurrentCompileErrorsOfProject(projectName: string, compileErrors: CompileError[] | undefined) {
@@ -221,7 +233,10 @@ export const useProjectsStore = defineStore({
         },
 
         getLastCompileTimeOfProject(): string | undefined {
-            return this.compileTimestampMap.get(this.selectedProject.name)
+            if (this.selectedProject !== null) {
+                return this.compileTimestampMap.get(this.selectedProject.name)
+            }
+            return undefined
         },
 
         getCurrentTimestamp(): string {

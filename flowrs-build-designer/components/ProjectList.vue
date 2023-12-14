@@ -71,7 +71,8 @@ defineProps({
       <v-card-actions>
         <v-row class="mb-2 mt-2">
           <v-col class="d-flex justify-space-around">
-            <v-btn prepend-icon="mdi-open-in-app" color="primary" :disabled="!projectClicked"
+            <v-btn prepend-icon="mdi-open-in-app" color="primary"
+                   :disabled="!projectClicked"
                    @click="openProjectAsFlow()">
               Open
             </v-btn>

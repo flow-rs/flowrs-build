@@ -11,12 +11,13 @@ const loading = computed(() => projectsStore.loading);
 let json = ref()
 
 onMounted(() => {
-  json.value = selectedProject.value
-  // // Code to run when the component is mounted
-  // console.log('Component is mounted');
+  if (selectedProject.value != null) {
+    json.value = selectedProject.value
+  }
 });
 
 const saveProject = () => {
+  //TODO:
   // projectsStore.saveProject(json)
   console.log(json.value)
 }
@@ -31,7 +32,6 @@ const handleProjectSelection = () => {
 
 <template>
   <v-container fluid>
-    <v-progress-circular indeterminate model-value=false></v-progress-circular>
     <v-row>
       <v-col class="text-center">
         <ProjectList :card-title="
@@ -47,7 +47,7 @@ const handleProjectSelection = () => {
             <v-col>
               <v-card-title>
                 {{
-                  selectedProject && projectsStore.projectClickedInList ? selectedProject.name : 'No project selected!'
+                  selectedProject !== null ? selectedProject.name : 'No project selected!'
                 }}
               </v-card-title>
               <v-card-subtitle>flow-project.json</v-card-subtitle>
@@ -77,7 +77,7 @@ const handleProjectSelection = () => {
 
 <style scoped>
 
-div.scroll {
+.scroll {
   height: 650px;
   overflow-x: hidden;
   overflow-y: auto;

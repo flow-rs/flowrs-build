@@ -16,7 +16,7 @@ const emitCompileErrorButtonClickEvent = () => {
 <template>
   <v-card title="Log Panel">
     <div class="pb-2 pl-2 flex-content">
-      <div v-if="projects.length!==0" class="flex-content">
+      <div v-if="selectedProject !== null" class="flex-content">
         <v-chip color="primary" class="mr-2" label>Project name: {{ selectedProject.name }}</v-chip>
         <v-chip color="primary" class="mr-2" label>Build/Run type: {{ projectsStore.selectedBuildType }}</v-chip>
         <div v-if="projectsStore.getCurrentProcessId() != undefined" class="flex-content">
