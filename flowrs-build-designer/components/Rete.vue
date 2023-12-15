@@ -3,19 +3,36 @@
 
 </template>
 
+<script setup>
+import {useEventsStore} from "~/store/eventStore";
+
+const userStore = useEventsStore()
+const {isSaveButtonClicked} = storeToRefs(userStore)
+</script>
+
 <script lang="ts">
 import {createEditor} from "~/rete";
+import {useEventsStore} from "~/store/eventStore";
+import {ref} from "vue";
+import {navigateTo} from "#app";
 
 export default {
   mounted() {
     createEditor(this.$refs.rete).then(() => {
       console.log("Rete Editor loaded!")
     });
+
+    useEventsStore.$subscribe((mutation,state) => {
+
+      console.log("Save clicked!", mutation, state);
+      navigateTo("/");
+    })
   },
   methods: {
-    openNewTab() {
-      const url = "/compileandrun";
-      window.open(url, "_blank");
+    handleSaveButtonClick() {
+      console.log("Save clicked!");
+      navigateTo("/");
+      // Handle the save button click in the Rete component
     }
   }
 };
