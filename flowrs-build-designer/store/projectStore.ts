@@ -45,8 +45,8 @@ export const useProjectsStore = defineStore({
             const projectIdentifier: ProjectIdentifier = {
                 project_name: this.selectedProject!.name
             }
-            $api.projects.deleteProject(projectIdentifier).then(projects => {
-                console.log("Flow Project was deleted")
+            $api.projects.deleteProject(projectIdentifier).then(response => {
+                console.log("Flow Project was deleted:", response)
                 // remove item from list in store to update the ui list
                 this.projects = this.projects.filter((object) => {
                     return object.name != this.selectedProject!.name
@@ -87,7 +87,7 @@ export const useProjectsStore = defineStore({
                     }
                     this.loading = true
                     $api.processes.stopProcess(processIdentifier).then(response => {
-                        console.log("Flow Project is stopped!")
+                        console.log("Flow Project is stopped:", response)
                         if (this.selectedProject !== null) {
                             this.runningProcessesMap.set(this.selectedProject.name, undefined)
                         }
@@ -112,7 +112,9 @@ export const useProjectsStore = defineStore({
                 const response_txt = `${response}`
                 this.writeLogEntry(response_txt)
                 this.setCurrentCompileErrorsOfProject(projectName, undefined)
-                this.compileTimestampMap.set(this.selectedProject.name, this.getCurrentTimestamp())
+                if (this.selectedProject !== null) {
+                    this.compileTimestampMap.set(this.selectedProject.name, this.getCurrentTimestamp())
+                }
             }).catch((error) => {
                 console.log("error compiling project")
                 let converted = error.data as string
@@ -138,24 +140,25 @@ export const useProjectsStore = defineStore({
         },
 
         async getLogs() {
-            const {$api} = useNuxtApp();
-
-            let processId = this.runningProcessesMap.get(this.selectedProject.name)
-            if (processId != undefined && processId != -1) {
-                const processIdentifier: ProcessIdentifier = {
-                    process_id: processId
-                }
-                this.loading = true
-                $api.processes.getProcessLogs(processIdentifier).then(response => {
-                    console.log("Getting Logs of process  with the id", processIdentifier.process_id)
-                    response.forEach((item) => {
-                        this.writeLogEntry(item)
+            if (this.selectedProject !== null) {
+                const {$api} = useNuxtApp();
+                let processId = this.runningProcessesMap.get(this.selectedProject.name)
+                if (processId != undefined && processId != -1) {
+                    const processIdentifier: ProcessIdentifier = {
+                        process_id: processId
+                    }
+                    this.loading = true
+                    $api.processes.getProcessLogs(processIdentifier).then(response => {
+                        console.log("Getting Logs of process  with the id", processIdentifier.process_id)
+                        response.forEach((item) => {
+                            this.writeLogEntry(item)
+                        })
+                    }).catch((error) => {
+                        this.writeLogEntry(error)
+                        console.log("Error getting logs:" + error)
                     })
-                }).catch((error) => {
-                    this.writeLogEntry(error)
-                    console.log("Error getting logs:" + error)
-                })
-                    .finally(() => (this.loading = false))
+                        .finally(() => (this.loading = false))
+                }
             }
         },
 
@@ -169,7 +172,7 @@ export const useProjectsStore = defineStore({
             $api.projects.createProject(project).then(() => {
                 console.log("Project created!")
             }).catch((error) => {
-                console.log("Error creating a project!")
+                console.log("Error creating a project!", error)
             });
         },
 
@@ -178,23 +181,27 @@ export const useProjectsStore = defineStore({
             // this.selectedProject = project;
         },
 
-        selectBuildType(buildType: string) {
+        selectBuildType(buildType: BuildType) {
             this.selectedBuildType = buildType;
         },
 
         writeLogEntry(logEntryToAdd: string) {
-            let logEntries = this.logEntriesMap.get(this.selectedProject.name)
-            this.updateLogEntryMap(logEntries, logEntryToAdd)
+            if (this.selectedProject !== null) {
+                let logEntries = this.logEntriesMap.get(this.selectedProject.name)
+                this.updateLogEntryMap(logEntries, logEntryToAdd)
+            }
         },
 
         updateLogEntryMap(entries: string[] | undefined, entryToAdd: string) {
-            if (entries != undefined) {
-                const updatedEntries = this.addLogEntry(entryToAdd, entries)
-                this.logEntriesMap.set(this.selectedProject.name, updatedEntries)
-            } else {
-                const entries: string[] = []
-                const updatedEntries = this.addLogEntry(entryToAdd, entries)
-                this.logEntriesMap.set(this.selectedProject.name, updatedEntries)
+            if (this.selectedProject !== null) {
+                if (entries != undefined) {
+                    const updatedEntries = this.addLogEntry(entryToAdd, entries)
+                    this.logEntriesMap.set(this.selectedProject.name, updatedEntries)
+                } else {
+                    const entries: string[] = []
+                    const updatedEntries = this.addLogEntry(entryToAdd, entries)
+                    this.logEntriesMap.set(this.selectedProject.name, updatedEntries)
+                }
             }
         },
 
