@@ -135,6 +135,48 @@ impl FlowProjectManager {
         Ok(())
     }
 
+    pub fn last_compile_flow_project(
+        &mut self,
+        project_name: &str,
+        build_type: String,
+    ) -> Result<String, anyhow::Error> {
+        // check if project exists
+        let option_project = self.projects.get(project_name);
+        if option_project.is_none() {
+            return Err(anyhow::anyhow!("{project_name} does not exist!"));
+        }
+        let option_path_to_executable;
+        if build_type.eq("cargo") {
+            option_path_to_executable = self.get_path_to_executable(project_name, false);
+            if option_path_to_executable.is_none() {
+                return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name} with build type CARGO"));
+            } else {
+                let path_option_ref: Option<&Path> = option_path_to_executable.as_deref().map(Path::new);
+                // Get metadata for the file
+                let metadata = fs::metadata(path_option_ref.unwrap())?;
+
+                // Extract creation time and last modification time
+                let creation_time = metadata.created()?;
+                let modified_time = metadata.modified()?;
+
+                // Print the results
+                println!("File: {:?}", option_path_to_executable);
+                println!("Creation Time: {:?}", creation_time);
+                println!("Last Modified Time: {:?}", modified_time);
+            }
+        } else if build_type.eq("wasm") {
+            option_path_to_executable = self.get_path_to_executable(project_name, true);
+            if option_path_to_executable.is_none() {
+                return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name} with build type WASM"));
+            }
+        } else {
+            return Err(anyhow::anyhow!("{build_type} is not an allowed build_type"));
+        }
+
+        Ok("Das Rust-Projekt wurde erfolgreich kompiliert.".parse()?)
+    }
+
+
     pub fn compile_flow_project(
         &mut self,
         project_name: &str,
