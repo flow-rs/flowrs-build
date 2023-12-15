@@ -19,7 +19,6 @@ watch(selectedProject, () => projectsStore.selectProject(selectedProject.value a
 watch(selectedBuildType, () => projectsStore.selectBuildType(selectedBuildType.value))
 
 const run = () => {
-  //TODO: check that the run type is the same as the compile type
   if (selectedProject.value != null) {
     projectsStore.runProjectRequest(selectedProject.value.name, selectedBuildType.value)
   }
@@ -65,6 +64,10 @@ const compile = () => {
           label="Select a build type"
       ></v-select>
     </div>
+    <v-row class="mb-3 align-center justify-center">
+      <v-icon class="opacity" icon="mdi-information"></v-icon>
+      <div class="opacity mt-1 ml-1">The build type should be the same for compile and run!</div>
+    </v-row>
     <v-divider></v-divider>
 
     <div v-show="selectedProject !== null">
@@ -96,8 +99,8 @@ const compile = () => {
   <v-card title="Overall status" class="mt-3">
     <div class="flex-content">
       <v-icon class="mt-2 ml-2 mb-2" :color="getStatus()" icon="mdi-circle"></v-icon>
-      <div class="mt-2 ml-2 mb-2" v-if="getStatus() === 'green'">Running flow:</div>
-      <div class="mt-2 ml-2 mb-2" v-if="getStatus() !== 'green'">No running flow</div>
+      <div class="mt-2 ml-2 mb-2" v-if="getStatus() === 'green'">Running flows:</div>
+      <div class="mt-2 ml-2 mb-2" v-if="getStatus() !== 'green'">No running flows</div>
     </div>
     <div class="ml-5">
       <ul>
@@ -113,5 +116,9 @@ const compile = () => {
 .flex-content {
   display: flex;
   align-items: center
+}
+
+.opacity {
+  opacity: 0.7;
 }
 </style>
