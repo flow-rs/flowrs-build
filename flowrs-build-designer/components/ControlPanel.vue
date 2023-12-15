@@ -82,10 +82,12 @@ const compile = () => {
             </template>
             Compile project
           </v-btn>
-          <v-btn color="success" prepend-icon="mdi-play" rounded="0" size="large" @click="run()" class="mb-2">
+          <v-btn :disabled="projectsStore.getCurrentProcessId() !== undefined" color="success" prepend-icon="mdi-play"
+                 rounded="0" size="large" @click="run()" class="mb-2">
             Run project
           </v-btn>
-          <v-btn color="error" prepend-icon="mdi-stop" rounded="0" size="large" @click="stop()">
+          <v-btn :disabled="projectsStore.getCurrentProcessId() === undefined" color="error" prepend-icon="mdi-stop"
+                 rounded="0" size="large" @click="stop()">
             Stop execution
           </v-btn>
         </v-col>
