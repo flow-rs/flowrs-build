@@ -7,7 +7,6 @@ export const useEventsStore = defineStore({
     }),
     actions: {
         setSaveButtonClicked(value:boolean) {
-            console.log("Save button event", value);
             this.isSaveButtonClicked = value;
         },
     },
