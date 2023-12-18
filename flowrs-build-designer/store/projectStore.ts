@@ -120,6 +120,13 @@ export const useProjectsStore = defineStore({
                 let converted = error.data as string
                 let result = [] as CompileError[]
                 const rawValues = this.extractErrors(converted)
+                if (converted.includes('collect2: error: ld returned 1 exit status')) {
+                    const object: CompileError = {
+                        title: "collect2: error: ld returned 1 exit status",
+                        message: converted
+                    }
+                    result.push(object)
+                }
                 for (error in rawValues) {
                     const errorTitle = rawValues[error].split('\\n').filter((line: string | string[]) => line.includes('error['));
                     const object: CompileError = {
