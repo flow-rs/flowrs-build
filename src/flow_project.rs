@@ -620,13 +620,201 @@ mod tests {
     use super::*;
 
     const PROJECT_JSON: &str = r#"
-{"name":"flow_project_01","version":"1.0.0","packages":[{"name":"flowrs","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs","branch":"dev"},{"name":"flowrs-std","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs-std","branch":"feature-project1"}],"flow":{"nodes":{"debug_node":{"node_type":"flowrs_std::nodes::debug::DebugNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_config_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"flowrs_std::nodes::timer::TimerNodeConfig"},"constructor":"New"},"timer_token_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_node":{"node_type":"flowrs_std::nodes::timer::TimerNode","type_parameters":{"T":"flowrs_std::nodes::timer::SelectedTimer","U":"i32"},"constructor":"New"}},"connections":[{"from_node":"timer_config_node","to_node":"timer_node","to_input":"config_input","from_output":"output"},{"from_node":"timer_token_node","to_node":"timer_node","to_input":"token_input","from_output":"output"},{"from_node":"timer_node","to_node":"debug_node","to_input":"input","from_output":"token_output"}],"data":{"timer_config_node":{"value":{"duration":{"nanos":0,"secs":1}}},"timer_token_node":{"value":42}}}}
+{
+  "name": "flow_project_01",
+  "version": "1.0.0",
+  "packages": [
+    {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"feature-project7"},
+    {"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}
+    ],
+  "flow":{        
+        "nodes": {
+            "debug_node": {
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+            "timer_config_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "flowrs_std::nodes::timer::TimerNodeConfig"},
+                "constructor": "New"
+
+            },
+            "timer_token_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+             "timer_node": {
+                "node_type": "flowrs_std::nodes::timer::TimerNode",
+                "type_parameters": {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"},
+                "constructor": "New"
+            }
+        },
+        "connections": [
+            {
+                "from_node": "timer_config_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "config_input"
+            },
+            {
+                "from_node": "timer_token_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "token_input"
+            },
+            {
+                "from_node": "timer_node",
+                "from_output": "token_output",
+                "to_node": "debug_node",
+                "to_input": "input"
+            }
+        ], 
+        "data" : {
+            "timer_config_node": {
+                "value": {"duration": {"secs": 1, "nanos": 0}}
+            },
+             "timer_token_node": {
+                "value": 42
+            }
+        }
+    }
+}
     "#;
+
     const PROJECT_JSON_2: &str = r#"
-{"name":"flow_project_02","version":"1.0.0","packages":[{"name":"flowrs","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs","branch":"dev"},{"name":"flowrs-std","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs-std","branch":"feature-project1"}],"flow":{"nodes":{"debug_node":{"node_type":"flowrs_std::nodes::debug::DebugNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_config_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"flowrs_std::nodes::timer::TimerNodeConfig"},"constructor":"New"},"timer_token_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_node":{"node_type":"flowrs_std::nodes::timer::TimerNode","type_parameters":{"T":"flowrs_std::nodes::timer::SelectedTimer","U":"i32"},"constructor":"New"}},"connections":[{"from_node":"timer_config_node","to_node":"timer_node","to_input":"config_input","from_output":"output"},{"from_node":"timer_token_node","to_node":"timer_node","to_input":"token_input","from_output":"output"},{"from_node":"timer_node","to_node":"debug_node","to_input":"input","from_output":"token_output"}],"data":{"timer_config_node":{"value":{"duration":{"nanos":0,"secs":1}}},"timer_token_node":{"value":42}}}}
+{
+  "name": "flow_project_02",
+  "version": "1.0.0",
+  "packages": [
+    {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"feature-project7"},
+    {"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}
+    ],
+  "flow":{        
+        "nodes": {
+            "debug_node": {
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+            "timer_config_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "flowrs_std::nodes::timer::TimerNodeConfig"},
+                "constructor": "New"
+
+            },
+            "timer_token_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+             "timer_node": {
+                "node_type": "flowrs_std::nodes::timer::TimerNode",
+                "type_parameters": {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"},
+                "constructor": "New"
+            }
+        },
+        "connections": [
+            {
+                "from_node": "timer_config_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "config_input"
+            },
+            {
+                "from_node": "timer_token_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "token_input"
+            },
+            {
+                "from_node": "timer_node",
+                "from_output": "token_output",
+                "to_node": "debug_node",
+                "to_input": "input"
+            }
+        ], 
+        "data" : {
+            "timer_config_node": {
+                "value": {"duration": {"secs": 1, "nanos": 0}}
+            },
+             "timer_token_node": {
+                "value": 42
+            }
+        }
+    }
+}
     "#;
+
     const PROJECT_JSON_3: &str = r#"
-{"name":"flow_project_03","version":"1.0.0","packages":[{"name":"flowrs","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs","branch":"dev"},{"name":"flowrs-std","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs-std","branch":"feature-project1"}],"flow":{"nodes":{"debug_node":{"node_type":"flowrs_std::nodes::debug::DebugNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_config_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"flowrs_std::nodes::timer::TimerNodeConfig"},"constructor":"New"},"timer_token_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_node":{"node_type":"flowrs_std::nodes::timer::TimerNode","type_parameters":{"T":"flowrs_std::nodes::timer::SelectedTimer","U":"i32"},"constructor":"New"}},"connections":[{"from_node":"timer_config_node","to_node":"timer_node","to_input":"config_input","from_output":"output"},{"from_node":"timer_token_node","to_node":"timer_node","to_input":"token_input","from_output":"output"},{"from_node":"timer_node","to_node":"debug_node","to_input":"input","from_output":"token_output"}],"data":{"timer_config_node":{"value":{"duration":{"nanos":0,"secs":1}}},"timer_token_node":{"value":42}}}}
+{
+  "name": "flow_project_03",
+  "version": "1.0.0",
+  "packages": [
+    {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"feature-project7"},
+    {"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}
+    ],
+  "flow":{        
+        "nodes": {
+            "debug_node": {
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+            "timer_config_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "flowrs_std::nodes::timer::TimerNodeConfig"},
+                "constructor": "New"
+
+            },
+            "timer_token_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+             "timer_node": {
+                "node_type": "flowrs_std::nodes::timer::TimerNode",
+                "type_parameters": {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"},
+                "constructor": "New"
+            }
+        },
+        "connections": [
+            {
+                "from_node": "timer_config_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "config_input"
+            },
+            {
+                "from_node": "timer_token_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "token_input"
+            },
+            {
+                "from_node": "timer_node",
+                "from_output": "token_output",
+                "to_node": "debug_node",
+                "to_input": "input"
+            }
+        ], 
+        "data" : {
+            "timer_config_node": {
+                "value": {"duration": {"secs": 1, "nanos": 0}}
+            },
+             "timer_token_node": {
+                "value": 42
+            }
+        }
+    }
+}
     "#;
     const TEST_DIR_PATH_1: &str = "tmp_test_dir_01";
     const TEST_DIR_PATH_2: &str = "tmp_test_dir_02";
