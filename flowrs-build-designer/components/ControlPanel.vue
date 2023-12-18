@@ -64,7 +64,7 @@ const compile = () => {
           label="Select a build type"
       ></v-select>
     </div>
-    <v-row class="mb-3 align-center justify-center">
+    <v-row class="mb-3 ml-2 mr-2 align-center justify-center">
       <v-icon class="opacity" icon="mdi-information"></v-icon>
       <div class="opacity mt-1 ml-1">The build type should be the same for compile and run!</div>
     </v-row>
