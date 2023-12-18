@@ -5,8 +5,7 @@ $Env:RUSTFLAGS = "-C instrument-coverage"
 cargo clean
 cargo build
 cargo test
-llvm-profdata merge -sparse default_*.profraw -o coverage.profdata
-Get-ChildItem -Filter *.profraw | Remove-Item
+
 
 # Run cargo test and parse the output
 $cargoTestOutput = cargo test --tests --no-run --message-format=json | ConvertFrom-Json
@@ -19,7 +18,13 @@ foreach ($file in $testFiles) {
         $llvmCovArgs += "-object", $file
     }
 }
+# Generate HTML report using grcov
+& grcov . -s . --binary-path ./target/debug/ -t html --branch --ignore-not-existing --ignore "/*" -o ./target/debug/coverage/
 
-# Run llvm-cov report
-#& llvm-cov report @llvmCovArgs --instr-profile=coverage.profdata --summary-only # and/or other options
-& llvm-cov export @llvmCovArgs --instr-profile=coverage.profdata --format=lcov  -sources ./src/ > coverage.lcov
+llvm-profdata merge -sparse default_*.profraw -o coverage.profdata
+Get-ChildItem -Filter *.profraw | Remove-Item
+
+# Generate lcov report
+& llvm-cov export @llvmCovArgs --instr-profile=coverage.profdata --format=lcov -sources ./src/ | Out-File -Encoding utf8 ./target/debug/coverage/lcov.info
+
+Get-ChildItem -Filter *.profdata | Remove-Item
