@@ -1,7 +1,7 @@
 <script setup lang="ts">
 
 import {useProjectsStore} from "~/store/projectStore";
-import JsonEditorVue from 'json-editor-vue'
+import JsonEditorVue from "~/components/JsonEditorVue.client.vue";
 
 const projectsStore = useProjectsStore();
 const selectedProject = computed(() => projectsStore.selectedProject);
