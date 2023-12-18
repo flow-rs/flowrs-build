@@ -4,7 +4,6 @@ import {useProjectsStore} from "~/store/projectStore";
 import JsonEditorVue from 'json-editor-vue'
 
 const projectsStore = useProjectsStore();
-projectsStore.getAll()
 const selectedProject = computed(() => projectsStore.selectedProject);
 const errorMessage = computed(() => projectsStore.errorMessage);
 const loading = computed(() => projectsStore.loading);
@@ -12,15 +11,30 @@ let json = ref()
 const saveDisabled = ref(true);
 
 onMounted(() => {
+  projectsStore.getAll()
   if (selectedProject.value != null) {
     json.value = selectedProject.value
   }
 });
 
-const saveProject = () => {
-  //TODO:
-  projectsStore.saveProject(json.value)
+const saveProject = async () => {
   console.log(json.value)
+  try {
+    if (selectedProject) {
+      await projectsStore.deleteProject()
+    } else {
+      throw new Error("No project selected!")
+    }
+  } catch (e) {
+    console.log("Delete failed", e)
+  }
+  console.log("New Project", json)
+  try {
+    await projectsStore.createProject(json.value)
+  } catch (e) {
+    console.error("Error occurred on save", e);
+    throw new Error("Save was unsuccessful 🐛 Please check your configuration 🔧");
+  }
 }
 
 const handleProjectSelection = () => {

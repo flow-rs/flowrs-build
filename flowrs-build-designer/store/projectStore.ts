@@ -167,18 +167,14 @@ export const useProjectsStore = defineStore({
             this.projectClickedInList = true
         },
 
-        createProject(project: FlowProject) {
+        async createProject(project: FlowProject) {
             const {$api} = useNuxtApp();
-            $api.projects.createProject(project).then(() => {
+            $api.projects.createProject(project).then((flowProject) => {
                 console.log("Project created!")
+                this.projects.push(flowProject)
             }).catch((error) => {
                 console.log("Error creating a project!", error)
             });
-        },
-
-        saveProject(project: FlowProject) {
-            this.createProject(project)
-            // this.selectedProject = project;
         },
 
         selectBuildType(buildType: BuildType) {
