@@ -41,9 +41,24 @@ export class ContextCreator {
 
         this.setConnectionsInProject(flowProject, allConnections);
 
-        if (!flowProject.name.startsWith("saved_")) {
-            flowProject.name = "saved_" + flowProject.name;
+        let original_name = flowProject.name
+
+        // try creating the new setup and clean it up on success
+        flowProject.name = "tmp_" + flowProject.name
+        try {
+            await useNuxtApp().$api.projects.createProject(flowProject);
+        } catch (e) {
+            console.error("Error occurred on save", e);
+            throw new Error("Save was unsuccessful 🐛 Please check your configuration 🔧");
         }
+        try {
+            await useNuxtApp().$api.projects.deleteProject({project_name: flowProject.name});
+        } catch (e) {
+            console.log("Delete failed", e)
+        }
+
+        // delete the old & create the new setup, knowing that it will succeed
+        flowProject.name = original_name
         try {
             await useNuxtApp().$api.projects.deleteProject({project_name: flowProject.name});
         } catch (e) {
