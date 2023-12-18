@@ -2,9 +2,12 @@
 export RUSTFLAGS="-C instrument-coverage"
 # export RUSTDOCFLAGS="-C instrument-coverage -Z unstable-options --persist-doctests target/debug/doctestbins"
 
+# Cleaning, Building, and Testing the Project
 cargo clean
 cargo build
 cargo test
+
+# Merging Coverage Data
 llvm-profdata merge -sparse default_*.profraw -o coverage.profdata
 rm *.profraw
 
@@ -26,8 +29,13 @@ while IFS= read -r file; do
     llvmCovArgs+=("-object" "$file")
 done < executable_files.txt
 
-rm executable_files.txt
-rm cargo_output.txt
+# Generate HTML report using grcov
+grcov . -s . --binary-path ./target/debug/ -t html --branch --ignore-not-existing --ignore "/*" -o ./target/debug/coverage/
 
 # Run llvm-cov report
 llvm-cov export "${llvmCovArgs[@]}" --instr-profile=coverage.profdata --format=lcov -sources ./src/ > coverage.lcov
+
+# Cleanup
+rm executable_files.txt
+rm cargo_output.txt
+rm *.profdata
