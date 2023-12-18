@@ -22,3 +22,5 @@ Cargo.lock
 *.profraw
 executable-files.txt
 lcov.info
+
+tmp_*
