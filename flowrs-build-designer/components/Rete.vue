@@ -14,12 +14,6 @@
 
 </template>
 
-<script setup lang="ts">
-import {useEventsStore} from "~/store/eventStore";
-
-const userStore = useEventsStore()
-const {isSaveButtonClicked} = storeToRefs(userStore)
-</script>
 
 <script lang="ts">
 import {createEditor} from "~/rete";
@@ -32,6 +26,7 @@ export default {
     createEditor(this.$refs.rete).then((res) => {
       console.log("Rete Editor loaded!");
       console.log(res)
+      
     });
     const eventsStore = useEventsStore();
 

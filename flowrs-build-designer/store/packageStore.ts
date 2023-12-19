@@ -8,7 +8,8 @@ export const usePackagesStore = defineStore({
         packagesMap: new Map<string, TypeDefinition>(),
         packages: [] as Crate[],
         selectedMap: new Map<string, TypeDefinition>(),
-        loading: false
+        loading: false,
+        currentActive:["flowrs","primitives"] as string[]
     }),
     actions: {
         async getAll() {
@@ -25,6 +26,7 @@ export const usePackagesStore = defineStore({
                 return [];
             });
             this.packages = packages;
+            console.log(packages)
 
         },
         async getByName(name: string) {

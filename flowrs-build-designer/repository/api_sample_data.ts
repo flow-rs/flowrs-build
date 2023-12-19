@@ -39,47 +39,14 @@ export const newFlowProject: FlowProject = {
             //path: "../../../flowrs",
             git: "https://github.com/flow-rs/flowrs",
             branch: "feature-project7"
-        },
-        {
-            name: 'flowrs-std',
-            version: '0.2.0',
-            //path: "../../../flowrs-std",
-            git: "https://github.com/flow-rs/flowrs-std",
-            branch: "feature-project1"
-        },
+        }
     ],
     flow: {
         nodes: {
-            debug_node: debugNode,
-            timer_config_node: timerConfigNode,
-            timer_token_node: timerTokenNode,
-            timer_node: timerNode
-            // Define other nodes here
         },
         connections: [
-            {
-                from_node: 'timer_config_node',
-                to_node: 'timer_node',
-                to_input: 'config_input',
-                from_output: 'output',
-            },
-            {
-                from_node: 'timer_token_node',
-                to_node: 'timer_node',
-                to_input: 'token_input',
-                from_output: 'output',
-            },
-            {
-                from_node: 'timer_node',
-                to_node: 'debug_node',
-                to_input: 'input',
-                from_output: 'token_output',
-            },
-            // Define other connections here
         ],
         data: {
-            timer_config_node: timerConfigNodeData,
-            timer_token_node: timerTokenNodeData,
         },
     },
 };

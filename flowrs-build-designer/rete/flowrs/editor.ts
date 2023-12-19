@@ -115,7 +115,7 @@ export async function createEditor(container: HTMLElement) {
 
     AreaExtensions.simpleNodesOrder(area);
     packagesStore.NodeEditor=editor;    
-    packagesStore.ContextMenu=contextMenu;
+    packagesStore.Area=area;
     return {
         destroy: () => area.destroy(),
         area,

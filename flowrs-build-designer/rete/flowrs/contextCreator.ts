@@ -35,6 +35,7 @@ export class ContextCreator {
         console.log("Selected Project", flowProject)
 
         let allNodes = this.editor.getNodes();
+        console.log(allNodes)
         let allConnections = this.editor.getConnections();
         let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap();
 
@@ -151,7 +152,6 @@ export class ContextCreator {
     public static async addFlowrsElements(editor: NodeEditor<Schemes>) {
         this.editor = editor;
         this.nodeNameCount = new Map<string, number>();
-
         const selectedProject = this.getCurrentlySelectedProject();
 
         // get (typename,typeDefinition) Map
@@ -164,7 +164,12 @@ export class ContextCreator {
         }
 
         this.preventTypeIncompatibleConnections(editor);
-        //typeDefinitionsMap=this.filterInActive(typeDefinitionsMap);
+        typeDefinitionsMap=this.filterInActive(typeDefinitionsMap);
+        return await this.createContextMenuWithConstructableNodes(typeDefinitionsMap);
+    }
+    public static async updateContextMenu(){
+        let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap();
+        typeDefinitionsMap=this.filterInActive(typeDefinitionsMap);
         return await this.createContextMenuWithConstructableNodes(typeDefinitionsMap);
     }
     private static filterInActive(map:Map<string,TypeDefinition>){
