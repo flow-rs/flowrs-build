@@ -12,7 +12,10 @@ const selectedProject: FlowProject | null = selectedProjectUnwrapped.value;
 const packages = reactive({ values: ["flowrs", "primitives"] });
 const inactivePackages: Crate[] = [];
 await packagesStore.getAll()
-console.log(packagesStore.packages)
+packagesStore.currentActive = toRaw(packages).values
+
+
+
 if (selectedProject) {
     selectedProject.packages.forEach(element => {
         if (element.name != "flowrs") {
