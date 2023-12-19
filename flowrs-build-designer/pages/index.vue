@@ -4,6 +4,7 @@ import {useProjectsStore} from "~/store/projectStore";
 import JsonEditorVue from "~/components/JsonEditorVue.client.vue";
 
 const projectsStore = useProjectsStore();
+projectsStore.getAll()
 const selectedProject = computed(() => projectsStore.selectedProject);
 const errorMessage = computed(() => projectsStore.errorMessage);
 const loading = computed(() => projectsStore.loading);
@@ -11,10 +12,9 @@ let json = ref()
 const saveDisabled = ref(true);
 
 onMounted(() => {
-  projectsStore.getAll()
-  if (selectedProject.value != null) {
-    json.value = selectedProject.value
-  }
+  // if (selectedProject.value != null) {
+  //   json.value = selectedProject.value
+  // }
 });
 
 const saveProject = async () => {
@@ -28,16 +28,19 @@ const saveProject = async () => {
   } catch (e) {
     console.log("Delete failed", e)
   }
-  console.log("New Project", json)
+  console.log("New Project", json.value)
   try {
     await projectsStore.createProject(json.value)
   } catch (e) {
     console.error("Error occurred on save", e);
     throw new Error("Save was unsuccessful 🐛 Please check your configuration 🔧");
   }
+  await projectsStore.getAll()
+  // json.value = '{}';
 }
 
 const handleProjectSelection = () => {
+  console.log("clickdsfsd", selectedProject.value)
   json.value = selectedProject.value
   saveDisabled.value = false;
 }
@@ -76,16 +79,14 @@ const handleProjectSelection = () => {
 
           <v-divider></v-divider>
 
-          <client-only>
-            <JsonEditorVue class="scroll" v-model="json" mode='text'/>
-          </client-only>
+          <v-col>
 
+            <client-only>
+              <JsonEditorVue v-model="json" mode='text'/>
+            </client-only>
+          </v-col>
         </v-card>
-
       </v-col>
-    </v-row>
-    <v-row>
-
     </v-row>
   </v-container>
 </template>

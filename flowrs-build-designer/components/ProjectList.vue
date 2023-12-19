@@ -10,6 +10,7 @@ const emits = defineEmits(['project-selected']);
 const projectsStore = useProjectsStore()
 
 const loading = computed(() => projectsStore.loading);
+const projectList = computed(() => projectsStore.projects);
 const projectClicked = computed(() => projectsStore.projectClickedInList);
 
 const emitProjectSelectionEvent = () => {
@@ -59,7 +60,7 @@ defineProps({
       <v-divider></v-divider>
       <v-list>
         <v-list-item
-            v-for="project in projectsStore.projects"
+            v-for="project in projectList"
             :key="project.name"
             :value="project"
             color="primary"
