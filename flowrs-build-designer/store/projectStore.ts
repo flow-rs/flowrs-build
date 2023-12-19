@@ -1,6 +1,14 @@
 import {defineStore} from 'pinia'
-import {type FlowProject, type ProjectIdentifier} from "~/repository/modules/projects";
+import {type FlowProject, type ProjectIdentifier, type CompileError} from "~/repository/modules/projects";
 import type {ProcessIdentifier} from "~/repository/modules/processes";
+
+
+export enum BuildType {
+    Wasm = "wasm",
+    Cargo = "cargo",
+}
+
+
 
 export const useProjectsStore = defineStore({
     id: 'projects',
@@ -8,12 +16,16 @@ export const useProjectsStore = defineStore({
         return ({
             projects: [] as FlowProject[],
             selectedProject: null as FlowProject | null,
-            selectedBuildType: 'cargo',
+            selectedBuildType: BuildType.Cargo,
             loading: false,
             activeFilter: "",
             logEntriesMap: new Map() as Map<string, string[]>,
             runningProcessesMap: new Map() as Map<string, number | undefined>,
-            projectClickedInList: false
+            projectClickedInList: false,
+            errorMessage: "",
+            showDialog: false,
+            compileError: false,
+            compileErrorObjects: [] as CompileError[]
         });
     },
     actions: {
@@ -22,7 +34,12 @@ export const useProjectsStore = defineStore({
             $api.projects.getProjects().then(listOfFlowProjects => {
                 this.projects = listOfFlowProjects;
                 this.selectedProject = listOfFlowProjects[0]
-            }).catch((error) => console.log("Error fetching projects!"))
+            }).catch((error) => {
+                const errorString = "Error fetching projects " + error
+                this.setCurrentErrorMessage(errorString)
+                console.log("Error fetching projects!")
+            })
+
                 .finally(() => (this.loading = false));
         },
         async deleteProject() {
@@ -39,10 +56,10 @@ export const useProjectsStore = defineStore({
                 this.selectedProject = null
                 this.projectClickedInList = false
             }).catch((error) => {
+                this.setCurrentErrorMessage("Error deleting projects:" + error)
                 console.log("Error deleting projects:" + error)
             })
                 .finally(() => (this.loading = false))
-
         },
 
         async runProjectRequest(projectName: string, buildType: string) {
@@ -53,11 +70,11 @@ export const useProjectsStore = defineStore({
             this.loading = true
             $api.projects.runProject(projectIdentifier, buildType).then(response => {
                 console.log("Flow Project is running!")
-                let logEntries = this.logEntriesMap.get(this.selectedProject.name)
-                this.updateLogEntryMap(logEntries, "Flow Projekt Ausführung wurde gestartet.")
+                this.writeLogEntry("Flow Projekt Ausführung wurde gestartet.")
                 this.runningProcessesMap.set(projectIdentifier.project_name, response.process_id)
             }).catch((error) => {
-                console.log("Error compiling projects:" + error)
+                this.writeLogEntry(error)
+                console.log("Error running project:" + error)
             })
                 .finally(() => (this.loading = false))
         },
@@ -73,11 +90,11 @@ export const useProjectsStore = defineStore({
                 this.loading = true
                 $api.processes.stopProcess(processIdentifier).then(response => {
                     console.log("Flow Project is stopped!")
-                    let logEntries = this.logEntriesMap.get(this.selectedProject.name)
-                    this.updateLogEntryMap(logEntries, "Ausführung vom Flow-Projekt gestoppt.")
                     this.runningProcessesMap.set(this.selectedProject.name, undefined)
+                    this.writeLogEntry("Ausführung vom Flow-Projekt gestoppt.")
                 }).catch((error) => {
-                    console.log("Error compiling projects:" + error)
+                    this.writeLogEntry(error)
+                    console.log("Error stopping project:" + error)
                 })
                     .finally(() => (this.loading = false))
             }
@@ -89,14 +106,34 @@ export const useProjectsStore = defineStore({
                 project_name: projectName
             }
             this.loading = true
+            this.compileError = false;
             $api.projects.compileProject(projectIdentifier, buildType).then(response => {
                 console.log("Flow Project is compiled!")
-                let logEntries = this.logEntriesMap.get(this.selectedProject.name)
-                this.updateLogEntryMap(logEntries, response)
+                const response_txt = `${response}`
+                this.writeLogEntry(response_txt)
             }).catch((error) => {
-                console.log("Error compiling projects:" + error)
+                console.log("error compiling project")
+                this.compileError = true;
+                let converted = error.data as string
+                let result = [] as CompileError[]
+                const rawValues = this.extractErrors(converted)
+                for (error in rawValues) {
+                    const errorTitle = rawValues[error].split('\\n').filter((line: string | string[]) => line.includes('error['));
+                    const object: CompileError  = {
+                        title: errorTitle[0],
+                        message: rawValues[error].replace(errorTitle[0], "")
+                    }
+                    result.push(object)
+                }
+                this.compileErrorObjects = result
             })
                 .finally(() => (this.loading = false))
+        },
+
+        extractErrors(text: string) : string[] {
+            const pattern = /error\[\s*([\s\S]*?)(?=error\[)/g;
+            const matches = text.match(pattern);
+            return matches || [];
         },
 
         async getLogs() {
@@ -110,13 +147,12 @@ export const useProjectsStore = defineStore({
                 this.loading = true
                 $api.processes.getProcessLogs(processIdentifier).then(response => {
                     console.log("Getting Logs of process  with the id", processIdentifier.process_id)
-                    console.log(response)
                     response.forEach((item) => {
-                        let logEntries = this.logEntriesMap.get(this.selectedProject.name)
-                        this.updateLogEntryMap(logEntries, item)
+                        this.writeLogEntry(item)
                     })
                 }).catch((error) => {
-                    console.log("Error compiling projects:" + error)
+                    this.writeLogEntry(error)
+                    console.log("Error getting logs:" + error)
                 })
                     .finally(() => (this.loading = false))
             }
@@ -136,6 +172,11 @@ export const useProjectsStore = defineStore({
             this.activeFilter = value
         },
 
+        writeLogEntry(logEntryToAdd: string) {
+            let logEntries = this.logEntriesMap.get(this.selectedProject.name)
+            this.updateLogEntryMap(logEntries, logEntryToAdd)
+        },
+
         updateLogEntryMap(entries: string[] | undefined, entryToAdd: string) {
             if (entries != undefined) {
                 const updatedEntries = this.addLogEntry(entryToAdd, entries)
@@ -150,7 +191,7 @@ export const useProjectsStore = defineStore({
         addLogEntry(entry: string, entryList: string[]): string[] {
             const timestamp = new Date().toLocaleString();
             const logEntry = `[${timestamp}] ${entry}`;
-            entryList.push(logEntry)
+            entryList.unshift(logEntry)
             return entryList
         },
 
@@ -162,8 +203,24 @@ export const useProjectsStore = defineStore({
         },
 
         getCurrentLogEntries() {
+            if (this.selectedProject === null) {
+                return []
+            }
             return this.logEntriesMap.get(this.selectedProject.name)
         },
+
+        getBuildTypeArray(): string[] {
+            return Object.values(BuildType) as string[];
+        },
+
+        setCurrentErrorMessage(errorMessage: string) {
+            this.errorMessage = errorMessage
+            this.setDialog(true)
+        },
+
+        setDialog(active: boolean) {
+            this.showDialog = active
+        }
 
     }
 })

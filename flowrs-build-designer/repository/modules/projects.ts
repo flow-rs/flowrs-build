@@ -34,6 +34,11 @@ export type FlowConnection = {
     to_input: string;
 };
 
+export type CompileError = {
+    title: string,
+    message: string,
+}
+
 type FlowData = {
     timer_config_node: TimerConfigNode | null
     timer_token_node: TimerTokenNode | null
@@ -45,8 +50,9 @@ export type FlowProject = {
     packages: Array<{
         name: string;
         version: string;
-        git: string;
-        branch: string;
+        path?: string;
+        git?: string;
+        branch?: string;
     }>;
     flow: {
         nodes: { [key: string]: FlowNode };
@@ -54,11 +60,6 @@ export type FlowProject = {
         data: { [key: string]: any };
     };
 };
-
-export enum BuildType {
-    Wasm = "wasm",
-    Cargo = "cargo",
-}
 
 class ProjectsModule extends FetchFactory {
     private RESOURCE: string = '/projects/';
@@ -89,13 +90,13 @@ class ProjectsModule extends FetchFactory {
         return await this.call<string>('DELETE', `${this.PROJECT_PATH.replace("{project_name}", project.project_name)}`, project, fetchOptions)
     }
 
-    async compileProject(project: ProjectIdentifier, buildType: string): Promise<string> {
+    async compileProject(project: ProjectIdentifier, buildType: string): Promise<Response> {
         const fetchOptions: FetchOptions<'json'> = {
             headers: {
                 'Content-Type': 'application/json',
             }
         }
-        return await this.call<string>('POST', `${this.COMPILE_PATH.replace("{project_name}", project.project_name)}${buildType}`, project, fetchOptions)
+        return await this.call<Response>('POST', `${this.COMPILE_PATH.replace("{project_name}", project.project_name)}${buildType}`, project, fetchOptions)
     }
 
     async runProject(project: ProjectIdentifier, buildType: string): Promise<ProcessIdentifier> {

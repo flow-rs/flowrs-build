@@ -1,12 +1,12 @@
 <script setup lang="ts">
 
 import {usePackagesStore} from "~/store/packageStore";
-import {Crate} from "~/repository/modules/packages";
+import type {TypeDefinition} from "~/repository/modules/packages";
 
-
-const packagesStore = usePackagesStore();
-const selectedPackage: Crate = computed(() => packagesStore.selectedPackage);
-const selectedMap: Map<String, Object> = computed(() => packagesStore.selectedMap);
+const packagesStore = usePackagesStore()
+packagesStore.getAll()
+const selectedPackage = computed(() => packagesStore.selectedPackage);
+const selectedMap: Map<string, TypeDefinition> = computed(() => packagesStore.selectedMap);
 
 </script>
 
@@ -17,8 +17,6 @@ const selectedMap: Map<String, Object> = computed(() => packagesStore.selectedMa
       <v-col class="text-center">
         <PackageList :card-title="'Packages'"></PackageList>
       </v-col>
-
-
     </v-row>
     <v-row>
       <v-col class="text-center mt-5 mr-5">
@@ -40,22 +38,15 @@ const selectedMap: Map<String, Object> = computed(() => packagesStore.selectedMa
                 Output
                 <v-icon class="mx-1" start icon="mdi-arrow-right-bold-outline"></v-icon>
               </v-chip>
-
             </v-col>
           </v-row>
-          <v-row v-if="selectedMap !== null">
+          <v-row>
             <v-col cols="4 d-flex" v-for="[key, value] in selectedMap">
               <PackageCard class="flex-grow-1" :name="key" :value="value"></PackageCard>
             </v-col>
           </v-row>
           <v-row>
           </v-row>
-          <div class=" scroll">
-          <pre class="language-json">
-                                      <code></code>
-                                    </pre>
-
-          </div>
         </v-card>
       </v-col>
     </v-row>

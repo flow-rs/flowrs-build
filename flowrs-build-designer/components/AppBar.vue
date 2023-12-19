@@ -1,8 +1,4 @@
-<script setup lang="ts">
-import {useRoute} from 'vue-router'
 
-const route = useRoute()
-</script>
 
 <template>
   <div class="mb-5">
@@ -12,8 +8,7 @@ const route = useRoute()
         Flowrs - Flow Builder
       </v-toolbar-title>
       <v-btn v-if="route.name=='FlowBuilder'" prepend-icon="mdi-content-save-all-outline" variant="elevated"
-             class="ma-1" color="success"
-             to="/">Save Project
+             class="ma-1" color="success" @click="handleSaveButtonClick">Save Project
       </v-btn>
       <v-btn prepend-icon="mdi-open-in-app" variant="elevated" class="ma-1" color="primary" to="/">Project Select
       </v-btn>
@@ -25,8 +20,24 @@ const route = useRoute()
         Run and Metrics
       </v-btn>
       <v-spacer></v-spacer>
-      <v-app-bar-nav-icon class="hidden-md-and-up"/>
     </v-app-bar>
   </div>
 </template>
 
+<script lang="ts">
+import {useEventsStore} from "~/store/eventStore";
+export default {
+  methods: {
+    handleSaveButtonClick() {
+      const store = useEventsStore();
+      store.setSaveButtonClicked(true);
+    },
+  },
+}
+</script>
+
+<script setup lang="ts">
+import {useRoute} from 'vue-router'
+
+const route = useRoute()
+</script>
