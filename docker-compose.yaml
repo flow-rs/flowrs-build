@@ -11,7 +11,7 @@ services:
       - flowrs
     environment:
       - PUSHGATEWAY_HOST=http://pushgateway:9091
-      - TEMPO_HOST=http://tempo:3200
+      - TEMPO_HOST=http://tempo:4318/v1/traces
       - HOST_IP=0.0.0.0
       - HOST_PORT=3000
 
