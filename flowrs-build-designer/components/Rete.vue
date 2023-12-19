@@ -1,4 +1,5 @@
 <template>
+   <PackageDrawer></PackageDrawer>
   <div class="rete" ref="rete"></div>
 
 </template>
@@ -8,8 +9,9 @@ import {createEditor} from "~/rete";
 
 export default {
   mounted() { // TODO add a wait cycle
-    createEditor(this.$refs.rete).then(() => {
-      console.log("Rete Editor loaded!")
+    createEditor(this.$refs.rete).then((res) => {
+      console.log("Rete Editor loaded!");
+      console.log(res)
     });
   },
   methods: {

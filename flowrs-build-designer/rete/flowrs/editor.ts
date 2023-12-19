@@ -116,5 +116,7 @@ export async function createEditor(container: HTMLElement) {
     packagesStore.ContextMenu=contextMenu;
     return {
         destroy: () => area.destroy(),
+        area,
+        editor
     };
 }

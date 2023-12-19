@@ -2,7 +2,6 @@
 import { useProjectsStore } from "~/store/projectStore";
 import { type FlowProject } from "~/repository/modules/projects";
 import { usePackagesStore } from "~/store/packageStore.js";
-import {createEditor} from "~/rete";
 import {ContextMenuPlugin, Presets as ContextMenuPresets} from "rete-context-menu-plugin";
 
 const packagesStore = usePackagesStore()
@@ -25,8 +24,9 @@ const updateSelected = () => {
     console.log(ContextMenuPlugin)
     console.log(packages)
     packagesStore.currentActive = toRaw(packages).values
-    console.log(packagesStore.currentActive)
-    console.log(packagesStore.ContextMenu)
+    console.log(packagesStore.packagesMap)
+    console.log(packagesStore.packages)
+    console.log(packagesStore.NodeEditor.getNodes())
 }
 </script>
 

@@ -4,7 +4,7 @@
 </script>
 
 <template>
-  <PackageDrawer></PackageDrawer>
+ 
   <Rete/>
 </template>
 
