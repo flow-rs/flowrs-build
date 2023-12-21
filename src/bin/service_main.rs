@@ -310,7 +310,7 @@ async fn last_compile_project(
         Err(err) => {
             // Return an error response with status code and error message in the body
             let response = Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .status(StatusCode::OK)
                 .body(Body::from(err.to_string()))
                 .unwrap();
 

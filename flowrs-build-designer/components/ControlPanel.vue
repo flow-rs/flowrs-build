@@ -9,7 +9,7 @@ const selectedProject = ref(projectsStore.selectedProject);
 const loading = computed(() => projectsStore.loading);
 const projects = computed(() => projectsStore.projects);
 const processes = computed(() => projectsStore.runningProcessesMap);
-const lastCompiled = computed(() => projectsStore.getLastCompileTimeOfProject());
+const lastCompiled = computed(() => projectsStore.getLastCompileFromMap());
 const buildType = ref(projectsStore.getBuildTypeArray());
 const selectedBuildType = ref(projectsStore.selectedBuildType)
 const runningProcesses = computed(() => projectsStore.getRunningFlowProjects());
@@ -17,6 +17,10 @@ const runningProcesses = computed(() => projectsStore.getRunningFlowProjects());
 watch(selectedProject, () => projectsStore.selectProject(selectedProject.value as FlowProject))
 
 watch(selectedBuildType, () => projectsStore.selectBuildType(selectedBuildType.value))
+
+onMounted(() => {
+  projectsStore.getLastCompileOfProject()
+})
 
 const run = () => {
   if (selectedProject.value != null) {
@@ -55,7 +59,7 @@ const compile = () => {
         label="Select a project"
         return-object
     ></v-select>
-    <span v-else>No projects available</span>
+    <span v-else class="mb-2 mt-2">No projects available</span>
     <div v-show="selectedProject !== null">
       <v-select
           v-if="projects.length > 0"
@@ -92,6 +96,7 @@ const compile = () => {
         </v-col>
       </v-card-actions>
       <h4 v-if="lastCompiled" class="mt-2 ml-2">Last compiled: {{ lastCompiled }}</h4>
+      <h4 v-else class="mt-2 ml-2">Not compiled yet!</h4>
 
     </div>
 

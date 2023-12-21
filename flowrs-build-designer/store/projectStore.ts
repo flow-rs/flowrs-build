@@ -172,6 +172,7 @@ export const useProjectsStore = defineStore({
         selectProject(project: FlowProject) {
             this.selectedProject = project;
             this.projectClickedInList = true
+            this.getLastCompileOfProject()
         },
 
         async createProject(project: FlowProject) {
@@ -252,7 +253,24 @@ export const useProjectsStore = defineStore({
             this.compileErrorMap.set(projectName, compileErrors)
         },
 
-        getLastCompileTimeOfProject(): string | undefined {
+        async getLastCompileOfProject() {
+            const {$api} = useNuxtApp();
+            if (this.selectedProject !== null) {
+                const projectIdentifier: ProjectIdentifier = {
+                    project_name: this.selectedProject.name
+                }
+                $api.projects.lastCompileOfProject(projectIdentifier, this.selectedBuildType).then(response => {
+                    console.log("Getting last compile of project", response)
+                    this.compileTimestampMap.set(this.selectedProject.name, response.modified_time)
+                }).catch((error) => {
+                    this.compileTimestampMap.set(this.selectedProject.name, undefined)
+                    console.log("Error getting last compile of project:" + error)
+                })
+                    .finally(() => (this.loading = false))
+            }
+        },
+
+        getLastCompileFromMap(): string | undefined {
             if (this.selectedProject !== null) {
                 return this.compileTimestampMap.get(this.selectedProject.name)
             }

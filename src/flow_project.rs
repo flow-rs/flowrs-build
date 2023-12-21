@@ -15,6 +15,7 @@ use serde_json;
 use handlebars::Handlebars;
 
 use anyhow::Result;
+use chrono::{DateTime, Local, LocalResult, TimeZone};
 use serde_json::from_str;
 use crate::flow_model::{CodeEmitter, StandardCodeEmitter};
 
@@ -135,46 +136,86 @@ impl FlowProjectManager {
         Ok(())
     }
 
+
+    fn format_timestamp(timestamp: std::time::SystemTime) -> String {
+        match Local.timestamp_opt(
+            timestamp
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+            0,
+        ) {
+            LocalResult::None => "Invalid Timestamp".to_string(),
+            LocalResult::Single(datetime) | LocalResult::Ambiguous(datetime, _) => {
+                datetime.format("%d.%m.%Y %H:%M:%S").to_string()
+            }
+        }
+
+    }
+
+    fn get_and_format_metadata(path: Option<String>) -> Result<(String, String), anyhow::Error> {
+        let option_path: Option<PathBuf> = path.map(|s| PathBuf::from(s));
+        if let Some(path_buf) = option_path {
+            let path_option_ref: Option<&Path> = Some(path_buf.as_path());
+            let metadata = fs::metadata(path_option_ref.unwrap())?;
+
+            // Extract creation time and last modification time
+            let creation_time = metadata.created()?;
+            let modified_time = metadata.modified()?;
+
+            // Format the times using chrono
+            let creation_time_formatted = Self::format_timestamp(creation_time);
+            let modified_time_formatted = Self::format_timestamp(modified_time);
+
+            // Print the results
+            println!("File: {:?}", path_buf);
+            println!("Creation Time: {:?}", creation_time_formatted);
+            println!("Last Modified Time: {:?}", modified_time_formatted);
+
+            // Return formatted times in a Result
+            Ok((creation_time_formatted, modified_time_formatted))
+        } else {
+            Err(anyhow::anyhow!("Path is None"))
+        }
+    }
+
     pub fn last_compile_flow_project(
         &mut self,
         project_name: &str,
         build_type: String,
     ) -> Result<String, anyhow::Error> {
-        // check if project exists
+        // Check if the project exists
         let option_project = self.projects.get(project_name);
         if option_project.is_none() {
             return Err(anyhow::anyhow!("{project_name} does not exist!"));
         }
+
         let option_path_to_executable;
+        let formatted_times: (String, String);  // Tuple to store formatted times
+
         if build_type.eq("cargo") {
             option_path_to_executable = self.get_path_to_executable(project_name, false);
             if option_path_to_executable.is_none() {
                 return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name} with build type CARGO"));
             } else {
-                let path_option_ref: Option<&Path> = option_path_to_executable.as_deref().map(Path::new);
-                // Get metadata for the file
-                let metadata = fs::metadata(path_option_ref.unwrap())?;
-
-                // Extract creation time and last modification time
-                let creation_time = metadata.created()?;
-                let modified_time = metadata.modified()?;
-
-                // Print the results
-                println!("File: {:?}", option_path_to_executable);
-                println!("Creation Time: {:?}", creation_time);
-                println!("Last Modified Time: {:?}", modified_time);
+                formatted_times = Self::get_and_format_metadata(option_path_to_executable)?;
             }
         } else if build_type.eq("wasm") {
             option_path_to_executable = self.get_path_to_executable(project_name, true);
             if option_path_to_executable.is_none() {
                 return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name} with build type WASM"));
+            } else {
+                formatted_times = Self::get_and_format_metadata(option_path_to_executable)?;
             }
         } else {
             return Err(anyhow::anyhow!("{build_type} is not an allowed build_type"));
         }
 
-        Ok("Das Rust-Projekt wurde erfolgreich kompiliert.".parse()?)
+        // You can return the formatted times as a JSON string or any other format
+        let result = format!("{{\"creation_time\": \"{}\", \"modified_time\": \"{}\"}}", formatted_times.0, formatted_times.1);
+        Ok(result)
     }
+
 
 
     pub fn compile_flow_project(
