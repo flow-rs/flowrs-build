@@ -9,10 +9,12 @@ const selectedProject = ref(projectsStore.selectedProject);
 const loading = computed(() => projectsStore.loading);
 const projects = computed(() => projectsStore.projects);
 const processes = computed(() => projectsStore.runningProcessesMap);
+const currentProcessId = computed(() => projectsStore.getCurrentProcessId())
 const lastCompiled = computed(() => projectsStore.getLastCompileFromMap());
 const buildType = ref(projectsStore.getBuildTypeArray());
 const selectedBuildType = ref(projectsStore.selectedBuildType)
 const runningProcesses = computed(() => projectsStore.getRunningFlowProjects());
+
 
 watch(selectedProject, () => projectsStore.selectProject(selectedProject.value as FlowProject))
 
@@ -85,7 +87,7 @@ const compile = () => {
             </template>
             Compile project
           </v-btn>
-          <v-btn :disabled="(lastCompiled === undefined)" color="success" prepend-icon="mdi-play"
+          <v-btn :disabled="lastCompiled === undefined ||currentProcessId !== undefined" color="success" prepend-icon="mdi-play"
                  rounded="0" size="large" @click="run()" class="mb-2">
             Run project
           </v-btn>
