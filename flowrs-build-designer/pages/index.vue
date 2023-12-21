@@ -61,6 +61,7 @@ const saveProjectFromTextEditor = async () => {
       await projectsStore.createProject(flowProject)
     } catch (error) {
       if (error instanceof FetchError && error.data) {
+        await projectsStore.deleteProject(flowProject.name);
         throw new Error(error.data)
       } else {
         throw new Error("Save was unsuccessful 🐛 Please check your configuration 🔧");
