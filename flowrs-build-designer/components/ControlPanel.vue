@@ -85,7 +85,7 @@ const compile = () => {
             </template>
             Compile project
           </v-btn>
-          <v-btn :disabled="projectsStore.getCurrentProcessId() !== undefined" color="success" prepend-icon="mdi-play"
+          <v-btn :disabled="(lastCompiled === undefined)" color="success" prepend-icon="mdi-play"
                  rounded="0" size="large" @click="run()" class="mb-2">
             Run project
           </v-btn>
