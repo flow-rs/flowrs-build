@@ -18,7 +18,7 @@ use serde_json;
 use handlebars::Handlebars;
 
 use anyhow::Result;
-use chrono::{DateTime, Local, LocalResult, TimeZone};
+use chrono::{DateTime, Local, LocalResult, TimeZone, Utc};
 use serde_json::from_str;
 use crate::flow_model::{CodeEmitter, StandardCodeEmitter};
 
@@ -163,7 +163,8 @@ impl FlowProjectManager {
             let metadata = fs::metadata(path_option_ref.unwrap())?;
 
             let modified_time = metadata.mtime();
-            let system_time = SystemTime::UNIX_EPOCH + Duration::from_secs(modified_time as u64);
+            let datetime_utc = Utc.timestamp_opt(modified_time, 0);
+            let system_time = SystemTime::UNIX_EPOCH + Duration::from_secs(datetime_utc.timestamp() as u64);
 
             // Format the times using chrono
             let modified_time_formatted = Self::format_timestamp(system_time);
