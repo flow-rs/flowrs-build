@@ -40,21 +40,27 @@ export const useProjectsStore = defineStore({
 
                 .finally(() => (this.loading = false));
         },
-        async deleteProject() {
+        async deleteProject(project_name?: string) {
             const {$api} = useNuxtApp();
+            let name = ""
+            if (project_name) {
+                name = project_name
+            } else {
+                name = this.selectedProject!.name
+            }
             const projectIdentifier: ProjectIdentifier = {
-                project_name: this.selectedProject!.name
+                project_name: name
             }
             $api.projects.deleteProject(projectIdentifier).then(response => {
                 console.log("Flow Project was deleted:", response)
                 // remove item from list in store to update the ui list
                 this.projects = this.projects.filter((object) => {
-                    return object.name != this.selectedProject!.name
+                    return object.name != name
                 })
                 this.selectedProject = null
                 this.projectClickedInList = false
             }).catch((error) => {
-                this.setCurrentErrorMessage("Error deleting projects:" + error)
+                this.setCurrentErrorMessage("Error deleting projects: " + error.data)
                 console.log("Error deleting projects:" + error)
             })
                 .finally(() => (this.loading = false))
@@ -169,20 +175,25 @@ export const useProjectsStore = defineStore({
             }
         },
 
-        selectProject(project: FlowProject) {
+        selectProject(project: FlowProject, setLastCompile?: boolean) {
             this.selectedProject = project;
             this.projectClickedInList = true
-            this.getLastCompileOfProject()
+            if (setLastCompile) {
+                this.getLastCompileOfProject()
+            }
         },
 
         async createProject(project: FlowProject) {
-            const {$api} = useNuxtApp();
-            $api.projects.createProject(project).then((flowProject) => {
-                console.log("Project created!")
-                this.projects.push(flowProject)
-            }).catch((error) => {
-                console.log("Error creating a project!", error)
-            });
+            const { $api } = useNuxtApp();
+
+            try {
+                const flowProject = await $api.projects.createProject(project);
+                console.log("Project created!");
+                this.projects.push(flowProject);
+            } catch (error) {
+                console.error("Error creating project:", error);
+                throw error;
+            }
         },
 
         selectBuildType(buildType: BuildType) {

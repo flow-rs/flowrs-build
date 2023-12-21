@@ -38,7 +38,7 @@ const createProject = () => {
   let projectToCreate = newFlowProject
   projectToCreate.name = "flow_project_" + Math.floor(Math.random() * 2000) + 1;
   const {$api} = useNuxtApp();
-  $api.projects.createProject(projectToCreate);
+  projectsStore.createProject(projectToCreate)
 }
 
 const refreshProjectList = () => {

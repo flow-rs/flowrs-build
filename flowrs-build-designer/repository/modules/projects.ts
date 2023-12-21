@@ -106,7 +106,7 @@ class ProjectsModule extends FetchFactory {
     }
 
     async lastCompileOfProject(project: ProjectIdentifier, buildType: string): Promise<LastCompile> {
-        return await this.call<Response>('GET', `${this.LAST_COMPILE.replace("{project_name}", project.project_name)}${buildType}`)
+        return await this.call<LastCompile>('GET', `${this.LAST_COMPILE.replace("{project_name}", project.project_name)}${buildType}`)
     }
 
     async runProject(project: ProjectIdentifier, buildType: string): Promise<ProcessIdentifier> {
