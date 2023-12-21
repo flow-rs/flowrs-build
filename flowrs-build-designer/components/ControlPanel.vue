@@ -16,7 +16,7 @@ const selectedBuildType = ref(projectsStore.selectedBuildType)
 const runningProcesses = computed(() => projectsStore.getRunningFlowProjects());
 
 
-watch(selectedProject, () => projectsStore.selectProject(selectedProject.value as FlowProject))
+watch(selectedProject, () => projectsStore.selectProject(selectedProject.value as FlowProject, true))
 
 watch(selectedBuildType, () => projectsStore.selectBuildType(selectedBuildType.value))
 

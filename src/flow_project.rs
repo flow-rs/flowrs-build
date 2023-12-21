@@ -7,9 +7,12 @@ use std::collections::{HashMap, VecDeque};
 use std::{fs, thread};
 use std::io;
 use std::io::{BufRead, BufReader, ErrorKind, Write};
+
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime};
 
 use serde_json;
 use handlebars::Handlebars;
@@ -153,27 +156,23 @@ impl FlowProjectManager {
 
     }
 
-    fn get_and_format_metadata(path: Option<String>) -> Result<(String, String), anyhow::Error> {
+    fn get_and_format_metadata(path: Option<String>) -> Result<(String), anyhow::Error> {
         let option_path: Option<PathBuf> = path.map(|s| PathBuf::from(s));
         if let Some(path_buf) = option_path {
             let path_option_ref: Option<&Path> = Some(path_buf.as_path());
             let metadata = fs::metadata(path_option_ref.unwrap())?;
 
-            // Extract creation time and last modification time
-            let creation_time = metadata.created()?;
-            let modified_time = metadata.modified()?;
+            let modified_time = metadata.mtime();
+            let system_time = SystemTime::UNIX_EPOCH + Duration::from_secs(modified_time as u64);
 
             // Format the times using chrono
-            let creation_time_formatted = Self::format_timestamp(creation_time);
-            let modified_time_formatted = Self::format_timestamp(modified_time);
+            let modified_time_formatted = Self::format_timestamp(system_time);
 
             // Print the results
             println!("File: {:?}", path_buf);
-            println!("Creation Time: {:?}", creation_time_formatted);
             println!("Last Modified Time: {:?}", modified_time_formatted);
-
             // Return formatted times in a Result
-            Ok((creation_time_formatted, modified_time_formatted))
+            Ok(modified_time_formatted)
         } else {
             Err(anyhow::anyhow!("Path is None"))
         }
@@ -191,7 +190,7 @@ impl FlowProjectManager {
         }
 
         let option_path_to_executable;
-        let formatted_times: (String, String);  // Tuple to store formatted times
+        let formatted_times: String;
 
         if build_type.eq("cargo") {
             option_path_to_executable = self.get_path_to_executable(project_name, false);
@@ -212,7 +211,7 @@ impl FlowProjectManager {
         }
 
         // You can return the formatted times as a JSON string or any other format
-        let result = format!("{{\"creation_time\": \"{}\", \"modified_time\": \"{}\"}}", formatted_times.0, formatted_times.1);
+        let result = format!("{{\"modified_time\": \"{}\"}}", formatted_times);
         Ok(result)
     }
 

@@ -62,7 +62,6 @@ export type FlowProject = {
 };
 
 export type LastCompile = {
-    creation_time: string;
     modified_time: string;
 }
 
