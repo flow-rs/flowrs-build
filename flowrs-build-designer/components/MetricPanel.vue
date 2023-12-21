@@ -16,28 +16,28 @@ const currentProcessId = computed(() => projectsStore.getCurrentProcessId());
     <v-col col="3">
       <div  class="container">
         <iframe  class="responsive-iframe"
-                 :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&panelId=1&theme=light`"
+                 :src="`http://localhost:3030/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&panelId=1&theme=light`"
                  frameborder="0"></iframe>
       </div>
     </v-col>
     <v-col col="3">
       <div  class="container">
         <iframe  class="responsive-iframe"
-                 :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=2`"
+                 :src="`http://localhost:3030/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=2`"
                  frameborder="0"></iframe>
       </div>
     </v-col>
     <v-col col="3">
       <div class="container">
         <iframe  class="responsive-iframe"
-                 :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=3`"
+                 :src="`http://localhost:3030/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=3`"
                  frameborder="0"></iframe>
       </div>
     </v-col>
     <v-col col="3">
       <div  class="container">
         <iframe  class="responsive-iframe"
-                 :src="`http://localhost:3000/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=4`"
+                 :src="`http://localhost:3030/d-solo/flowrs-prometheus/flowrs-live-metrics?orgId=1&refresh=1s&var-job=flowrs-${currentProcessId}&from=now-5m&to=now&theme=light&panelId=4`"
                  frameborder="0"></iframe>
       </div>
     </v-col>
