@@ -1,4 +1,9 @@
-import {type FlowProject} from "~/repository/modules/projects";
+import {
+    type FlowNode,
+    type FlowConnection,
+    type FlowProject,
+    type ProjectIdentifier
+} from "~/repository/modules/projects";
 import {FlowrsNode} from "~/rete/flowrs/flowrsNode";
 import {NodeEditor} from "rete";
 import {type ItemDefinition} from "rete-context-menu-plugin/_types/presets/classic/types";
@@ -7,17 +12,144 @@ import {ContextMenuPlugin, Presets as ContextMenuPresets} from "rete-context-men
 import type {Schemes} from "~/rete/flowrs/editor";
 import {Connection} from "~/rete/flowrs/editor";
 import type {TypeDefinition} from "~/repository/modules/packages";
+import {navigateTo} from "#app";
 
 
 export class ContextCreator {
 
     private static editor: NodeEditor<Schemes> | undefined;
 
-    private static nodeTypeCount: Map<string, number> = new Map<string, number>();
+    private static nodeNameCount: Map<string, number> = new Map<string, number>();
+
+    public static async saveBuilderStateAsProject() {
+        if (!this.editor) {
+            throw new Error("Editor is undefined!");
+        }
+        let selectedProject = this.getCurrentlySelectedProject();
+        if (!selectedProject) {
+            throw new Error("No project selected!");
+        }
+
+        let flowProject: FlowProject = JSON.parse(JSON.stringify(selectedProject));
+        console.log("Selected Project", flowProject)
+
+        let allNodes = this.editor.getNodes();
+        let allConnections = this.editor.getConnections();
+        let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap();
+
+        this.setNodesAndDataInProject(flowProject, allNodes, typeDefinitionsMap);
+
+        this.setConnectionsInProject(flowProject, allConnections);
+
+        let original_name = flowProject.name
+
+        // try creating the new setup and clean it up on success
+        flowProject.name = "tmp_" + flowProject.name
+        try {
+            await useNuxtApp().$api.projects.createProject(flowProject);
+        } catch (e) {
+            console.error("Error occurred on save", e);
+            throw new Error("Save was unsuccessful 🐛 Please check your configuration 🔧");
+        }
+        try {
+            await useNuxtApp().$api.projects.deleteProject({project_name: flowProject.name});
+        } catch (e) {
+            console.log("Delete failed", e)
+        }
+
+        // delete the old & create the new setup, knowing that it will succeed
+        flowProject.name = original_name
+        try {
+            await useNuxtApp().$api.projects.deleteProject({project_name: flowProject.name});
+        } catch (e) {
+            console.log("Delete failed", e)
+        }
+        console.log("New Project", flowProject)
+        try {
+            await useNuxtApp().$api.projects.createProject(flowProject);
+        } catch (e) {
+            console.error("Error occurred on save", e);
+            throw new Error("Save was unsuccessful 🐛 Please check your configuration 🔧");
+        }
+    }
+
+    private static setNodesAndDataInProject(flowProject: FlowProject, allNodes: Schemes["Node"][], typeDefinitionsMap: Map<string, TypeDefinition>) {
+        flowProject.flow.nodes = {}
+        flowProject.flow.data = {}
+        for (const node of allNodes) {
+            this.addNodeToProject(typeDefinitionsMap, node, flowProject);
+
+            this.addDataToProject(node, flowProject);
+        }
+    }
+
+    private static addNodeToProject(typeDefinitionsMap: Map<string, TypeDefinition>, node: FlowrsNode, flowProject: FlowProject) {
+        let typeDefinitionOfCurrentNode = typeDefinitionsMap.get(node.fullTypeName);
+        if (!typeDefinitionOfCurrentNode) {
+            throw new Error(`Node ${node.label} is currently not in the package list`);
+        }
+
+        let flowNode: FlowNode = {
+            node_type: "",
+            type_parameters: {},
+            constructor: ""
+        };
+        flowNode.node_type = node.fullTypeName
+        flowNode.constructor = node.constructor_type
+
+        if (typeDefinitionOfCurrentNode.type_parameters && typeDefinitionOfCurrentNode.type_parameters.length != node.typeParameters.size) {
+            throw new Error(`Not all TypeParameters are set for node ${node.label}`);
+        }
+        // Convert Map to object
+        const convertedTypeParameters: { [key: string]: string; } = {};
+        node.typeParameters.forEach((value, key) => {
+            convertedTypeParameters[key] = value;
+        });
+        flowNode.type_parameters = convertedTypeParameters
+
+        flowProject.flow.nodes[node.label] = flowNode
+    }
+
+    private static addDataToProject(node: FlowrsNode, flowProject: FlowProject) {
+        if (node.node_data) {
+            try {
+                let parsedJson = JSON.parse(node.node_data);
+                flowProject.flow.data[node.label] = {value: parsedJson};
+            } catch (e) {
+                throw new Error(`Check the input field of node ${node.label}. The input field could not be parsed as JSON`);
+            }
+        }
+    }
+
+    private static setConnectionsInProject(flowProject: FlowProject, allConnections: Schemes["Connection"][]) {
+        if (!this.editor) {
+            throw new Error("Editor is undefined!");
+        }
+        flowProject.flow.connections = []
+        for (const connection of allConnections) {
+            let flowConnection: FlowConnection = {
+                from_node: "",
+                from_output: "",
+                to_node: "",
+                to_input: ""
+            }
+
+            flowConnection.from_output = connection.sourceOutput
+            flowConnection.to_input = connection.targetInput
+            flowConnection.from_node = this.editor.getNode(connection.source).label
+            flowConnection.to_node = this.editor.getNode(connection.target).label
+
+            if (!flowConnection.from_node || !flowConnection.to_node) {
+                throw new Error("Some node of this connection couldn't be resolved:\n" + flowConnection);
+            }
+
+            flowProject.flow.connections.push(flowConnection);
+        }
+    }
 
     public static async addFlowrsElements(editor: NodeEditor<Schemes>) {
         this.editor = editor;
-        this.nodeTypeCount = new Map<string, number>();
+        this.nodeNameCount = new Map<string, number>();
 
         const selectedProject = this.getCurrentlySelectedProject();
 
@@ -39,6 +171,9 @@ export class ContextCreator {
         const projectsStore = useProjectsStore();
         const selectedProjectUnwrapped = computed(() => projectsStore.selectedProject);
         const selectedProject: FlowProject | null = selectedProjectUnwrapped.value;
+        if (!selectedProject) {
+            navigateTo("/");
+        }
         return selectedProject;
     }
 
@@ -54,18 +189,18 @@ export class ContextCreator {
                 continue
             }
 
-            let countOfType = this.nodeTypeCount.get(flowNode);
-
+            let nodeName = flowNode.replaceAll("::", "_");
+            let countOfType = this.nodeNameCount.get(nodeName);
             const node = new FlowrsNode(
-                flowNode + (countOfType || ""),
-                typeDefinition,
+                nodeName + (countOfType || ""),
+                currentNodeType,
                 project.flow.data[flowNode]?.value,
                 currentNode.constructor,
                 currentNode.type_parameters,
                 typeDefinitionsMap,
                 editor);
 
-            this.nodeTypeCount.set(flowNode, (countOfType || 0) + 1);
+            this.nodeNameCount.set(nodeName, (countOfType || 0) + 1);
 
             await editor.addNode(node);
             allAddedNodes.set(flowNode, node);
@@ -117,16 +252,17 @@ export class ContextCreator {
                 constructableNodes.push([constructorDefinitionKey,
                     () => {
 
-                        let countOfType = this.nodeTypeCount.get(fullTypeName);
+                        let nodeName = fullTypeName.replaceAll("::", "_");
+                        let countOfType = this.nodeNameCount.get(nodeName);
                         let node = new FlowrsNode(
-                            fullTypeName + (countOfType || ""),
-                            typeDefinition!,
+                            nodeName + (countOfType || ""),
+                            fullTypeName,
                             null,
                             constructorDefinitionKey,
                             null,
                             typeDefinitionsMap,
                             this.editor!);
-                        this.nodeTypeCount.set(fullTypeName, (countOfType || 0) + 1);
+                        this.nodeNameCount.set(nodeName, (countOfType || 0) + 1);
                         return node;
                     }]);
             }

@@ -23,11 +23,12 @@ export class FlowrsNode extends Classic.Node<
     public typeParameters: Map<string, string> = new Map();
     private inAndOutputToTypeParameterMap: Map<string, string> = new Map();
     public constructor_type: string = "New";
+    public fullTypeName: string;
 
     private editor: NodeEditor<Schemes>;
 
     constructor(name: string,
-                typeDefinition: TypeDefinition,
+                fullTypeName: string,
                 data: { [key: string]: any } | null,
                 constructor_type: string,
                 typeParameters: { [key: string]: string } | null,
@@ -37,6 +38,8 @@ export class FlowrsNode extends Classic.Node<
         super(name);
 
         this.editor = editor;
+        this.fullTypeName = fullTypeName;
+        let typeDefinition: TypeDefinition = allPossibleTypes.get(this.fullTypeName)!
         this.constructor_type = constructor_type;
         this.setNodeData(data);
         this.setTypeParameters(typeParameters);
