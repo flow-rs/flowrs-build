@@ -163,8 +163,10 @@ impl FlowProjectManager {
             let metadata = fs::metadata(path_option_ref.unwrap())?;
 
             let modified_time = metadata.mtime();
-            let datetime_utc = Utc.timestamp_opt(modified_time, 0);
-            let system_time = SystemTime::UNIX_EPOCH + Duration::from_secs(datetime_utc.timestamp() as u64);
+            // Convert the Unix timestamp to DateTime<Local>
+            let datetime_local: DateTime<Local> = Local.timestamp(modified_time, 0);
+            // Convert DateTime<Local> to SystemTime
+            let system_time = SystemTime::UNIX_EPOCH + Duration::from_secs(datetime_local.timestamp() as u64);
 
             // Format the times using chrono
             let modified_time_formatted = Self::format_timestamp(system_time);
