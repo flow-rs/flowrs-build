@@ -77,13 +77,13 @@ class ProjectsModule extends FetchFactory {
         return await this.call<FlowProject[]>('GET', `${this.RESOURCE}`)
     }
 
-    async createProject(project: FlowProject): Promise<FlowProject> {
+    async createProject(project: FlowProject): Promise<Response> {
         const fetchOptions: FetchOptions<'json'> = {
             headers: {
                 'Content-Type': 'application/json',
             }
         }
-        return await this.call<FlowProject>('POST', `${this.RESOURCE}`, project, fetchOptions)
+        return await this.call<Response>('POST', `${this.RESOURCE}`, project, fetchOptions)
     }
 
     async deleteProject(project: ProjectIdentifier): Promise<string> {

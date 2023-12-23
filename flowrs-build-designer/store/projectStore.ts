@@ -24,6 +24,7 @@ export const useProjectsStore = defineStore({
             projectClickedInList: false,
             errorMessage: "",
             showDialog: false,
+
         });
     },
     actions: {
@@ -325,7 +326,9 @@ export const useProjectsStore = defineStore({
 
         setDialog(active: boolean) {
             this.showDialog = active
-        }
+        },
+
+
 
     }
 })

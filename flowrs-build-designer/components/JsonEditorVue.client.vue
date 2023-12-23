@@ -3,5 +3,5 @@ import JsonEditorVue from 'json-editor-vue'
 </script>
 
 <template>
-  <JsonEditorVue  />
+  <JsonEditorVue class="scroll" />
 </template>
