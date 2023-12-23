@@ -102,9 +102,9 @@ onMounted(() => {
 </script>
 
 <template>
+  <AlertComponent
+  />
   <v-container fluid>
-    <AlertComponent
-    />
     <v-row>
       <v-col class="scroll">
         <client-only>
