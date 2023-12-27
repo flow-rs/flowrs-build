@@ -27,6 +27,8 @@ services:
       - nodemodules:/app/node_modules
     networks:
       - flowrs
+    depends_on:
+      - service-main
     environment:
       - BASE_URL_API=http://127.0.0.1:3002/api
       - BASE_URL_METRIC=http://127.0.0.1:3030

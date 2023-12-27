@@ -7,14 +7,18 @@ use std::collections::{HashMap, VecDeque};
 use std::{fs, thread};
 use std::io;
 use std::io::{BufRead, BufReader, ErrorKind, Write};
+
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime};
 
 use serde_json;
 use handlebars::Handlebars;
 
 use anyhow::Result;
+use chrono::{DateTime, Local, LocalResult, TimeZone, Utc};
 use serde_json::from_str;
 use crate::flow_model::{CodeEmitter, StandardCodeEmitter};
 
@@ -134,6 +138,87 @@ impl FlowProjectManager {
         }
         Ok(())
     }
+
+
+    fn format_timestamp(timestamp: std::time::SystemTime) -> String {
+        match Local.timestamp_opt(
+            timestamp
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+            0,
+        ) {
+            LocalResult::None => "Invalid Timestamp".to_string(),
+            LocalResult::Single(datetime) | LocalResult::Ambiguous(datetime, _) => {
+                datetime.format("%d.%m.%Y %H:%M:%S").to_string()
+            }
+        }
+
+    }
+
+    fn get_and_format_metadata(path: Option<String>) -> Result<(String), anyhow::Error> {
+        let option_path: Option<PathBuf> = path.map(|s| PathBuf::from(s));
+        if let Some(path_buf) = option_path {
+            let path_option_ref: Option<&Path> = Some(path_buf.as_path());
+            let metadata = fs::metadata(path_option_ref.unwrap())?;
+
+            let modified_time = metadata.mtime();
+            // Convert the Unix timestamp to DateTime<Local>
+            let datetime_local: DateTime<Local> = Local.timestamp(modified_time, 0);
+            // Convert DateTime<Local> to SystemTime
+            let system_time = SystemTime::UNIX_EPOCH + Duration::from_secs(datetime_local.timestamp() as u64);
+
+            // Format the times using chrono
+            let modified_time_formatted = Self::format_timestamp(system_time);
+
+            // Print the results
+            println!("File: {:?}", path_buf);
+            println!("Last Modified Time: {:?}", modified_time_formatted);
+            // Return formatted times in a Result
+            Ok(modified_time_formatted)
+        } else {
+            Err(anyhow::anyhow!("Path is None"))
+        }
+    }
+
+    pub fn last_compile_flow_project(
+        &mut self,
+        project_name: &str,
+        build_type: String,
+    ) -> Result<String, anyhow::Error> {
+        // Check if the project exists
+        let option_project = self.projects.get(project_name);
+        if option_project.is_none() {
+            return Err(anyhow::anyhow!("{project_name} does not exist!"));
+        }
+
+        let option_path_to_executable;
+        let formatted_times: String;
+
+        if build_type.eq("cargo") {
+            option_path_to_executable = self.get_path_to_executable(project_name, false);
+            if option_path_to_executable.is_none() {
+                return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name} with build type CARGO"));
+            } else {
+                formatted_times = Self::get_and_format_metadata(option_path_to_executable)?;
+            }
+        } else if build_type.eq("wasm") {
+            option_path_to_executable = self.get_path_to_executable(project_name, true);
+            if option_path_to_executable.is_none() {
+                return Err(anyhow::anyhow!("Couldn't find path to executable for project {project_name} with build type WASM"));
+            } else {
+                formatted_times = Self::get_and_format_metadata(option_path_to_executable)?;
+            }
+        } else {
+            return Err(anyhow::anyhow!("{build_type} is not an allowed build_type"));
+        }
+
+        // You can return the formatted times as a JSON string or any other format
+        let result = format!("{{\"modified_time\": \"{}\"}}", formatted_times);
+        Ok(result)
+    }
+
+
 
     pub fn compile_flow_project(
         &mut self,

@@ -1,14 +1,6 @@
 <template>
-  <v-alert
-      v-model="showAlert"
-      :type="errorMessage.length==0 ? 'info':'error'"
-      :title="errorMessage.length==0 ? 'Saving...': 'Error on save'"
-      :text="errorMessage"
-      :closable="true"
-      @click:close="() => {showAlert = false}"
-  >
-    <v-progress-linear v-if="isLoadingSave"/>
-  </v-alert>
+  <AlertComponent
+  />
   <div class="rete" ref="rete"></div>
 
 </template>
@@ -52,21 +44,21 @@ export default {
       if (this.isLoadingSave) {
         return;
       }
-      this.isLoadingSave = true;
-      this.errorMessage = "";
-      this.showAlert = true;
       const eventsStore = useEventsStore();
+      eventsStore.setLoading(true)
+      eventsStore.setErrorMessage("")
+      eventsStore.setAlert(true)
       eventsStore.setSaveButtonClicked(false);
       // Handle the save button click in the Rete component
       ContextCreator.saveBuilderStateAsProject().then(() => {
-        this.isLoadingSave = false;
-        this.showAlert = false;
+        useEventsStore().setLoading(false)
+        useEventsStore().setAlert(false)
         navigateTo("/");
       }).catch((e) => {
         console.error("Error caught", e);
-        this.isLoadingSave = false;
-        this.errorMessage = e.message;
-        this.showAlert = true;
+        useEventsStore().setLoading(false)
+        useEventsStore().setErrorMessage(e.message)
+        useEventsStore().setAlert(true)
       });
 
     }

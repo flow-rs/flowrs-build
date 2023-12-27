@@ -10,6 +10,9 @@
       <v-btn v-if="route.name=='FlowBuilder'" prepend-icon="mdi-content-save-all-outline" variant="elevated"
              class="ma-1" color="success" @click="handleSaveButtonClick">Save Project
       </v-btn>
+      <v-btn v-if="route.name=='FlowEditor'" prepend-icon="mdi-content-save-all-outline" variant="elevated"
+             class="ma-1" color="success" @click="handleSaveButtonClick">Save Project
+      </v-btn>
       <v-btn prepend-icon="mdi-open-in-app" variant="elevated" class="ma-1" color="primary" to="/">Project Select
       </v-btn>
       <v-btn prepend-icon="mdi-package-variant" variant="elevated" class="ma-1" color="primary" to="/packageSelect">
