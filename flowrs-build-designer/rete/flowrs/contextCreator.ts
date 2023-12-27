@@ -316,7 +316,7 @@ export class ContextCreator {
   private static async createContextMenuWithConstructableNodes(typeDefinitionsMap: Map<string, TypeDefinition>) {
     let constructableNodeList = await this.getConstructableNodeList(typeDefinitionsMap);
     return new ContextMenuPlugin<Schemes>({
-      items: ContextMenuPresets.classic.setup(constructableNodeList),
+      items: (context, plugin) => ContextMenuPresets.classic.setup(constructableNodeList)(context, plugin)
     });
   }
 }

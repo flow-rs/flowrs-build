@@ -39,7 +39,14 @@ export const newFlowProject: FlowProject = {
             //path: "../../../flowrs",
             git: "https://github.com/flow-rs/flowrs",
             branch: "feature-project7"
-        }
+        },
+        {
+            name: 'flowrs-std',
+            version: '0.2.0',
+            //path: "../../../flowrs-std",
+            git: "https://github.com/flow-rs/flowrs-std",
+            branch: "feature-project1"
+        },
     ],
     flow: {
         nodes: {
