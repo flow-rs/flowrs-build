@@ -70,7 +70,7 @@ impl Type {
         t
     }
 
-    pub fn new_primitive_type() -> Self {
+    pub fn new_prelude_type() -> Self {
         let mut t = Self {
             inputs: Option::None,
             outputs: Option::None,
@@ -826,5 +826,186 @@ fn test_arbitrary_args() {
 
     assert_eq!(
         "let value_node_value: i32 = serde_json::from_value(data[\"value_node\"][\"value\"].clone()).expect(\"Could not create \'value_node_value\' from Json.\");\nlet value_node = flowrs_std::nodes::value::ValueNode::new(value_node_value, change_observer.clone());"
+        , code)    
+}
+
+#[test]
+fn test_arbitrary_args_with_vec() {
+   
+    let package_json = r#"
+    {
+        "name":"flowrs-std",
+        "version":"1.0.0",
+        "crates":{
+           "flowrs_std":{
+              "types":{
+                 
+              },
+              "modules":{
+                 "nodes":{
+                    "types":{
+                       
+                    },
+                    "modules":{
+                       "value":{
+                          "modules":{
+                             
+                          },
+                          "types":{
+                             "ValueType":{
+                                "constructors":{
+                                   "Json":"FromJson"
+                                }
+                             },
+                             "ValueNode":{
+                                "outputs":{
+                                    "output": { 
+                                        "type":{
+                                            "Generic":{
+                                                "name":"I"
+                                            }
+                                        }
+                                    }
+                                },
+                                "type_parameters":[
+                                   "I"
+                                ],
+                                "constructors":{
+                                    "NewWithValue":{
+                                        "NewWithArbitraryArgs":{
+                                           "arguments":[
+                                              {
+                                                 "type":{
+                                                    "Type":{
+                                                       "name":"std::vec::Vec",
+                                                       "type_parameters":[
+                                                          {
+                                                             "Generic":{
+                                                                "name":"I"
+                                                             }
+                                                          }
+                                                       ]
+                                                    }
+                                                 },
+                                                 "name":"v",
+                                                 "passing":"Move",
+                                                 "construction":{
+                                                    "Constructor":"Json"
+                                                 }
+                                              },
+                                              {
+                                                 "type":{
+                                                    "Type":{
+                                                       "name":"()"
+                                                    }
+                                                 },
+                                                 "name":"change_observer",
+                                                 "passing":"Clone",
+                                                 "construction":{
+                                                    "ExistingObject":[
+                                                       
+                                                    ]
+                                                 }
+                                              }
+                                           ]
+                                        }
+                                     }
+                                }
+                             }
+                          }
+                       }
+                    }
+                 }
+              }
+           }
+        }
+     }    
+    "#;
+
+    let package_json_std = r#"
+    {
+        "name":"std",
+        "version":"1.0.0",
+        "crates":{
+           "std":{
+              "types":{
+                 
+              },
+              "modules":{
+                 "vec":{
+                    "types":{
+                       "Vec":{
+                          "type_parameters":[
+                             "I"
+                          ],
+                          "constructors":{
+                             "Json":"FromJson"
+                          }
+                       },
+                       "SimpleNode":{
+                        "type_parameters":[
+                           "I",
+                           "O"
+                        ],
+                        "inputs":{
+                           "input":{
+                              "type":{
+                                 "Generic":{
+                                    "name":"I"
+                                 }
+                              }
+                           }
+                        },
+                        "outputs":{
+                           "output":{
+                              "type":{
+                                 "Generic":{
+                                    "name":"O"
+                                 }
+                              }
+                           }
+                        },
+                        "constructors":{     
+                        }
+                     }
+                    },
+                    "modules":{
+                       
+                    }
+                 }
+              }
+           }
+        }
+     }
+    "#;
+
+ 
+    let package_1: Package = serde_json::from_str(&package_json).expect("wrong format.");
+    let package_2: Package = serde_json::from_str(&package_json_std).expect("wrong format.");
+    
+    let mut pm = PackageManager::new();
+    pm.add_package(package_1);
+    pm.add_package(package_2);
+
+    let t = pm.get_type("flowrs_std::nodes::value::ValueNode").expect("msg");
+    let c = t.constructors.get("NewWithValue").expect("");
+    let mut type_params = HashMap::new();
+    type_params.insert("I".to_string(), "i32".to_string());
+    let mut ns: Namespace = Namespace::new();
+
+    let obj_1 = ObjectDescription {
+        type_name: "flowrs_std::nodes::value::ValueNode".to_string(),
+        type_parameter_part: "".to_string(),
+        name: "value_node".to_string(),
+        is_mutable: false,
+    };
+
+    let code = c.emit_code_template(&obj_1, &type_params, &pm, &ns).expect("");
+
+    println!("{}",code);
+
+   
+    assert_eq!(        
+        "let value_node_v: std::vec::Vec<i32,> = serde_json::from_value(data[\"value_node\"][\"v\"].clone()).expect(\"Could not create \'value_node_v\' from Json.\");\nlet value_node = flowrs_std::nodes::value::ValueNode::new(value_node_v, change_observer.clone());"
         , code)    
 }
