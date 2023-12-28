@@ -318,17 +318,45 @@ fn test() {
                              
                           },
                           "types":{
+
+                            "GenericConfig": {
+                                "constructors":{
+                                   "Json":"FromJson"
+                                },
+                                "type_parameters":[
+                                    "U"
+                                 ]
+                            },
+
                              "DebugNode":{
-                                "inputs":[
-                                   "input"
-                                ],
-                                "outputs":[
-                                   "output"
-                                ],
+                                "inputs":{
+                                   "input":{
+                                      "type":{
+                                         "Generic":{
+                                            "name":"I"
+                                         }
+                                      }
+                                   }
+                                },
+                                "outputs":{
+                                   "output":{
+                                      "type":{
+                                         "Generic":{
+                                            "name":"I"
+                                         }
+                                      }
+                                   }
+                                },
                                 "type_parameters":[
                                    "I"
                                 ],
-                                "constructor":"NewWithObserver"
+                                "constructors":{
+                                   "New":{
+                                      "NewWithObserver":{
+                                         
+                                      }
+                                   }
+                                }
                              }
                           }
                        }
@@ -337,7 +365,7 @@ fn test() {
               }
            }
         }
-    }
+     }
    
     "#;
 
@@ -346,22 +374,27 @@ fn test() {
         "nodes": {
             "node1": {
                 "node_type": "flowrs_std::nodes::debug::DebugNode",
-                "type_parameters": {"I": "i32"}
+                "type_parameters": {"I": "flowrs_std::nodes::debug::GenericConfig"},
+                "constructor": "New"
 
             },
             "node2": {
-                "node_type": "flowrs_std::nods::debug::DebugNode",
-                "type_parameters": {"I": "i32"}
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
             }
         },
         "connections": [
             {
-                "input_node": "node1",
-                "output_node": "node2",
-                "input": "input",
-                "output": "output"
+                "from_node": "node1",
+                "to_node": "node2",
+                "to_input": "input",
+                "from_output": "output"
             }
-        ]
+        ],
+        "data": {
+
+        }
     }
     "#;
 
