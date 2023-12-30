@@ -36,13 +36,12 @@ packagesStore.packages.forEach(element => {
 
 const drawer = reactive({ visible: false });
 
-const updateSelected = async () => {
+const updateSelected = () => {
     //console.log(ContextMenuPlugin)
     //console.log(packages)
     packagesStore.currentActive = toRaw(packages).values
     deleteNodes(toRaw(packages).values);
-    const contextMenu = await ContextCreator.updateContextMenu();
-    packagesStore.Area.use(contextMenu);
+    ContextCreator.updateContextMenu();
     //console.log(packagesStore.packagesMap)
     //console.log(packagesStore.packages)
 }

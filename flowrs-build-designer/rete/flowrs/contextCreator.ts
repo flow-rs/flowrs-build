@@ -16,6 +16,8 @@ export class ContextCreator {
 
   private static nodeNameCount: Map<string, number> = new Map<string, number>();
 
+  private static constructableNodes:ItemDefinition<Schemes>[];
+
   public static async saveBuilderStateAsProject() {
     if (!this.editor) {
       throw new Error("Editor is undefined!");
@@ -195,7 +197,7 @@ export class ContextCreator {
   public static async updateContextMenu() {
     let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap();
     typeDefinitionsMap = this.filterInActive(typeDefinitionsMap);
-    return await this.createContextMenuWithConstructableNodes(typeDefinitionsMap);
+    this.constructableNodes = await this.getConstructableNodeList(typeDefinitionsMap);
   }
   private static filterInActive(map: Map<string, TypeDefinition>) {
     const keysToRemove: string[] = [];
@@ -314,9 +316,11 @@ export class ContextCreator {
   }
 
   private static async createContextMenuWithConstructableNodes(typeDefinitionsMap: Map<string, TypeDefinition>) {
-    let constructableNodeList = await this.getConstructableNodeList(typeDefinitionsMap);
+    this.constructableNodes = await this.getConstructableNodeList(typeDefinitionsMap);
     return new ContextMenuPlugin<Schemes>({
-      items: (context, plugin) => ContextMenuPresets.classic.setup(constructableNodeList)(context, plugin)
+      items: (context, plugin) => {
+        return ContextMenuPresets.classic.setup(this.constructableNodes)(context, plugin);
+      }
     });
   }
 }
