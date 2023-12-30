@@ -38,12 +38,6 @@ export type CompileError = {
     title: string,
     message: string,
 }
-
-type FlowData = {
-    timer_config_node: TimerConfigNode | null
-    timer_token_node: TimerTokenNode | null
-};
-
 export type FlowProject = {
     name: string;
     version: string;

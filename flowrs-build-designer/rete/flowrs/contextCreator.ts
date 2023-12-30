@@ -11,7 +11,7 @@ import {useProjectsStore} from "~/store/projectStore";
 import {ContextMenuPlugin, Presets as ContextMenuPresets} from "rete-context-menu-plugin";
 import type {Schemes} from "~/rete/flowrs/editor";
 import {Connection} from "~/rete/flowrs/editor";
-import type {TypeDefinition} from "~/repository/modules/packages";
+import type {Type} from "~/repository/modules/packages";
 import {navigateTo} from "#app";
 
 
@@ -73,7 +73,7 @@ export class ContextCreator {
         }
     }
 
-    private static setNodesAndDataInProject(flowProject: FlowProject, allNodes: Schemes["Node"][], typeDefinitionsMap: Map<string, TypeDefinition>) {
+    private static setNodesAndDataInProject(flowProject: FlowProject, allNodes: Schemes["Node"][], typeDefinitionsMap: Map<string, Type>) {
         flowProject.flow.nodes = {}
         flowProject.flow.data = {}
         for (const node of allNodes) {
@@ -83,7 +83,7 @@ export class ContextCreator {
         }
     }
 
-    private static addNodeToProject(typeDefinitionsMap: Map<string, TypeDefinition>, node: FlowrsNode, flowProject: FlowProject) {
+    private static addNodeToProject(typeDefinitionsMap: Map<string, Type>, node: FlowrsNode, flowProject: FlowProject) {
         let typeDefinitionOfCurrentNode = typeDefinitionsMap.get(node.fullTypeName);
         if (!typeDefinitionOfCurrentNode) {
             throw new Error(`Node ${node.label} is currently not in the package list`);
@@ -177,7 +177,7 @@ export class ContextCreator {
         return selectedProject;
     }
 
-    private static async addProjectNodes(project: FlowProject, typeDefinitionsMap: Map<string, TypeDefinition>, editor: NodeEditor<Schemes>) {
+    private static async addProjectNodes(project: FlowProject, typeDefinitionsMap: Map<string, Type>, editor: NodeEditor<Schemes>) {
         let allAddedNodes: Map<string, FlowrsNode> = new Map();
 
         for (let flowNode in project.flow.nodes) {
@@ -232,7 +232,7 @@ export class ContextCreator {
         }
     }
 
-    private static async getConstructableNodeList(typeDefinitionsMap: Map<string, TypeDefinition>): Promise<ItemDefinition<Schemes>[]> {
+    private static async getConstructableNodeList(typeDefinitionsMap: Map<string, Type>): Promise<ItemDefinition<Schemes>[]> {
         let output: ItemDefinition<Schemes>[] = [];
         for (const fullTypeName of typeDefinitionsMap.keys()) {
             let typeDefinition = typeDefinitionsMap.get(fullTypeName);
@@ -285,7 +285,7 @@ export class ContextCreator {
         });
     }
 
-    private static async createContextMenuWithConstructableNodes(typeDefinitionsMap: Map<string, TypeDefinition>) {
+    private static async createContextMenuWithConstructableNodes(typeDefinitionsMap: Map<string, Type>) {
         let constructableNodeList = await this.getConstructableNodeList(typeDefinitionsMap);
         return new ContextMenuPlugin<Schemes>({
             items: ContextMenuPresets.classic.setup(constructableNodeList),

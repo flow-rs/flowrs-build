@@ -1,10 +1,10 @@
 <script setup lang="ts">
 
 import {usePackagesStore} from "~/store/packageStore";
-import type {Crate} from "~/repository/modules/packages";
+import type {Package} from "~/repository/modules/packages";
 
 const packagesStore = usePackagesStore()
-const selectPackage = (crate: Crate) => {
+const selectPackage = (crate: Package) => {
   console.log("Project was selected: " + crate.name)
   packagesStore.selectPackage(crate)
   packagesStore.getByName(crate.name)

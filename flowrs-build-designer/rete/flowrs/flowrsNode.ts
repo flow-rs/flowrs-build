@@ -2,7 +2,7 @@ import {ClassicPreset, ClassicPreset as Classic, NodeEditor} from 'rete';
 import {
     type ConstructorDefinition,
     type ConstructorDescription,
-    type TypeDefinition,
+    type Type,
     type TypeDescription
 } from "~/repository/modules/packages";
 import {DropdownControl, type Schemes} from "~/rete/flowrs/editor";
@@ -32,14 +32,14 @@ export class FlowrsNode extends Classic.Node<
                 data: { [key: string]: any } | null,
                 constructor_type: string,
                 typeParameters: { [key: string]: string } | null,
-                allPossibleTypes: Map<string, TypeDefinition>,
+                allPossibleTypes: Map<string, Type>,
                 editor: NodeEditor<Schemes>
     ) {
         super(name);
 
         this.editor = editor;
         this.fullTypeName = fullTypeName;
-        let typeDefinition: TypeDefinition = allPossibleTypes.get(this.fullTypeName)!
+        let typeDefinition: Type = allPossibleTypes.get(this.fullTypeName)!
         this.constructor_type = constructor_type;
         this.setNodeData(data);
         this.setTypeParameters(typeParameters);
@@ -112,14 +112,14 @@ export class FlowrsNode extends Classic.Node<
         }
     }
 
-    private addDropdownControlsForGenericTypeParameters(type_parameters: string[] | undefined, constructorDescription: undefined | ConstructorDescription, allPossibleTypes: Map<string, TypeDefinition>) {
+    private addDropdownControlsForGenericTypeParameters(type_parameters: string[] | undefined, constructorDescription: undefined | ConstructorDescription, allPossibleTypes: Map<string, Type>) {
         if (!type_parameters) {
             return;
         }
 
         for (const typeParameter of type_parameters) {
             let constructorNameToFilterFor: string | null = this.getConstructorNameToFilterFor(constructorDescription, typeParameter);
-            let possibleTypes: [string, TypeDefinition][] = this.chooseMethodAndGetPossibleTypes(constructorNameToFilterFor, allPossibleTypes);
+            let possibleTypes: [string, Type][] = this.chooseMethodAndGetPossibleTypes(constructorNameToFilterFor, allPossibleTypes);
             let possibleTypeNames: string[] = possibleTypes.map(([typeName, typeDefinition]) => typeName);
             this.addControl(
                 typeParameter,
@@ -152,7 +152,7 @@ export class FlowrsNode extends Classic.Node<
         return restrictingConstructorType;
     }
 
-    private chooseMethodAndGetPossibleTypes(constructorNameToFilterFor: null | string, allPossibleTypes: Map<string, TypeDefinition>): [string, TypeDefinition][] {
+    private chooseMethodAndGetPossibleTypes(constructorNameToFilterFor: null | string, allPossibleTypes: Map<string, Type>): [string, Type][] {
         if (constructorNameToFilterFor) {
             let possibleTypes = this.getFilteredTypesList(constructorNameToFilterFor, allPossibleTypes);
             console.log("RestrictingConstructorType resulted into filtered list", possibleTypes);
@@ -165,8 +165,8 @@ export class FlowrsNode extends Classic.Node<
     }
 
     // Man müsste nach Traits filtern --> Information noch nicht im code enthalten
-    private getFilteredTypesList(constructorNameToFilterFor: string, allPossibleTypes: Map<string, TypeDefinition>): [string, TypeDefinition][] {
-        let filteredTypes: [string, TypeDefinition][] = [];
+    private getFilteredTypesList(constructorNameToFilterFor: string, allPossibleTypes: Map<string, Type>): [string, Type][] {
+        let filteredTypes: [string, Type][] = [];
         for (const possibleType of allPossibleTypes) {
             let typeDefinition = possibleType[1];
             let constructorDefinition = typeDefinition.constructors[constructorNameToFilterFor];
@@ -178,7 +178,7 @@ export class FlowrsNode extends Classic.Node<
         return filteredTypes;
     }
 
-    private addOutputs(types: TypeDefinition) {
+    private addOutputs(types: Type) {
         for (let outputName in types.outputs) {
             let typeDescription = types.outputs[outputName].type;
             let typeName = this.getTypeName(typeDescription);
@@ -188,7 +188,7 @@ export class FlowrsNode extends Classic.Node<
         }
     }
 
-    private addInputs(types: TypeDefinition) {
+    private addInputs(types: Type) {
         for (let inputName in types.inputs) {
             let typeDescription = types.inputs[inputName].type;
             let typeName = this.getTypeName(typeDescription);

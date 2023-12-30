@@ -1,13 +1,13 @@
 import {defineStore} from 'pinia'
-import {type Crate, type TypeDefinition} from "~/repository/modules/packages";
+import {type Package, type Type} from "~/repository/modules/packages";
 
 export const usePackagesStore = defineStore({
     id: 'packages',
     state: () => ({
         selectedPackage: null,
-        packagesMap: new Map<string, TypeDefinition>(),
-        packages: [] as Crate[],
-        selectedMap: new Map<string, TypeDefinition>(),
+        packagesMap: new Map<string, Type>(),
+        packages: [] as Package[],
+        selectedMap: new Map<string, Type>(),
         loading: false
     }),
     actions: {
@@ -16,7 +16,7 @@ export const usePackagesStore = defineStore({
             const response = await $api.packages.getFlowrsTypeDefinitionsMap()
                 .catch((error) => {
                         console.log("Error fetching package map!");
-                        return new Map<string, TypeDefinition>();
+                        return new Map<string, Type>();
                     }
                 );
             this.packagesMap = response
