@@ -14,7 +14,7 @@ export const usePackagesStore = defineStore({
     actions: {
         async getAll() {
             const {$api} = useNuxtApp();
-            const response = await $api.packages.getFlowrsTypeDefinitionsMap()
+            const response = await $api.packages.getFlowrsTypeDefinitionsMap(this.currentActive)
                 .catch((error) => {
                         console.log("Error fetching package map!");
                         return new Map<string, TypeDefinition>();

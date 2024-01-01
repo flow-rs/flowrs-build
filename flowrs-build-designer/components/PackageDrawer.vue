@@ -37,48 +37,8 @@ packagesStore.packages.forEach(element => {
 const drawer = reactive({ visible: false });
 
 const updateSelected = () => {
-    //console.log(ContextMenuPlugin)
-    //console.log(packages)
     packagesStore.currentActive = toRaw(packages).values
-    deleteNodes(toRaw(packages).values);
     ContextCreator.updateContextMenu();
-    //console.log(packagesStore.packagesMap)
-    //console.log(packagesStore.packages)
-}
-
-const deleteNodes = (activePackages: string[]) => {
-    let toDelete = createToDelete(activePackages)
-    let editor = packagesStore.NodeEditor
-    console.log(editor)
-    console.log(toDelete)
-    /*toDelete.connections.forEach(element => {
-        let res =editor.removeConnection(element)
-        console.log(res)
-    });
-    console.log(editor)
-    toDelete.nodes.forEach(element => {
-        editor.removeNode(element)
-    });*/
-    console.log(editor)
-}
-
-const createToDelete = (activePackages: string[]) => {
-    activePackages = activePackages.map(function (x) { return x.replace("-", "_"); });
-    let result = { nodes: [], connections: [] };
-    let editor = packagesStore.NodeEditor
-    console.log(editor)
-    editor.nodes.forEach(element => {
-        let keyToSearch = (element.fullTypeName.substring(0, element.fullTypeName.indexOf("::")));
-        if (!activePackages.includes(keyToSearch)) {
-            result.nodes.push(element.id)
-        }
-    });
-    editor.connections.forEach(element => {
-        if (result.nodes.includes(element.target) || result.nodes.includes(element.source)) {
-            result.connections.push(element.id)
-        }
-    });
-    return result;
 }
 </script>
 

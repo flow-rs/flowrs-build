@@ -33,7 +33,7 @@ export class ContextCreator {
     let allNodes = this.editor.getNodes();
     console.log(allNodes);
     let allConnections = this.editor.getConnections();
-    let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap();
+    let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap(packagesStore.currentActive);
 
     this.setNodesAndDataInProject(flowProject, allNodes, typeDefinitionsMap);
     this.setPackagesInProject(flowProject);
@@ -182,7 +182,7 @@ export class ContextCreator {
     const selectedProject = this.getCurrentlySelectedProject();
 
     // get (typename,typeDefinition) Map
-    let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap();
+    let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap(packagesStore.currentActive);
 
     // construct scene out of selected project
     if (selectedProject) {
@@ -191,30 +191,14 @@ export class ContextCreator {
     }
 
     this.preventTypeIncompatibleConnections(editor);
-    typeDefinitionsMap = this.filterInActive(typeDefinitionsMap);
     return await this.createContextMenuWithConstructableNodes(typeDefinitionsMap);
   }
+  
   public static async updateContextMenu() {
-    let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap();
-    typeDefinitionsMap = this.filterInActive(typeDefinitionsMap);
+    let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap(packagesStore.currentActive);
     this.constructableNodes = await this.getConstructableNodeList(typeDefinitionsMap);
   }
-  private static filterInActive(map: Map<string, TypeDefinition>) {
-    const keysToRemove: string[] = [];
-    console.log(toRaw(packagesStore.currentActive));
-    map.forEach((value, key) => {
-      let keyToSearch = key.substring(0, key.indexOf("::")).replace("_", "-");
-      if (!toRaw(packagesStore.currentActive).includes(keyToSearch)) {
-        console.log(key);
-        keysToRemove.push(key);
-      }
-    });
-    keysToRemove.forEach((key) => {
-      map.delete(key);
-    });
-    console.log(map);
-    return map;
-  }
+  
   private static getCurrentlySelectedProject() {
     const projectsStore = useProjectsStore();
     const selectedProjectUnwrapped = computed(() => projectsStore.selectedProject);

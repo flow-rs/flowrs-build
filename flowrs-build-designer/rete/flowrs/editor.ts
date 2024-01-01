@@ -101,7 +101,6 @@ export async function createEditor(container: HTMLElement) {
 
     // inject all flowrs specific things into rete editor
     const contextMenu = await ContextCreator.addFlowrsElements(editor);
-    packagesStore.ContextCreator=contextMenu;
     area.use(contextMenu);
 
     const arrange = new AutoArrangePlugin<Schemes>();
@@ -115,8 +114,6 @@ export async function createEditor(container: HTMLElement) {
     await AreaExtensions.zoomAt(area, editor.getNodes());
 
     AreaExtensions.simpleNodesOrder(area);
-    packagesStore.NodeEditor=editor;    
-    packagesStore.Area=area;
     return {
         destroy: () => area.destroy(),
         area,
