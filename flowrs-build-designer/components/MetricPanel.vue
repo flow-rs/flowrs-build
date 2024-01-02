@@ -9,7 +9,13 @@ const currentProcessId = computed(() => projectsStore.getCurrentProcessId());
 <template>
   <v-row>
     <v-col>
-      <v-card title="Metric Panel"></v-card>
+      <v-card class="mx-auto">
+        <v-card-title>Metric Panel
+          <a href="http://localhost:3030/d/home/home?orgId=1">
+            <v-icon icon="mdi-open-in-new" size="18" class="me-1 pb-1"></v-icon>
+          </a>
+        </v-card-title>
+      </v-card>
     </v-col>
   </v-row>
   <v-row align-content="center">
