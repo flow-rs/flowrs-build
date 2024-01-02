@@ -1,105 +1,93 @@
 {
-   "name":"flowrs-std",
-   "version":"1.0.0",
-   "crates":{
-      "flowrs_std":{
-         "types":{
-            
-         },
-         "modules":{
-            "nodes":{
-               "types":{
-                  
-               },
-               "modules":{
-                  "debug":{
-                     "modules":{
-                        
-                     },
-                     "types":{
-                        "DebugNode":{
-                           "inputs":{
-                              "input":{
-                                 "type":{
-                                    "Generic":{
-                                       "name":"I"
+   "name": "flowrs-std",
+   "version": "1.0.0",
+   "crates": {
+      "flowrs_std": {
+         "types": {},
+         "modules": {
+            "nodes": {
+               "types": {},
+               "modules": {
+                  "debug": {
+                     "modules": {},
+                     "types": {
+                        "DebugNode": {
+                           "inputs": {
+                              "input": {
+                                 "type": {
+                                    "Generic": {
+                                       "name": "I"
                                     }
                                  }
                               }
                            },
-                           "outputs":{
-                              "output":{
-                                 "type":{
-                                    "Generic":{
-                                       "name":"I"
+                           "outputs": {
+                              "output": {
+                                 "type": {
+                                    "Generic": {
+                                       "name": "I"
                                     }
                                  }
                               }
                            },
-                           "type_parameters":[
+                           "type_parameters": [
                               "I"
                            ],
-                           "constructors":{
-                              "New":{
-                                 "NewWithObserver":{
-                                    
-                                 }
+                           "constructors": {
+                              "New": {
+                                 "NewWithObserver": {}
                               }
                            }
                         }
                      }
                   },
-                  "value":{
-                     "modules":{
-                        
-                     },
-                     "types":{
-                        "ValueType":{
-                           "constructors":{
-                              "Json":"FromJson"
+                  "value": {
+                     "modules": {},
+                     "types": {
+                        "ValueType": {
+                           "constructors": {
+                              "Json": "FromJson"
                            }
                         },
-                        "ValueNode":{
-                           "outputs":{
-                              "output":{
-                                 "type":{
-                                    "Generic":{
-                                       "name":"I"
+                        "ValueNode": {
+                           "outputs": {
+                              "output": {
+                                 "type": {
+                                    "Generic": {
+                                       "name": "I"
                                     }
                                  }
                               }
                            },
-                           "type_parameters":[
+                           "type_parameters": [
                               "I"
                            ],
-                           "constructors":{
-                              "New":{
-                                 "NewWithArbitraryArgs":{
-                                    "arguments":[
+                           "constructors": {
+                              "New": {
+                                 "NewWithArbitraryArgs": {
+                                    "arguments": [
                                        {
-                                          "type":{
-                                             "Generic":{
-                                                "name":"I"
+                                          "type": {
+                                             "Generic": {
+                                                "name": "I"
                                              }
                                           },
-                                          "name":"value",
-                                          "passing":"Move",
-                                          "construction":{
-                                             "Constructor":"Json"
+                                          "name": "value",
+                                          "passing": "Move",
+                                          "construction": {
+                                             "Constructor": "Json"
                                           }
                                        },
                                        {
-                                          "type":{
-                                             "Type":{
-                                                "name":"()"
+                                          "type": {
+                                             "Type": {
+                                                "name": "()"
                                              }
                                           },
-                                          "name":"change_observer",
-                                          "passing":"Clone",
-                                          "construction":{
-                                             "ExistingObject":[
-                                                
-                                             ]
+                                          "name": "change_observer",
+                                          "passing": "Clone",
+                                          "construction": {
+                                             "ExistingObject": []
                                           }
                                        }
                                     ]
@@ -109,161 +97,229 @@
                         }
                      }
                   },
-                  "timer":{
-                     "modules":{
-                        
-                     },
-                     "types":{
-                        "TimerNodeConfig":{
-                           "constructors":{
-                              "Json":"FromJson"
+                  "timer": {
+                     "modules": {},
+                     "types": {
+                        "TimerNodeConfig": {
+                           "constructors": {
+                              "Json": "FromJson"
                            }
                         },
-                        "PollTimer":{
-                           "type_parameters":[
+                        "PollTimer": {
+                           "type_parameters": [
                               "U"
                            ],
-                           "constructors":{
-                              "New":{
-                                 "New":{
-                                    
-                                 }
+                           "constructors": {
+                              "New": {
+                                 "New": {}
                               }
                            }
                         },
-                        "SelectedTimer":{
-                           "type_parameters":[
+                        "SelectedTimer": {
+                           "type_parameters": [
                               "U"
                            ],
-                           "constructors":{
-                              "New":{
-                                 "New":{
-                                    
-                                 }
+                           "constructors": {
+                              "New": {
+                                 "New": {}
                               }
                            }
                         },
-                        "TimerNode":{
-                           "inputs":{
-                              "config_input":{
-                                 "type":{
-                                    "Type":{
-                                       "name":"flowrs_std::nodes::timer::TimerNodeConfig"
+                        "TimerNode": {
+                           "inputs": {
+                              "config_input": {
+                                 "type": {
+                                    "Type": {
+                                       "name": "flowrs_std::nodes::timer::TimerNodeConfig"
                                     }
                                  }
                               },
-                              "token_input":{
-                                 "type":{
-                                    "Generic":{
-                                       "name":"U"
+                              "token_input": {
+                                 "type": {
+                                    "Generic": {
+                                       "name": "U"
                                     }
                                  }
                               }
                            },
-                           "outputs":{
-                              "token_output":{
-                                 "type":{
-                                    "Generic":{
-                                       "name":"U"
+                           "outputs": {
+                              "token_output": {
+                                 "type": {
+                                    "Generic": {
+                                       "name": "U"
                                     }
                                  }
                               }
                            },
-                           "type_parameters":[
+                           "type_parameters": [
                               "T",
                               "U"
                            ],
-                           "constructors":{
-                              "NewWithToken":{
-                                 "NewWithArbitraryArgs":{
-                                    "function_name":"new_with_token",
-                                    "arguments":[
+                           "constructors": {
+                              "NewWithToken": {
+                                 "NewWithArbitraryArgs": {
+                                    "function_name": "new_with_token",
+                                    "arguments": [
                                        {
-                                          "type":{
-                                             "Generic":{
-                                                "name":"T",
-                                                "type_parameters":[
+                                          "type": {
+                                             "Generic": {
+                                                "name": "T",
+                                                "type_parameters": [
                                                    {
-                                                      "Generic":{
-                                                         "name":"U"
+                                                      "Generic": {
+                                                         "name": "U"
                                                       }
                                                    }
                                                 ]
                                              }
                                           },
-                                          "name":"timer",
-                                          "passing":"Move",
-                                          "construction":{
-                                             "Constructor":"New"
+                                          "name": "timer",
+                                          "passing": "Move",
+                                          "construction": {
+                                             "Constructor": "New"
                                           }
                                        },
                                        {
-                                          "type":{
-                                             "Generic":{
-                                                "name":"U"
+                                          "type": {
+                                             "Generic": {
+                                                "name": "U"
                                              }
                                           },
-                                          "name":"token_object",
-                                          "passing":"Move",
-                                          "construction":{
-                                             "Constructor":"New"
+                                          "name": "token_object",
+                                          "passing": "Move",
+                                          "construction": {
+                                             "Constructor": "New"
                                           }
                                        },
                                        {
-                                          "type":{
-                                             "Type":{
-                                                "name":"()"
+                                          "type": {
+                                             "Type": {
+                                                "name": "()"
                                              }
                                           },
-                                          "name":"change_observer",
-                                          "passing":"Clone",
-                                          "construction":{
-                                             "ExistingObject":[
-                                                
-                                             ]
+                                          "name": "change_observer",
+                                          "passing": "Clone",
+                                          "construction": {
+                                             "ExistingObject": []
                                           }
                                        }
                                     ]
                                  }
                               },
-                              "New":{
-                                 "NewWithArbitraryArgs":{
-                                    "arguments":[
+                              "New": {
+                                 "NewWithArbitraryArgs": {
+                                    "arguments": [
                                        {
-                                          "type":{
-                                             "Generic":{
-                                                "name":"T",
-                                                "type_parameters":[
+                                          "type": {
+                                             "Generic": {
+                                                "name": "T",
+                                                "type_parameters": [
                                                    {
-                                                      "Generic":{
-                                                         "name":"U"
+                                                      "Generic": {
+                                                         "name": "U"
                                                       }
                                                    }
                                                 ]
                                              }
                                           },
-                                          "name":"timer",
-                                          "passing":"Move",
-                                          "construction":{
-                                             "Constructor":"New"
+                                          "name": "timer",
+                                          "passing": "Move",
+                                          "construction": {
+                                             "Constructor": "New"
                                           }
                                        },
                                        {
-                                          "type":{
-                                             "Type":{
-                                                "name":"()"
+                                          "type": {
+                                             "Type": {
+                                                "name": "()"
                                              }
                                           },
-                                          "name":"change_observer",
-                                          "passing":"Clone",
-                                          "construction":{
-                                             "ExistingObject":[
-                                                
-                                             ]
+                                          "name": "change_observer",
+                                          "passing": "Clone",
+                                          "construction": {
+                                             "ExistingObject": []
                                           }
                                        }
                                     ]
                                  }
+                              }
+                           }
+                        }
+                     }
+                  },
+                  "javascript": {
+                     "modules": {},
+                     "types": {
+                        "JsNode": {
+                           "type_parameters": [
+                              "I",
+                              "O"
+                           ],
+                           "inputs": {
+                              "input": {
+                                 "type": {
+                                    "Generic": {
+                                       "name": "I"
+                                    }
+                                 }
+                              },
+                              "code_input": {
+                                 "type": {
+                                    "Type": {
+                                       "name": "String"
+                                    }
+                                 }
+                              }
+                           },
+                           "outputs": {
+                              "output": {
+                                 "type": {
+                                    "Generic": {
+                                       "name": "O"
+                                    }
+                                 }
+                              }
+                           },
+                           "constructors": {
+                              "New": {
+                                 "NewWithObserver": {}
+                              }
+                           }
+                        }
+                     }
+                  },
+                  "http": {
+                     "modules": {},
+                     "types": {
+                        "HttpNode": {
+                           "inputs": {
+                              "input": {
+                                 "type": {
+                                    "Type": {
+                                       "name": "flowrs_std::nodes::http::RequestInput"
+                                    }
+                                 }
+                              },
+                              "config_input": {
+                                 "type": {
+                                    "Type": {
+                                       "name": "flowrs_std::nodes::http::ConfigInput"
+                                    }
+                                 }
+                              }
+                           },
+                           "outputs": {
+                              "output": {
+                                 "type": {
+                                    "Type": {
+                                       "name": "flowrs_std::nodes::http::ResponseOutput"
+                                    }
+                                 }
+                              }
+                           },
+                           "constructors": {
+                              "New": {
+                                 "NewWithObserver": {}
                               }
                            }
                         }

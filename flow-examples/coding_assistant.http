@@ -1,0 +1,75 @@
+
+POST http://127.0.0.1:3000/projects/ HTTP/1.1
+content-type: application/json
+
+{
+  "name": "coding_assistant",
+  "version": "1.0.0",
+  "packages": [
+    {"name": "flowrs", "version": "1.0.0", "path": "../../../flowrs"}, 
+    {"name": "flowrs-std", "version": "1.0.0", "path": "../../../flowrs-std"}
+    ],
+  "flow":{        
+        "nodes": {
+            "debug_node": {
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": {"I": "flowrs_std::nodes::http::ResponseOutput"},
+                "constructor": "New"
+            },
+            "js_code_input_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "String"},
+                "constructor": "New"
+            },
+            "js_input_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "String"},
+                "constructor": "New"
+            },
+            "http_node": {
+                "node_type": "flowrs_std::nodes::http::HttpNode",
+                "type_parameters": {},
+                "constructor": "New"
+            },
+            "js_node": {
+                "node_type": "flowrs_std::nodes::javascript::JsNode",
+                "constructor": "New",
+                "type_parameters": {"O": "flowrs_std::nodes::http::RequestInput", "I": "String"}
+            }
+        },
+        "connections": [
+            {
+                "from_node": "js_code_input_node",
+                "from_output": "output",
+                "to_node": "js_node",
+                "to_input": "code_input"
+            },
+            {
+                "from_node": "js_input_node",
+                "from_output": "output",
+                "to_node": "js_node",
+                "to_input": "input"
+            },
+            {
+                "from_node": "js_node",
+                "from_output": "output",
+                "to_node": "http_node",
+                "to_input": "data_input"
+            },
+            {
+                "from_node": "http_node",
+                "from_output": "output",
+                "to_node": "debug_node",
+                "to_input": "input"
+            }
+        ], 
+        "data" : {
+            "js_input_node": {
+                "value": "Give me a small list comprehension example in Python."
+            },
+            "js_code_input_node": {
+                "value": "function main(input) { return { url: \"http://10.28.229.17:3007/v1/generate\", method: \"POST\", headers: {\"content-type\": \"application/json\"}, body: \"{ \\\"prompt\\\": \\\"\" + input + \"\\\" }\" }; }"
+            }
+        }
+    }
+}
