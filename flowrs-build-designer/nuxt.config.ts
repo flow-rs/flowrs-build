@@ -5,7 +5,7 @@ export default defineNuxtConfig({
     css: ['~/assets/scss/main.scss'],
     devtools: {enabled: true},
     plugins: [
-      '~/plugins/api.ts'
+        '~/plugins/api.ts'
     ],
     runtimeConfig: {
         public: {
@@ -17,23 +17,23 @@ export default defineNuxtConfig({
         '@nuxtjs/vuetfiy',
     ],
     vuetify: {
-      theme: {
-          defaultTheme: 'light',
-          themes: {
-              dark: {
-                  primary: '#242f57'
-              },
-              light: {
-                  primary: '#2face2',
-                  secondary: '#242f57',
-                  accent: '#30E3A3',
-                  error: '#ff5722',
-                  info: '#0099CC',
-                  warning: '#ffbb33',
-                  success: '#007E33'
-              }
-          }
-      }
+        theme: {
+            defaultTheme: 'light',
+            themes: {
+                dark: {
+                    primary: '#242f57'
+                },
+                light: {
+                    primary: '#2face2',
+                    secondary: '#242f57',
+                    accent: '#30E3A3',
+                    error: '#ff5722',
+                    info: '#0099CC',
+                    warning: '#ffbb33',
+                    success: '#007E33'
+                }
+            }
+        }
     },
     devServer: {
         port: process.env.FLOW_BUILDER_PORT ? parseInt(process.env.FLOW_BUILDER_PORT, 10) : 3001,

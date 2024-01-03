@@ -61,24 +61,29 @@ export type FlowProject = {
     };
 };
 
+export type LastCompile = {
+    modified_time: string;
+}
+
 class ProjectsModule extends FetchFactory {
     private RESOURCE: string = '/projects/';
     private PROJECT_PATH: string = this.RESOURCE + '{project_name}/';
     private COMPILE_PATH: string = this.PROJECT_PATH + 'compile?build_type=';
     private RUN_PROJECT: string = this.PROJECT_PATH + 'run?build_type=';
+    private LAST_COMPILE: string = this.PROJECT_PATH + 'last_compile?build_type=';
 
 
     async getProjects(): Promise<FlowProject[]> {
         return await this.call<FlowProject[]>('GET', `${this.RESOURCE}`)
     }
 
-    async createProject(project: FlowProject): Promise<FlowProject> {
+    async createProject(project: FlowProject): Promise<Response> {
         const fetchOptions: FetchOptions<'json'> = {
             headers: {
                 'Content-Type': 'application/json',
             }
         }
-        return await this.call<FlowProject>('POST', `${this.RESOURCE}`, project, fetchOptions)
+        return await this.call<Response>('POST', `${this.RESOURCE}`, project, fetchOptions)
     }
 
     async deleteProject(project: ProjectIdentifier): Promise<string> {
@@ -97,6 +102,10 @@ class ProjectsModule extends FetchFactory {
             }
         }
         return await this.call<Response>('POST', `${this.COMPILE_PATH.replace("{project_name}", project.project_name)}${buildType}`, project, fetchOptions)
+    }
+
+    async lastCompileOfProject(project: ProjectIdentifier, buildType: string): Promise<LastCompile> {
+        return await this.call<LastCompile>('GET', `${this.LAST_COMPILE.replace("{project_name}", project.project_name)}${buildType}`)
     }
 
     async runProject(project: ProjectIdentifier, buildType: string): Promise<ProcessIdentifier> {

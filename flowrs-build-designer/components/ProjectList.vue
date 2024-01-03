@@ -4,33 +4,44 @@ import {useProjectsStore} from "~/store/projectStore.js";
 import type {FlowProject} from "~/repository/modules/projects";
 import {newFlowProject} from "~/repository/api_sample_data";
 
+const emits = defineEmits(['project-selected']);
+
 
 const projectsStore = useProjectsStore()
-projectsStore.getAll()
+
 const loading = computed(() => projectsStore.loading);
+const projectList = computed(() => projectsStore.projects);
 const projectClicked = computed(() => projectsStore.projectClickedInList);
-const errorMessage = computed(() => projectsStore.errorMessage);
+
+
+const emitProjectSelectionEvent = () => {
+  emits('project-selected')
+}
+
 
 const selectProject = (project: FlowProject) => {
   console.log("Project was selected: " + project.name)
   projectsStore.selectProject(project)
+  emitProjectSelectionEvent()
 }
 
 const openProjectAsFlow = () => {
   navigateTo('/flowbuilder')
 }
 
-const deleteProject = () => {
+const deleteProject = (name: string) => {
   console.log("Deletion of flow project was triggered")
-  projectsStore.deleteProject();
+  projectsStore.deleteProject(name);
 }
 
-// Testing method to create project with UI TODO: should be open flow creation page
 const createProject = () => {
+  // TODO: should create empty project
+}
+
+const createDummyProject = () => {
   let projectToCreate = newFlowProject
   projectToCreate.name = "flow_project_" + Math.floor(Math.random() * 2000) + 1;
-  const {$api} = useNuxtApp();
-  $api.projects.createProject(projectToCreate);
+  projectsStore.createProject(projectToCreate)
 }
 
 const refreshProjectList = () => {
@@ -47,39 +58,69 @@ defineProps({
   <v-overlay :value="loading">
     <v-progress-circular indeterminate color="primary"></v-progress-circular>
   </v-overlay>
-<div>
-  <ErrorPopup :error-message="errorMessage"></ErrorPopup>
+  <v-container fluid>
+    <v-row>
+      <v-col>
+        <v-card variant="elevated">
+          <v-row>
+            <v-col class="text-center" style="align-items: center; justify-content: start" cols="11">
+              <v-card-title>
+                {{ cardTitle }}
+              </v-card-title>
+              <v-card-subtitle>
+                {{ cardSubtitle }}
+              </v-card-subtitle>
+            </v-col>
+            <v-col class="text-center" style="align-items: center; justify-content: end" cols="1">
+              <v-btn color="transparent" elevation="0" @click="refreshProjectList()" icon>
+                <v-icon color="warning">mdi-refresh</v-icon>
+              </v-btn>
+            </v-col>
+          </v-row>
 
-  <v-card :title="cardTitle" :subtitle="cardSubtitle" variant="elevated">
-    <v-divider></v-divider>
-    <v-list>
-      <v-list-item
-          v-for="project in projectsStore.projects"
-          :key="project.name"
-          :value="project"
-          color="primary"
-          :title="project.name"
-          :subtitle="project.version"
-          @click="selectProject(project)"
-      ></v-list-item>
-    </v-list>
-    <v-card-actions>
-      <v-row class="mb-2 mt-2">
-        <v-col class="d-flex justify-space-around">
-          <v-btn prepend-icon="mdi-open-in-app" color="primary" :disabled="!projectClicked"
-                 @click="openProjectAsFlow()">
-            Open
-          </v-btn>
-          <v-btn prepend-icon="mdi-plus" color="success" @click="createProject()">Create flow</v-btn>
-          <v-btn prepend-icon="mdi-delete-forever" color="error" :disabled="!projectClicked" @click="deleteProject()">
-            Delete
-          </v-btn>
-          <v-btn prepend-icon="mdi-refresh" color="warning" @click="refreshProjectList()">Refresh list</v-btn>
-        </v-col>
-      </v-row>
-    </v-card-actions>
-  </v-card>
-</div>
+          <v-divider></v-divider>
+          <v-row>
+            <v-col>
+              <v-list>
+                <v-list-item
+                    v-for="project in projectList"
+                    :key="project.name"
+                    :value="project"
+                    color="primary"
+                    :title="project.name"
+                    :subtitle="project.version"
+                    @click="selectProject(project)"
+                >
+                  <template v-slot:append="{ isActive }">
+                    <v-icon @click.stop="deleteProject(project.name)" color="error">mdi-delete-forever</v-icon>
+                  </template>
+                </v-list-item>
+              </v-list>
+
+
+            </v-col>
+          </v-row>
+          <v-card-actions>
+            <v-row class="mb-2 mt-2">
+              <v-col class="d-flex justify-space-around">
+                <v-btn prepend-icon="mdi-open-in-app" color="primary"
+                       :disabled="!projectClicked"
+                       @click="openProjectAsFlow()">
+                  Open flow
+                </v-btn>
+                <v-btn prepend-icon="mdi-plus" color="success" @click="createProject()">add new project</v-btn>
+                <v-btn prepend-icon="mdi-creation" color="success"
+                       @click="createDummyProject()">
+                  create basic project
+                </v-btn>
+
+              </v-col>
+            </v-row>
+          </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <style scoped lang="scss">
