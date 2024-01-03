@@ -92,7 +92,7 @@ class PackagesModule extends FetchFactory {
         console.log(toRaw(currentActive));
         map.forEach((value, key) => {
           let keyToSearch = key.substring(0, key.indexOf("::")).replace("_", "-");
-          if (!toRaw(currentActive).includes(keyToSearch)) {
+          if (!toRaw(currentActive).includes(keyToSearch) && keyToSearch) {
             console.log(key);
             keysToRemove.push(key);
           }
