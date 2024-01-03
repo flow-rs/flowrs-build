@@ -6,6 +6,11 @@
 
 </template>
 
+<script setup lang="ts">
+import {useEventsStore} from "~/store/eventStore";
+const userStore = useEventsStore()
+const {isSaveButtonClicked} = storeToRefs(userStore)
+</script>
 
 <script lang="ts">
 import {createEditor} from "~/rete";

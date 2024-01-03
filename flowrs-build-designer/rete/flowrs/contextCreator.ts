@@ -10,7 +10,7 @@ import type { TypeDefinition } from "~/repository/modules/packages";
 import { usePackagesStore } from "~/store/packageStore.js";
 import { navigateTo } from "#app";
 
-const packagesStore = usePackagesStore();
+
 export class ContextCreator {
   private static editor: NodeEditor<Schemes> | undefined;
 
@@ -19,6 +19,7 @@ export class ContextCreator {
   private static constructableNodes:ItemDefinition<Schemes>[];
 
   public static async saveBuilderStateAsProject() {
+    const packagesStore = usePackagesStore();
     if (!this.editor) {
       throw new Error("Editor is undefined!");
     }
@@ -71,6 +72,8 @@ export class ContextCreator {
     }
   }
   private static async setPackagesInProject(flowProject: FlowProject) {
+    const packagesStore = usePackagesStore();
+
     const packages: string[]=[];
     const toRemovePackages: string[]=[];
     flowProject.packages.forEach(element => {
@@ -177,6 +180,8 @@ export class ContextCreator {
   }
 
   public static async addFlowrsElements(editor: NodeEditor<Schemes>) {
+    const packagesStore = usePackagesStore();
+
     this.editor = editor;
     this.nodeNameCount = new Map<string, number>();
     const selectedProject = this.getCurrentlySelectedProject();
@@ -195,6 +200,8 @@ export class ContextCreator {
   }
   
   public static async updateContextMenu() {
+    const packagesStore = usePackagesStore();
+
     let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap(packagesStore.currentActive);
     this.constructableNodes = await this.getConstructableNodeList(typeDefinitionsMap);
   }

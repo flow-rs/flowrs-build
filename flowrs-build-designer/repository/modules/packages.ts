@@ -63,7 +63,6 @@ class PackagesModule extends FetchFactory {
     }
 
     // returns a parsed map of all packages, where the full type name is mapped to its typeDefinition
-       // returns a parsed map of all packages, where the full type name is mapped to its typeDefinition
        async getFlowrsTypeDefinitionsMap(currentActive: string[]): Promise<Map<string, TypeDefinition>> {
         const crates = await this.getFlowrsPackages();
 
@@ -84,10 +83,10 @@ class PackagesModule extends FetchFactory {
             }
         }
 
-        return this.filterInActive(packageMap,currentActive)
+        return this.filterInactive(packageMap,currentActive)
     }
 
-    private filterInActive(map: Map<string, TypeDefinition>,currentActive: string[]) {
+    private filterInactive(map: Map<string, TypeDefinition>,currentActive: string[]) {
         const keysToRemove: string[] = [];
         console.log(toRaw(currentActive));
         map.forEach((value, key) => {
