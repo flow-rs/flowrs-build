@@ -1,6 +1,6 @@
 import {
-    type FlowNode,
-    type FlowConnection,
+    type NodeModel,
+    type ConnectionModel,
     type FlowProject,
     type ProjectIdentifier
 } from "~/repository/modules/projects";
@@ -89,7 +89,7 @@ export class ContextCreator {
             throw new Error(`Node ${node.label} is currently not in the package list`);
         }
 
-        let flowNode: FlowNode = {
+        let flowNode: NodeModel = {
             node_type: "",
             type_parameters: {},
             constructor: ""
@@ -127,7 +127,7 @@ export class ContextCreator {
         }
         flowProject.flow.connections = []
         for (const connection of allConnections) {
-            let flowConnection: FlowConnection = {
+            let flowConnection: ConnectionModel = {
                 from_node: "",
                 from_output: "",
                 to_node: "",
@@ -157,31 +157,29 @@ export class ContextCreator {
         let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap();
 
         // construct scene out of selected project
-        if (selectedProject) {
-            let projectNodesMap = await this.addProjectNodes(selectedProject, typeDefinitionsMap, editor);
-            await this.connectProjectNodes(selectedProject, projectNodesMap, editor);
-        }
+        let projectNodesMap = await this.addProjectNodes(selectedProject, typeDefinitionsMap, editor);
+        await this.connectProjectNodes(selectedProject, projectNodesMap, editor);
 
         this.preventTypeIncompatibleConnections(editor);
 
         return await this.createContextMenuWithConstructableNodes(typeDefinitionsMap);
     }
 
-    private static getCurrentlySelectedProject() {
+    private static getCurrentlySelectedProject(): FlowProject {
         const projectsStore = useProjectsStore();
         const selectedProjectUnwrapped = computed(() => projectsStore.selectedProject);
         const selectedProject: FlowProject | null = selectedProjectUnwrapped.value;
         if (!selectedProject) {
             navigateTo("/");
         }
-        return selectedProject;
+        return selectedProject!;
     }
 
     private static async addProjectNodes(project: FlowProject, typeDefinitionsMap: Map<string, Type>, editor: NodeEditor<Schemes>) {
         let allAddedNodes: Map<string, FlowrsNode> = new Map();
 
-        for (let flowNode in project.flow.nodes) {
-            let currentNode = project.flow.nodes[flowNode];
+        for (let flowNodeName in project.flow.nodes) {
+            let currentNode = project.flow.nodes[flowNodeName];
             let currentNodeType = currentNode.node_type;
             let typeDefinition = typeDefinitionsMap.get(currentNodeType);
             if (!typeDefinition) {
@@ -189,22 +187,22 @@ export class ContextCreator {
                 continue
             }
 
-            let nodeName = flowNode.replaceAll("::", "_");
-            let countOfType = this.nodeNameCount.get(nodeName);
+            let nodeNameWithoutBadChars = flowNodeName.replaceAll("::", "_");
+            let countOfType = this.nodeNameCount.get(nodeNameWithoutBadChars);
             const node = new FlowrsNode(
-                nodeName + (countOfType || ""),
+                nodeNameWithoutBadChars + (countOfType || ""),
                 currentNodeType,
-                project.flow.data[flowNode]?.value,
+                project.flow.data[flowNodeName]?.value,
                 currentNode.constructor,
                 currentNode.type_parameters,
                 typeDefinitionsMap,
                 editor);
 
-            this.nodeNameCount.set(nodeName, (countOfType || 0) + 1);
+            this.nodeNameCount.set(nodeNameWithoutBadChars, (countOfType || 0) + 1);
 
             await editor.addNode(node);
-            allAddedNodes.set(flowNode, node);
-            console.log('node added', flowNode, node);
+            allAddedNodes.set(flowNodeName, node);
+            console.log('node added', flowNodeName, node);
         }
 
         return allAddedNodes;
