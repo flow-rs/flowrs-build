@@ -4,10 +4,10 @@ import {usePackagesStore} from "~/store/packageStore";
 import type {Package} from "~/repository/modules/packages";
 
 const packagesStore = usePackagesStore()
-const selectPackage = (package: Package) => {
-  console.log("Project was selected: " + package.name)
-  packagesStore.selectPackage(package)
-  packagesStore.getByName(package.name)
+const selectPackage = (p: Package) => {
+  console.log("Project was selected: " + p.name)
+  packagesStore.selectPackage(p)
+  packagesStore.getByName(p.name)
 }
 
 const refreshPackageList = () => {
