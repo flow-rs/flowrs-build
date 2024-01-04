@@ -16,7 +16,7 @@ import {ContextCreator} from "~/rete/flowrs/contextCreator";
 
 import CustomDropdownControl from "../../components/CustomDropdownControl.vue";
 
-import type {TypeDefinition} from "~/repository/modules/packages";
+import type {Type} from "~/repository/modules/packages";
 
 type Node = FlowrsNode;
 type Conn =

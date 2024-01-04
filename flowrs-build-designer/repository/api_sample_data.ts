@@ -1,5 +1,5 @@
 import {
-    type FlowNode,
+    type NodeModel,
     type  FlowProject,
     type TimerConfigNode,
     type TimerTokenNode
@@ -8,22 +8,22 @@ import {
 
 const timerConfigNodeData: TimerConfigNode = {value: {duration: {secs: 1, nanos: 0}}};
 const timerTokenNodeData: TimerTokenNode = {value: 42}
-const debugNode: FlowNode = {
+const debugNode: NodeModel = {
     node_type: "flowrs_std::nodes::debug::DebugNode",
     type_parameters: {"I": "i32"},
     constructor: "New"
 }
-const timerConfigNode: FlowNode = {
+const timerConfigNode: NodeModel = {
     node_type: "flowrs_std::nodes::value::ValueNode",
     type_parameters: {"I": "flowrs_std::nodes::timer::TimerNodeConfig"},
     constructor: "New"
 }
-const timerTokenNode: FlowNode = {
+const timerTokenNode: NodeModel = {
     node_type: "flowrs_std::nodes::value::ValueNode",
     type_parameters: {"I": "i32"},
     constructor: "New"
 }
-const timerNode: FlowNode = {
+const timerNode: NodeModel = {
     node_type: "flowrs_std::nodes::timer::TimerNode",
     type_parameters: {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"},
     constructor: "New"
