@@ -1,72 +1,40 @@
-<template>
-   <PackageDrawer></PackageDrawer>
-  <AlertComponent
-  />
-  <div class="rete" ref="rete"></div>
-
-</template>
-
 <script setup lang="ts">
 import {useEventsStore} from "~/store/eventStore";
-const userStore = useEventsStore()
-const {isSaveButtonClicked} = storeToRefs(userStore)
-</script>
-
-<script lang="ts">
-import {createEditor} from "~/rete";
-import {useEventsStore} from "~/store/eventStore";
-import {navigateTo} from "#app";
 import {ContextCreator} from "~/rete/flowrs/contextCreator";
+import {navigateTo} from "#app";
 
-export default {
-  mounted() { // TODO add a wait cycle
-    createEditor(this.$refs.rete).then((res) => {
-      console.log("Rete Editor loaded!");
-      console.log(res)
-      
-    });
-    const eventsStore = useEventsStore();
+const eventsStore = useEventsStore();
 
-    eventsStore.$subscribe((mutation, state) => {
-      if (state.isSaveButtonClicked) {
-        this.handleSaveButtonClick();
-      }
-    })
-
-  },
-  data() {
-    return {
-      errorMessage: "",
-      showAlert: false,
-      isLoadingSave: false
-    }
-  },
-  methods: {
-    handleSaveButtonClick() {
-      if (this.isLoadingSave) {
-        return;
-      }
-      const eventsStore = useEventsStore();
-      eventsStore.setLoading(true)
-      eventsStore.setErrorMessage("")
-      eventsStore.setAlert(true)
-      eventsStore.setSaveButtonClicked(false);
-      // Handle the save button click in the Rete component
-      ContextCreator.saveBuilderStateAsProject().then(() => {
-        useEventsStore().setLoading(false)
-        useEventsStore().setAlert(false)
-        navigateTo("/");
-      }).catch((e) => {
-        console.error("Error caught", e);
-        useEventsStore().setLoading(false)
-        useEventsStore().setErrorMessage(e.message)
-        useEventsStore().setAlert(true)
-      });
-
-    }
+eventsStore.$subscribe((mutation, state) => {
+  if (state.isSaveButtonClicked) {
+    handleSaveButtonClick();
   }
-};
+})
+const handleSaveButtonClick = async () => {
+
+  eventsStore.setLoading(true)
+  eventsStore.setErrorMessage("")
+  eventsStore.setAlert(true)
+  eventsStore.setSaveButtonClicked(false);
+  ContextCreator.saveBuilderStateAsProject().then(() => {
+    eventsStore.setLoading(false)
+    eventsStore.setAlert(false)
+    navigateTo("/");
+  }).catch((e) => {
+    console.error("Error caught", e);
+    eventsStore.setLoading(false)
+    eventsStore.setErrorMessage(e.message)
+    eventsStore.setAlert(true)
+  });
+
+}
 </script>
+
+<template>
+  <PackageDrawer/>
+  <AlertComponent/>
+  <div class="rete" ref="rete"></div>
+</template>
 
 <style scoped>
 .rete {
