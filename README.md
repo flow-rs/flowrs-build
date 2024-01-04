@@ -140,3 +140,8 @@ To compile a flow for execution in the browser, execute the following steps:
 3. run `python -m http.server` in the very same directory (or any other webserver)
 4. Open your browser and browse to `localhost:8000`
 5. Open your browser's console viewer. 
+
+
+## Testing and Code Coverage
+
+Running ```cargo build``` locally does not run any unit tests. Normally, one would use ```cargo test``` for this purpose. To easily integrate [source based code coverage](https://doc.rust-lang.org/rustc/instrument-coverage.html) in rust, you can use the **test.sh** script on *nix machines and MacOs and the **test.ps1** script on Windows machines. This runs the unit tests and generates very accurate code coverage, which is better that most coverage plugins for rust right now, as it does support correct branch coverage tracking. The scripts generate coverage data in form of an **coverage.lcov** file ([https://github.com/linux-test-project/lcov](https://github.com/linux-test-project/lcov)), which can easily be interpreted by most coverage tools. For Visual Studio Code Integration, we recommend the [Coverage Gutters](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters) Extension.

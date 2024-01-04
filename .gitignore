@@ -17,3 +17,10 @@ Cargo.lock
 *.pdb
 
 .idea
+*.lcov
+*.profdata
+*.profraw
+executable-files.txt
+lcov.info
+
+tmp_*
