@@ -11,13 +11,13 @@ use axum::{
     Json,
 };
 
-async fn get_all_packages(
+pub async fn get_all_packages(
     State(package_manager): State<Arc<Mutex<PackageManager>>>,
 ) -> Json<Vec<Package>> {
     Json(package_manager.lock().unwrap().get_all_packages())
 }
 
-async fn get_package_by_name(
+pub async fn get_package_by_name(
     Path(package_name): Path<String>,
     State(package_manager): State<Arc<Mutex<PackageManager>>>,
 ) -> Result<Json<Option<Package>>, StatusCode> {
@@ -28,7 +28,7 @@ async fn get_package_by_name(
     Err(StatusCode::NOT_FOUND)
 }
 
-async fn get_all_projects(
+pub async fn get_all_projects(
     State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
 ) -> Json<Vec<FlowProject>> {
     let all_projects: Vec<FlowProject> = project_manager
@@ -41,7 +41,7 @@ async fn get_all_projects(
     Json(all_projects)
 }
 
-async fn create_project(
+pub async fn create_project(
     State((project_manager, package_manager)): State<(
         Arc<Mutex<FlowProjectManager>>,
         Arc<Mutex<PackageManager>>,
@@ -74,7 +74,7 @@ async fn create_project(
     }
 }
 
-async fn delete_project(
+pub async fn delete_project(
     Path(project_name): Path<String>,
     State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
 ) -> Result<Response<Body>, StatusCode> {
@@ -104,7 +104,7 @@ async fn delete_project(
     }
 }
 
-async fn compile_project(
+pub async fn compile_project(
     Path(project_name): Path<String>,
     State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
     build_type: Query<BuildType>,
@@ -135,7 +135,7 @@ async fn compile_project(
     }
 }
 
-async fn last_compile_project(
+pub async fn last_compile_project(
     Path(project_name): Path<String>,
     State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
     build_type: Query<BuildType>,
@@ -166,7 +166,7 @@ async fn last_compile_project(
     }
 }
 
-async fn run_project(
+pub async fn run_project(
     Path(project_name): Path<String>,
     State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
     build_type: Query<BuildType>,
@@ -197,7 +197,7 @@ async fn run_project(
     }
 }
 
-async fn stop_process(
+pub async fn stop_process(
     Path(process_id): Path<String>,
     State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
 ) -> Result<Response<Body>, StatusCode> {
@@ -223,7 +223,7 @@ async fn stop_process(
     }
 }
 
-async fn get_process_logs(
+pub async fn get_process_logs(
     Path(process_id): Path<String>,
     State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
 ) -> Result<Response<Body>, StatusCode> {
