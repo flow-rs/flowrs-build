@@ -24,7 +24,7 @@ use serde_json;
 
 use crate::flow_model::{CodeEmitter, StandardCodeEmitter};
 use anyhow::Result;
-use chrono::{DateTime, Local, LocalResult, TimeZone};
+use chrono::{Local, LocalResult, TimeZone};
 use serde_json::from_str;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -162,7 +162,7 @@ impl FlowProjectManager {
         }
     }
 
-    fn get_modified_time(metadata: &Metadata, path: &Path) -> std::io::Result<SystemTime> {
+    fn get_modified_time(metadata: &Metadata) -> std::io::Result<SystemTime> {
         #[cfg(unix)]
         {
             // Unix systems: use the `mtime` method from `MetadataExt`.
@@ -188,7 +188,7 @@ impl FlowProjectManager {
             let path_option_ref: Option<&Path> = Some(path_buf.as_path());
             let metadata = fs::metadata(path_option_ref.unwrap())?;
 
-            let system_time = Self::get_modified_time(&metadata, path_option_ref.unwrap())?;
+            let system_time = Self::get_modified_time(&metadata)?;
 
             // Format the times using chrono
             let modified_time_formatted = Self::format_timestamp(system_time);

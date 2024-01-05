@@ -1,4 +1,4 @@
-use crate::package::{Namespace, ObjectDescription, Package};
+use crate::package::{Namespace, ObjectDescription};
 use crate::package_manager::PackageManager;
 use proc_macro2::TokenStream;
 use quote::quote;
