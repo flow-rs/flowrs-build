@@ -1,11 +1,11 @@
+use crate::package::{Namespace, ObjectDescription, Package};
+use crate::package_manager::PackageManager;
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use syn::Ident;
-use crate::package::{Namespace, ObjectDescription, Package};
-use crate::package_manager::PackageManager;
 
 use anyhow::{Error, Result};
 
@@ -21,9 +21,8 @@ struct ConnectionModel {
 pub struct NodeModel {
     node_type: String,
     type_parameters: HashMap<String, String>,
-    constructor: String
-    //inputs: HashMap<String, InputModel>,
-    //outputs: HashMap<String, OutputModel>
+    constructor: String, //inputs: HashMap<String, InputModel>,
+                         //outputs: HashMap<String, OutputModel>
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -54,7 +53,7 @@ impl StandardCodeEmitter {
             #[cfg(target_arch = "wasm32")]
             #[wasm_bindgen]
             pub fn wasm_run() {
-                
+
                 let mut ctx = Box::new(init());
 
                 let node_updater = SingleThreadedNodeUpdater::new(None);
@@ -74,7 +73,7 @@ impl StandardCodeEmitter {
             #[no_mangle]
             pub extern "C" fn native_run(num_workers: usize, ctx_handle: *mut ExecutionContextHandle) -> *const c_char {
                 let mut ctx = unsafe { Box::from_raw(ctx_handle.cast::<ExecutionContext>()) };
-                
+
                 let node_updater = MultiThreadedNodeUpdater::new(num_workers);
                 let scheduler = RoundRobinScheduler::new();
 
@@ -101,7 +100,11 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn emit_init_function_body(&self, flow: &FlowModel, pm: &PackageManager) -> Result<TokenStream, Error> {
+    fn emit_init_function_body(
+        &self,
+        flow: &FlowModel,
+        pm: &PackageManager,
+    ) -> Result<TokenStream, Error> {
         let mut body = TokenStream::new();
 
         self.emit_std_locals(&mut body, flow);
@@ -117,7 +120,12 @@ impl StandardCodeEmitter {
         Ok(body)
     }
 
-    fn emit_nodes(&self, flow: &FlowModel, tokens: &mut TokenStream, pm: &PackageManager) -> Result<(), Error> {
+    fn emit_nodes(
+        &self,
+        flow: &FlowModel,
+        tokens: &mut TokenStream,
+        pm: &PackageManager,
+    ) -> Result<(), Error> {
         for (node_name, node) in &flow.nodes {
             let generated_code = self.emit_node(node_name, node, pm)?;
             tokens.extend(generated_code);
@@ -132,7 +140,12 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn node_model_to_object(&self, node_name: &String, node: &NodeModel, pm: &PackageManager) -> ObjectDescription {
+    fn node_model_to_object(
+        &self,
+        node_name: &String,
+        node: &NodeModel,
+        pm: &PackageManager,
+    ) -> ObjectDescription {
         ObjectDescription {
             name: node_name.clone(),
             type_name: node.node_type.clone(),
@@ -148,28 +161,36 @@ impl StandardCodeEmitter {
                 self.emit_type_parameter_part_rec(&tp, &node.type_parameters, pm, &mut tp_part);
             }
         }
-        tp_part 
+        tp_part
     }
 
-    fn emit_type_parameter_part_rec(&self, type_parameters: &Vec<String>, resolved_type_parameters: &HashMap<String, String>, pm: &PackageManager, tp_part: &mut String) {
-        
+    fn emit_type_parameter_part_rec(
+        &self,
+        type_parameters: &Vec<String>,
+        resolved_type_parameters: &HashMap<String, String>,
+        pm: &PackageManager,
+        tp_part: &mut String,
+    ) {
         if !type_parameters.is_empty() {
             tp_part.push_str("<");
         }
 
         for type_parameter in type_parameters {
-
             if let Some(type_name) = resolved_type_parameters.get(type_parameter) {
-
                 tp_part.push_str(type_name);
                 if let Some(t) = pm.get_type(type_name) {
                     if let Some(tps) = &t.type_parameters {
-                        self.emit_type_parameter_part_rec(tps, resolved_type_parameters, pm, tp_part);  
-                    }      
-                } 
+                        self.emit_type_parameter_part_rec(
+                            tps,
+                            resolved_type_parameters,
+                            pm,
+                            tp_part,
+                        );
+                    }
+                }
                 tp_part.push_str(",");
             } else {
-                //TODO: Error Reporting. 
+                //TODO: Error Reporting.
             }
         }
         if !type_parameters.is_empty() {
@@ -178,11 +199,14 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn emit_node(&self, node_name: &str, node: &NodeModel, pm: &PackageManager) -> Result<TokenStream, Error>  {
+    fn emit_node(
+        &self,
+        node_name: &str,
+        node: &NodeModel,
+        pm: &PackageManager,
+    ) -> Result<TokenStream, Error> {
         if let Some(node_type) = pm.get_type(&node.node_type) {
-
             if let Some(constructor) = node_type.constructors.get(&node.constructor) {
-                
                 let res = constructor.emit_code_template(
                     &self.node_model_to_object(&node_name.to_string(), node, pm),
                     &node.type_parameters,
@@ -191,23 +215,26 @@ impl StandardCodeEmitter {
                 );
 
                 match res {
-                    Ok(code)=> { 
+                    Ok(code) => {
                         let tok: TokenStream = code.parse().unwrap();
                         Ok(quote! {
                             #tok
-                        }) 
-                    },
-                    Err(err) => {
-                        Err(err)
+                        })
                     }
+                    Err(err) => Err(err),
                 }
             } else {
-                Err(anyhow::Error::msg(format!("Cannot find constructor '{}' for node '{}' with type '{}'", node.constructor, node_name, node.node_type)))
+                Err(anyhow::Error::msg(format!(
+                    "Cannot find constructor '{}' for node '{}' with type '{}'",
+                    node.constructor, node_name, node.node_type
+                )))
             }
         } else {
-            Err(anyhow::Error::msg(format!("Cannot find type '{}' for node '{}'.", node.node_type, node_name)))
+            Err(anyhow::Error::msg(format!(
+                "Cannot find type '{}' for node '{}'.",
+                node.node_type, node_name
+            )))
         }
-       
     }
 
     fn emit_node_connection(&self, connection: &ConnectionModel) -> TokenStream {
@@ -222,7 +249,6 @@ impl StandardCodeEmitter {
     }
 
     fn emit_std_locals(&self, tokens: &mut TokenStream, flow: &FlowModel) {
-
         let data_str = serde_json::to_string(&flow.data).unwrap();
 
         tokens.extend(quote! {
@@ -280,9 +306,8 @@ impl StandardCodeEmitter {
 
 impl CodeEmitter for StandardCodeEmitter {
     fn emit_flow_code(&self, flow: &FlowModel, pm: &PackageManager) -> Result<String, Error> {
-        
         let init_function_body = self.emit_init_function_body(flow, pm)?;
-        
+
         Ok(format!(
             "{}{}",
             self.emit_use_decls(),
@@ -634,7 +659,6 @@ mod tests {
     "#;
     #[test]
     fn test() {
-
         let flow_model: FlowModel = serde_json::from_str(&FLOW_JSON).expect("wrong format.");
 
         let mut pm = PackageManager::new();
@@ -644,7 +668,11 @@ mod tests {
         pm.add_package(p);
 
         let rce = StandardCodeEmitter {};
-        println!("{}", rce.emit_flow_code(&flow_model, &pm).expect("flow code wrong."));
+        println!(
+            "{}",
+            rce.emit_flow_code(&flow_model, &pm)
+                .expect("flow code wrong.")
+        );
 
         //let pack = StandardWasmPackager::new(rce);
         //pack.compile_package(&flow_model);
