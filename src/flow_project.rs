@@ -699,22 +699,213 @@ fn replace_file_contents(file_path: &Path, new_content: &str) -> io::Result<()> 
 #[cfg(test)]
 mod tests {
     use std::{fs::create_dir, default};
-
     use anyhow::Ok;
-
+    use std::thread;
+    use std::time::Duration;
     use super::*;
 
+
     const PROJECT_JSON: &str = r#"
-{"name":"flow_project_01","version":"1.0.0","packages":[{"name":"flowrs","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs","branch":"dev"},{"name":"flowrs-std","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs-std","branch":"feature-project1"}],"flow":{"nodes":{"debug_node":{"node_type":"flowrs_std::nodes::debug::DebugNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_config_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"flowrs_std::nodes::timer::TimerNodeConfig"},"constructor":"New"},"timer_token_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_node":{"node_type":"flowrs_std::nodes::timer::TimerNode","type_parameters":{"T":"flowrs_std::nodes::timer::SelectedTimer","U":"i32"},"constructor":"New"}},"connections":[{"from_node":"timer_config_node","to_node":"timer_node","to_input":"config_input","from_output":"output"},{"from_node":"timer_token_node","to_node":"timer_node","to_input":"token_input","from_output":"output"},{"from_node":"timer_node","to_node":"debug_node","to_input":"input","from_output":"token_output"}],"data":{"timer_config_node":{"value":{"duration":{"nanos":0,"secs":1}}},"timer_token_node":{"value":42}}}}
+{
+  "name": "flow_project_01",
+  "version": "1.0.0",
+  "packages": [
+    {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"feature-project7"},
+    {"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}
+    ],
+  "flow":{        
+        "nodes": {
+            "debug_node": {
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+            "timer_config_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "flowrs_std::nodes::timer::TimerNodeConfig"},
+                "constructor": "New"
+
+            },
+            "timer_token_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+             "timer_node": {
+                "node_type": "flowrs_std::nodes::timer::TimerNode",
+                "type_parameters": {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"},
+                "constructor": "New"
+            }
+        },
+        "connections": [
+            {
+                "from_node": "timer_config_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "config_input"
+            },
+            {
+                "from_node": "timer_token_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "token_input"
+            },
+            {
+                "from_node": "timer_node",
+                "from_output": "token_output",
+                "to_node": "debug_node",
+                "to_input": "input"
+            }
+        ], 
+        "data" : {
+            "timer_config_node": {
+                "value": {"duration": {"secs": 1, "nanos": 0}}
+            },
+             "timer_token_node": {
+                "value": 42
+            }
+        }
+    }
+}
     "#;
+
     const PROJECT_JSON_2: &str = r#"
-{"name":"flow_project_02","version":"1.0.0","packages":[{"name":"flowrs","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs","branch":"dev"},{"name":"flowrs-std","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs-std","branch":"feature-project1"}],"flow":{"nodes":{"debug_node":{"node_type":"flowrs_std::nodes::debug::DebugNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_config_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"flowrs_std::nodes::timer::TimerNodeConfig"},"constructor":"New"},"timer_token_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_node":{"node_type":"flowrs_std::nodes::timer::TimerNode","type_parameters":{"T":"flowrs_std::nodes::timer::SelectedTimer","U":"i32"},"constructor":"New"}},"connections":[{"from_node":"timer_config_node","to_node":"timer_node","to_input":"config_input","from_output":"output"},{"from_node":"timer_token_node","to_node":"timer_node","to_input":"token_input","from_output":"output"},{"from_node":"timer_node","to_node":"debug_node","to_input":"input","from_output":"token_output"}],"data":{"timer_config_node":{"value":{"duration":{"nanos":0,"secs":1}}},"timer_token_node":{"value":42}}}}
+{
+  "name": "flow_project_02",
+  "version": "1.0.0",
+  "packages": [
+    {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"feature-project7"},
+    {"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}
+    ],
+  "flow":{        
+        "nodes": {
+            "debug_node": {
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+            "timer_config_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "flowrs_std::nodes::timer::TimerNodeConfig"},
+                "constructor": "New"
+
+            },
+            "timer_token_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+             "timer_node": {
+                "node_type": "flowrs_std::nodes::timer::TimerNode",
+                "type_parameters": {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"},
+                "constructor": "New"
+            }
+        },
+        "connections": [
+            {
+                "from_node": "timer_config_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "config_input"
+            },
+            {
+                "from_node": "timer_token_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "token_input"
+            },
+            {
+                "from_node": "timer_node",
+                "from_output": "token_output",
+                "to_node": "debug_node",
+                "to_input": "input"
+            }
+        ], 
+        "data" : {
+            "timer_config_node": {
+                "value": {"duration": {"secs": 1, "nanos": 0}}
+            },
+             "timer_token_node": {
+                "value": 42
+            }
+        }
+    }
+}
     "#;
+
     const PROJECT_JSON_3: &str = r#"
-{"name":"flow_project_03","version":"1.0.0","packages":[{"name":"flowrs","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs","branch":"dev"},{"name":"flowrs-std","version":"1.0.0","path":null,"git":"https://github.com/flow-rs/flowrs-std","branch":"feature-project1"}],"flow":{"nodes":{"debug_node":{"node_type":"flowrs_std::nodes::debug::DebugNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_config_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"flowrs_std::nodes::timer::TimerNodeConfig"},"constructor":"New"},"timer_token_node":{"node_type":"flowrs_std::nodes::value::ValueNode","type_parameters":{"I":"i32"},"constructor":"New"},"timer_node":{"node_type":"flowrs_std::nodes::timer::TimerNode","type_parameters":{"T":"flowrs_std::nodes::timer::SelectedTimer","U":"i32"},"constructor":"New"}},"connections":[{"from_node":"timer_config_node","to_node":"timer_node","to_input":"config_input","from_output":"output"},{"from_node":"timer_token_node","to_node":"timer_node","to_input":"token_input","from_output":"output"},{"from_node":"timer_node","to_node":"debug_node","to_input":"input","from_output":"token_output"}],"data":{"timer_config_node":{"value":{"duration":{"nanos":0,"secs":1}}},"timer_token_node":{"value":42}}}}
+{
+  "name": "flow_project_03",
+  "version": "1.0.0",
+  "packages": [
+    {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"feature-project7"},
+    {"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}
+    ],
+  "flow":{        
+        "nodes": {
+            "debug_node": {
+                "node_type": "flowrs_std::nodes::debug::DebugNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+            "timer_config_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "flowrs_std::nodes::timer::TimerNodeConfig"},
+                "constructor": "New"
+
+            },
+            "timer_token_node": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "New"
+
+            },
+             "timer_node": {
+                "node_type": "flowrs_std::nodes::timer::TimerNode",
+                "type_parameters": {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"},
+                "constructor": "New"
+            }
+        },
+        "connections": [
+            {
+                "from_node": "timer_config_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "config_input"
+            },
+            {
+                "from_node": "timer_token_node",
+                "from_output": "output",
+                "to_node": "timer_node",
+                "to_input": "token_input"
+            },
+            {
+                "from_node": "timer_node",
+                "from_output": "token_output",
+                "to_node": "debug_node",
+                "to_input": "input"
+            }
+        ], 
+        "data" : {
+            "timer_config_node": {
+                "value": {"duration": {"secs": 1, "nanos": 0}}
+            },
+             "timer_token_node": {
+                "value": 42
+            }
+        }
+    }
+}
     "#;
     const TEST_DIR_PATH_1: &str = "tmp_test_dir_01";
     const TEST_DIR_PATH_2: &str = "tmp_test_dir_02";
+    const TEST_DIR_PATH_3: &str = "tmp_test_dir_03";
+    const TEST_DIR_PATH_4: &str = "tmp_test_dir_04";
     const PROJECT_JSON_FILE: &str = "flow-project.json";
     const PROJECT_NAME_1: &str = "flow_project_01";
     const PROJECT_NAME_2: &str = "flow_project_02";
@@ -796,6 +987,11 @@ mod tests {
         let run_res = fpm.run_flow_project(PROJECT_NAME_3, build_type);
         assert!(!run_res.is_err());
         let run = run_res.unwrap();
+        thread::sleep(Duration::from_secs(2));
+        let process_logs_res = fpm.get_process_logs(run.process_id.to_string());
+        assert!(!process_logs_res.is_err());
+        let process_logs = process_logs_res.unwrap();
+        assert!(process_logs.join(" ").contains("42"));
         let stop_res = fpm.stop_process(run.process_id.to_string());
         assert!(!stop_res.is_err());
 
@@ -814,6 +1010,63 @@ mod tests {
         assert!(!stop_res2.is_err());
 
         let _ = delete_folder_recursive(Path::new(TEST_DIR_PATH_2));
+    }
+
+    #[test]
+    fn delete_flow_project_test() {
+        //setup
+        let _ = delete_folder_recursive(Path::new(TEST_DIR_PATH_3));
+        let mut fpm= FlowProjectManager::new(create_test_config(TEST_DIR_PATH_3.to_string()));
+        let create_result = create_test_directory(TEST_DIR_PATH_3.to_string());
+        assert!(!create_result.is_err());
+
+        let flow_project_res= serde_json::from_str(PROJECT_JSON_3);
+        assert!(!flow_project_res.is_err());
+        let flow_project: FlowProject = flow_project_res.unwrap();
+        let pm = PackageManager::new_from_folder("flow-packages");
+        let create_res = fpm.create_flow_project(flow_project.clone(), &pm);
+        assert!(!create_res.is_err());
+
+        //delete flow project
+        let delete_res = fpm.delete_flow_project(&flow_project.name);
+        assert!(!delete_res.is_err());
+
+        //cleanup
+        let _ = delete_folder_recursive(Path::new(TEST_DIR_PATH_3));
+    }
+
+        #[test]
+    fn update_flow_project_test() {
+        //setup
+        let _ = delete_folder_recursive(Path::new(TEST_DIR_PATH_4));
+        let mut fpm= FlowProjectManager::new(create_test_config(TEST_DIR_PATH_4.to_string()));
+        let create_result = create_test_directory(TEST_DIR_PATH_4.to_string());
+        assert!(!create_result.is_err());
+
+        let flow_project_res= serde_json::from_str(PROJECT_JSON_3);
+        assert!(!flow_project_res.is_err());
+        let flow_project_res_2= serde_json::from_str(PROJECT_JSON_2);
+        assert!(!flow_project_res_2.is_err());
+        let flow_project: FlowProject = flow_project_res.unwrap();
+        let flow_project_2: FlowProject = flow_project_res_2.unwrap();
+        let pm = PackageManager::new_from_folder("flow-packages");
+        let create_res = fpm.create_flow_project(flow_project.clone(), &pm);
+        assert!(!create_res.is_err());
+        let create_res_2 = fpm.create_flow_project(flow_project_2.clone(), &pm);
+        assert!(!create_res_2.is_err());
+
+        //update flow project
+        let update_res = fpm.update_flow_project_flow_model(&flow_project.name, flow_project_2.flow);
+        assert!(!update_res.is_err());
+        let flow_project_3_opt = fpm.projects.get(&flow_project.name);
+        assert!(!flow_project_3_opt.is_none());
+        let flow_project_3 = flow_project_3_opt.unwrap();
+        assert_eq!(flow_project.name, flow_project_3.name);
+        assert_eq!(flow_project.packages, flow_project_3.packages);
+        assert_eq!(flow_project.flow, flow_project_3.flow);
+
+        //cleanup
+        let _ = delete_folder_recursive(Path::new(TEST_DIR_PATH_4));
     }
 
 }
