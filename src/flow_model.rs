@@ -318,6 +318,8 @@ impl CodeEmitter for StandardCodeEmitter {
 
 #[cfg(test)]
 mod tests {
+    use crate::package::Package;
+
     use super::*;
     const PACKAGE_JSON: &str = r#"
 {
