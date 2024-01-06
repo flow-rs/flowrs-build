@@ -2,6 +2,7 @@
 import {useEventsStore} from "~/store/eventStore";
 import {ContextCreator} from "~/rete/flowrs/contextCreator";
 import {navigateTo} from "#app";
+import {createEditor} from "~/rete";
 
 const eventsStore = useEventsStore();
 
@@ -28,6 +29,17 @@ const handleSaveButtonClick = async () => {
   });
 
 }
+</script>
+
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { createEditor} from "~/rete";
+
+export default defineComponent({
+  mounted(){
+    createEditor(this.$refs.rete)
+  }
+})
 </script>
 
 <template>
