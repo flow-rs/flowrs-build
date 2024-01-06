@@ -1,9 +1,16 @@
 <script setup lang="ts">
 
-import {usePackagesStore} from "~/store/packageStore";
-import type {Crate} from "~/repository/modules/packages";
+import { usePackagesStore } from "~/store/packageStore.js";
+import { Crate } from "~/repository/modules/packages";
+import { reactive } from "vue";
 
 const packagesStore = usePackagesStore()
+await packagesStore.getAll()
+console.log(packagesStore.packagesMap)
+console.log(packagesStore.packages)
+const projectClicked = ref(false)
+
+
 const selectPackage = (crate: Crate) => {
   console.log("Project was selected: " + crate.name)
   packagesStore.selectPackage(crate)
@@ -14,9 +21,12 @@ const refreshPackageList = () => {
   console.log("Refreshing list of packages...")
   packagesStore.getAll()
 }
-const {cardTitle: string} = defineProps(['cardTitle']);
-</script>
+defineProps({
+  cardTitle: { type: String, default: "Packages" }
+});
 
+
+</script>
 <template>
   <v-card :title="cardTitle" subtitle="Test" variant="elevated">
     <v-divider></v-divider>

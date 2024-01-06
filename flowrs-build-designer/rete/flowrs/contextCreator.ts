@@ -12,16 +12,19 @@ import {ContextMenuPlugin, Presets as ContextMenuPresets} from "rete-context-men
 import type {Schemes} from "~/rete/flowrs/editor";
 import {Connection} from "~/rete/flowrs/editor";
 import type {TypeDefinition} from "~/repository/modules/packages";
+import {usePackagesStore} from "~/store/packageStore.js";
 import {navigateTo} from "#app";
 
 
 export class ContextCreator {
-
     private static editor: NodeEditor<Schemes> | undefined;
 
     private static nodeNameCount: Map<string, number> = new Map<string, number>();
 
+    private static constructableNodes: ItemDefinition<Schemes>[];
+
     public static async saveBuilderStateAsProject() {
+        const packagesStore = usePackagesStore();
         if (!this.editor) {
             throw new Error("Editor is undefined!");
         }
@@ -31,20 +34,21 @@ export class ContextCreator {
         }
 
         let flowProject: FlowProject = JSON.parse(JSON.stringify(selectedProject));
-        console.log("Selected Project", flowProject)
+        console.log("Selected Project", flowProject);
 
         let allNodes = this.editor.getNodes();
+        console.log(allNodes);
         let allConnections = this.editor.getConnections();
-        let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap();
+        let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap(packagesStore.currentActive);
 
         this.setNodesAndDataInProject(flowProject, allNodes, typeDefinitionsMap);
-
+        this.setPackagesInProject(flowProject);
         this.setConnectionsInProject(flowProject, allConnections);
 
-        let original_name = flowProject.name
+        let original_name = flowProject.name;
 
         // try creating the new setup and clean it up on success
-        flowProject.name = "tmp_" + flowProject.name
+        flowProject.name = "tmp_" + flowProject.name;
         try {
             await useNuxtApp().$api.projects.createProject(flowProject);
         } catch (e) {
@@ -54,17 +58,17 @@ export class ContextCreator {
         try {
             await useNuxtApp().$api.projects.deleteProject({project_name: flowProject.name});
         } catch (e) {
-            console.log("Delete failed", e)
+            console.log("Delete failed", e);
         }
 
         // delete the old & create the new setup, knowing that it will succeed
-        flowProject.name = original_name
+        flowProject.name = original_name;
         try {
             await useNuxtApp().$api.projects.deleteProject({project_name: flowProject.name});
         } catch (e) {
-            console.log("Delete failed", e)
+            console.log("Delete failed", e);
         }
-        console.log("New Project", flowProject)
+        console.log("New Project", flowProject);
         try {
             await useNuxtApp().$api.projects.createProject(flowProject);
         } catch (e) {
@@ -73,9 +77,44 @@ export class ContextCreator {
         }
     }
 
+    private static async setPackagesInProject(flowProject: FlowProject) {
+        const packagesStore = usePackagesStore();
+
+        const packages: string[] = [];
+        const toRemovePackages: string[] = [];
+        flowProject.packages.forEach(element => {
+            packages.push(element.name)
+        });
+
+        console.log(packagesStore.packages);
+        packagesStore.currentActive.forEach((element) => {
+            if (element != "flowrs" && element != "primitives" && !packages.includes(element)) {
+                const foundObject = toRaw(packagesStore.packages).find((obj) => obj.name === element);
+                if (foundObject) {
+                    let flowPackage = {
+                        name: foundObject.name,
+                        version: foundObject.version,
+                        path: undefined,
+                        git: undefined,
+                        branch: undefined,
+                    };
+                    flowProject.packages.push(flowPackage)
+                }
+            }
+        });
+        packages.forEach(element => {
+            if (!packagesStore.currentActive.includes(element)) {
+                toRemovePackages.push(element);
+            }
+        });
+        toRemovePackages.forEach(element => {
+            flowProject.packages = flowProject.packages.filter(obj => obj.name !== element);
+        });
+    }
+
     private static setNodesAndDataInProject(flowProject: FlowProject, allNodes: Schemes["Node"][], typeDefinitionsMap: Map<string, TypeDefinition>) {
-        flowProject.flow.nodes = {}
-        flowProject.flow.data = {}
+        flowProject.flow.nodes = {};
+        flowProject.flow.data = {};
         for (const node of allNodes) {
             this.addNodeToProject(typeDefinitionsMap, node, flowProject);
 
@@ -92,22 +131,22 @@ export class ContextCreator {
         let flowNode: FlowNode = {
             node_type: "",
             type_parameters: {},
-            constructor: ""
+            constructor: "",
         };
-        flowNode.node_type = node.fullTypeName
-        flowNode.constructor = node.constructor_type
+        flowNode.node_type = node.fullTypeName;
+        flowNode.constructor = node.constructor_type;
 
         if (typeDefinitionOfCurrentNode.type_parameters && typeDefinitionOfCurrentNode.type_parameters.length != node.typeParameters.size) {
             throw new Error(`Not all TypeParameters are set for node ${node.label}`);
         }
         // Convert Map to object
-        const convertedTypeParameters: { [key: string]: string; } = {};
+        const convertedTypeParameters: { [key: string]: string } = {};
         node.typeParameters.forEach((value, key) => {
             convertedTypeParameters[key] = value;
         });
-        flowNode.type_parameters = convertedTypeParameters
+        flowNode.type_parameters = convertedTypeParameters;
 
-        flowProject.flow.nodes[node.label] = flowNode
+        flowProject.flow.nodes[node.label] = flowNode;
     }
 
     private static addDataToProject(node: FlowrsNode, flowProject: FlowProject) {
@@ -125,19 +164,19 @@ export class ContextCreator {
         if (!this.editor) {
             throw new Error("Editor is undefined!");
         }
-        flowProject.flow.connections = []
+        flowProject.flow.connections = [];
         for (const connection of allConnections) {
             let flowConnection: FlowConnection = {
                 from_node: "",
                 from_output: "",
                 to_node: "",
-                to_input: ""
-            }
+                to_input: "",
+            };
 
-            flowConnection.from_output = connection.sourceOutput
-            flowConnection.to_input = connection.targetInput
-            flowConnection.from_node = this.editor.getNode(connection.source).label
-            flowConnection.to_node = this.editor.getNode(connection.target).label
+            flowConnection.from_output = connection.sourceOutput;
+            flowConnection.to_input = connection.targetInput;
+            flowConnection.from_node = this.editor.getNode(connection.source).label;
+            flowConnection.to_node = this.editor.getNode(connection.target).label;
 
             if (!flowConnection.from_node || !flowConnection.to_node) {
                 throw new Error("Some node of this connection couldn't be resolved:\n" + flowConnection);
@@ -148,13 +187,14 @@ export class ContextCreator {
     }
 
     public static async addFlowrsElements(editor: NodeEditor<Schemes>) {
+        const packagesStore = usePackagesStore();
+
         this.editor = editor;
         this.nodeNameCount = new Map<string, number>();
-
         const selectedProject = this.getCurrentlySelectedProject();
 
         // get (typename,typeDefinition) Map
-        let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap();
+        let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap(packagesStore.currentActive);
 
         // construct scene out of selected project
         if (selectedProject) {
@@ -163,15 +203,21 @@ export class ContextCreator {
         }
 
         this.preventTypeIncompatibleConnections(editor);
-
         return await this.createContextMenuWithConstructableNodes(typeDefinitionsMap);
+    }
+
+    public static async updateContextMenu() {
+        const packagesStore = usePackagesStore();
+
+        let typeDefinitionsMap = await useNuxtApp().$api.packages.getFlowrsTypeDefinitionsMap(packagesStore.currentActive);
+        this.constructableNodes = await this.getConstructableNodeList(typeDefinitionsMap);
     }
 
     private static getCurrentlySelectedProject() {
         const projectsStore = useProjectsStore();
         const selectedProjectUnwrapped = computed(() => projectsStore.selectedProject);
         const selectedProject: FlowProject | null = selectedProjectUnwrapped.value;
-        if (!selectedProject) {
+        if (!selectedProject || !projectsStore) {
             navigateTo("/");
         }
         return selectedProject;
@@ -185,26 +231,19 @@ export class ContextCreator {
             let currentNodeType = currentNode.node_type;
             let typeDefinition = typeDefinitionsMap.get(currentNodeType);
             if (!typeDefinition) {
-                console.error("TypeDefinition for", currentNodeType, "not found")
-                continue
+                console.error("TypeDefinition for", currentNodeType, "not found");
+                continue;
             }
 
             let nodeName = flowNode.replaceAll("::", "_");
             let countOfType = this.nodeNameCount.get(nodeName);
-            const node = new FlowrsNode(
-                nodeName + (countOfType || ""),
-                currentNodeType,
-                project.flow.data[flowNode]?.value,
-                currentNode.constructor,
-                currentNode.type_parameters,
-                typeDefinitionsMap,
-                editor);
+            const node = new FlowrsNode(nodeName + (countOfType || ""), currentNodeType, project.flow.data[flowNode]?.value, currentNode.constructor, currentNode.type_parameters, typeDefinitionsMap, editor);
 
             this.nodeNameCount.set(nodeName, (countOfType || 0) + 1);
 
             await editor.addNode(node);
             allAddedNodes.set(flowNode, node);
-            console.log('node added', flowNode, node);
+            console.log("node added", flowNode, node);
         }
 
         return allAddedNodes;
@@ -216,19 +255,14 @@ export class ContextCreator {
             let target = projectNodes.get(flowConnection.to_node);
 
             if (!source || !target) {
-                console.error(source, target, 'not found in', projectNodes)
-                return
+                console.error(source, target, "not found in", projectNodes);
+                return;
             }
 
-            let newConnection = new Connection(
-                source,
-                flowConnection.from_output,
-                target,
-                flowConnection.to_input,
-            );
+            let newConnection = new Connection(source, flowConnection.from_output, target, flowConnection.to_input);
 
             await editor.addConnection(newConnection);
-            console.log('connection added', newConnection);
+            console.log("connection added", newConnection);
         }
     }
 
@@ -236,35 +270,29 @@ export class ContextCreator {
         let output: ItemDefinition<Schemes>[] = [];
         for (const fullTypeName of typeDefinitionsMap.keys()) {
             let typeDefinition = typeDefinitionsMap.get(fullTypeName);
-            console.log('Package', fullTypeName, typeDefinition);
+            console.log("Package", fullTypeName, typeDefinition);
             if (!typeDefinition || (!typeDefinition.outputs && !typeDefinition.inputs)) {
-                continue
+                continue;
             }
             let constructorDefinition = typeDefinition.constructors;
             let constructableNodes: ItemDefinition<Schemes>[] = [];
             for (const constructorDefinitionKey in constructorDefinition) {
                 let constructorDefinitionElement = constructorDefinition[constructorDefinitionKey];
                 if (typeof constructorDefinitionElement == "string") {
-                    console.error("Current constructor is a string constructor", constructorDefinitionElement, constructorDefinition.types)
+                    console.error("Current constructor is a string constructor", constructorDefinitionElement, constructorDefinition.types);
                     continue;
                 }
 
-                constructableNodes.push([constructorDefinitionKey,
+                constructableNodes.push([
+                    constructorDefinitionKey,
                     () => {
-
                         let nodeName = fullTypeName.replaceAll("::", "_");
                         let countOfType = this.nodeNameCount.get(nodeName);
-                        let node = new FlowrsNode(
-                            nodeName + (countOfType || ""),
-                            fullTypeName,
-                            null,
-                            constructorDefinitionKey,
-                            null,
-                            typeDefinitionsMap,
-                            this.editor!);
+                        let node = new FlowrsNode(nodeName + (countOfType || ""), fullTypeName, null, constructorDefinitionKey, null, typeDefinitionsMap, this.editor!);
                         this.nodeNameCount.set(nodeName, (countOfType || 0) + 1);
                         return node;
-                    }]);
+                    },
+                ]);
             }
             output.push([fullTypeName, constructableNodes]);
         }
@@ -272,7 +300,7 @@ export class ContextCreator {
     }
 
     private static preventTypeIncompatibleConnections(editor: NodeEditor<Schemes>) {
-        editor.addPipe(context => {
+        editor.addPipe((context) => {
             if (context.type == "connectioncreate") {
                 let sourceNode = editor.getNode(context.data.source);
                 let targetNode = editor.getNode(context.data.target);
@@ -286,9 +314,11 @@ export class ContextCreator {
     }
 
     private static async createContextMenuWithConstructableNodes(typeDefinitionsMap: Map<string, TypeDefinition>) {
-        let constructableNodeList = await this.getConstructableNodeList(typeDefinitionsMap);
+        this.constructableNodes = await this.getConstructableNodeList(typeDefinitionsMap);
         return new ContextMenuPlugin<Schemes>({
-            items: ContextMenuPresets.classic.setup(constructableNodeList),
+            items: (context, plugin) => {
+                return ContextMenuPresets.classic.setup(this.constructableNodes)(context, plugin);
+            }
         });
     }
 }

@@ -8,7 +8,6 @@ import {useEventsStore} from "~/store/eventStore";
 import {FetchError} from "ofetch";
 
 const projectsStore = useProjectsStore();
-const eventStore = useEventsStore();
 const selectedProject = computed(() => projectsStore.selectedProject);
 let json = ref();
 
@@ -22,19 +21,19 @@ eventsStore.$subscribe((mutation, state) => {
 })
 const handleSaveButtonClick = async () => {
 
-  eventStore.setLoading(true)
-  eventStore.setErrorMessage("")
-  eventStore.setAlert(true)
+  eventsStore.setLoading(true)
+  eventsStore.setErrorMessage("")
+  eventsStore.setAlert(true)
   eventsStore.setSaveButtonClicked(false);
   saveProjectFromTextEditor().then(() => {
-    eventStore.setLoading(false)
-    eventStore.setAlert(false)
+    eventsStore.setLoading(false)
+    eventsStore.setAlert(false)
     navigateTo("/");
   }).catch((e) => {
     console.error("Error caught", e);
-    eventStore.setLoading(false)
-    eventStore.setErrorMessage(e.message)
-    eventStore.setAlert(true)
+    eventsStore.setLoading(false)
+    eventsStore.setErrorMessage(e.message)
+    eventsStore.setAlert(true)
   });
 
 }

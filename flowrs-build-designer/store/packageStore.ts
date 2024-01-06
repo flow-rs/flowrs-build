@@ -8,12 +8,13 @@ export const usePackagesStore = defineStore({
         packagesMap: new Map<string, TypeDefinition>(),
         packages: [] as Crate[],
         selectedMap: new Map<string, TypeDefinition>(),
-        loading: false
+        loading: false,
+        currentActive:["flowrs","primitives"] as string[]
     }),
     actions: {
         async getAll() {
             const {$api} = useNuxtApp();
-            const response = await $api.packages.getFlowrsTypeDefinitionsMap()
+            const response = await $api.packages.getFlowrsTypeDefinitionsMap(this.currentActive)
                 .catch((error) => {
                         console.log("Error fetching package map!");
                         return new Map<string, TypeDefinition>();
@@ -25,6 +26,7 @@ export const usePackagesStore = defineStore({
                 return [];
             });
             this.packages = packages;
+            console.log(packages)
 
         },
         async getByName(name: string) {
