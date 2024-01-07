@@ -12,7 +12,7 @@ use axum::{
 };
 
 pub async fn get_all_packages(
-    State(package_manager): State<Arc<Mutex<PackageManager>>>,
+    State(package_manager): State<Arc<Mutex<dyn PackageManagerTrait>>>,
 ) -> Json<Vec<Package>> {
     Json(package_manager.lock().unwrap().get_all_packages())
 }
@@ -247,4 +247,66 @@ pub async fn get_process_logs(
             Ok(response)
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::package_manager::MockPackageManagerTrait;
+
+    use super::*;
+    use axum::extract::State;
+    use std::{
+        collections::HashMap,
+        sync::{Arc, Mutex},
+    };
+
+    #[tokio::test]
+    async fn test_get_all_packages() {
+        let mut mock_package_manager = MockPackageManagerTrait::new();
+
+        // Setup mock behavior
+        let expected_packages = vec![Package {
+            name: "testpackage".to_string(),
+            version: "testversion".to_string(),
+            crates: HashMap::new(),
+        }]; // Define expected packages
+        mock_package_manager
+            .expect_get_all_packages()
+            .return_const(expected_packages.clone());
+
+        let package_manager = Arc::new(Mutex::new(Box::new(mock_package_manager)));
+
+        // Call your handler function
+        let response = get_all_packages(State(package_manager)).await;
+
+        // Assert the response
+        assert_eq!(response, Json(expected_packages));
+    }
+
+    #[tokio::test]
+    async fn test_get_package_by_name() {}
+
+    #[tokio::test]
+    async fn test_get_all_projects() {}
+
+    #[tokio::test]
+    async fn test_create_project() {}
+
+    #[tokio::test]
+    async fn test_delete_project() {}
+
+    #[tokio::test]
+    async fn test_compile_project() {}
+
+    #[tokio::test]
+    async fn test_last_compile_project() {}
+
+    #[tokio::test]
+    async fn test_run_project() {}
+
+    #[tokio::test]
+    async fn test_stop_project() {}
+
+    #[tokio::test]
+    async fn test_get_process_logs() {}
 }
