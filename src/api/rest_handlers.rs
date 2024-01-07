@@ -252,12 +252,68 @@ pub async fn get_process_logs(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use std::{
+        collections::HashMap,
+        sync::{Arc, Mutex},
+    };
+
+    use crate::{package::Package, package_manager::PackageManager};
+
+    // Create mock data for PackageManager
+    const MOCK_PACKAGE_NAME: &str = "test_package";
+    const MOCK_PACKAGE_VERSION: &str = "1.0.0";
+
+    // Function to create and return mock package Manager
+    fn create_mock_pm() -> PackageManager {
+        let mut mock_packages = HashMap::new();
+        // Initialize MOCK_PACKAGE within the function
+        let mock_package = Package {
+            name: MOCK_PACKAGE_NAME.to_string(),
+            version: MOCK_PACKAGE_VERSION.to_string(),
+            crates: HashMap::new(),
+        };
+        mock_packages.insert(MOCK_PACKAGE_NAME.to_string(), mock_package);
+        PackageManager {
+            packages: mock_packages,
+        }
+    }
 
     #[tokio::test]
-    async fn test_get_all_packages() {}
+    async fn test_get_all_packages() {
+        // Wrap PackageManager in Arc and Mutex
+        let shared_package_manager = Arc::new(Mutex::new(create_mock_pm()));
+
+        // Call the handler function
+        let response = get_all_packages(State(shared_package_manager)).await;
+
+        // Extract the response
+        let packages = response.0;
+
+        // Assert that the response contains the mock data
+        assert_eq!(packages.len(), 1);
+        assert!(packages.iter().any(|p| p.name == "test_package"));
+    }
 
     #[tokio::test]
-    async fn test_get_package_by_name() {}
+    async fn test_get_package_by_name() {
+        // Wrap PackageManager in Arc and Mutex
+        let shared_package_manager = Arc::new(Mutex::new(create_mock_pm()));
+
+        // Call the handler function
+        let response = get_package_by_name(
+            axum::extract::Path(MOCK_PACKAGE_NAME.to_string()),
+            State(shared_package_manager),
+        )
+        .await;
+
+        // Extract the response
+        let package = response.unwrap().0.unwrap();
+
+        // Assert that the response contains the mock data
+        assert_eq!(package.name, MOCK_PACKAGE_NAME);
+        assert_eq!(package.version, MOCK_PACKAGE_VERSION);
+    }
 
     #[tokio::test]
     async fn test_get_all_projects() {}

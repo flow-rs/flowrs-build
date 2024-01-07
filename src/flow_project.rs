@@ -737,9 +737,9 @@ fn replace_file_contents(file_path: &Path, new_content: &str) -> io::Result<()> 
 mod tests {
     use super::*;
     use anyhow::Ok;
+    use std::fs::create_dir;
     use std::thread;
     use std::time::Duration;
-    use std::{default, fs::create_dir};
 
     const PROJECT_JSON: &str = r#"
 {

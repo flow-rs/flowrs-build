@@ -4,7 +4,7 @@ use std::fs;
 use crate::package::{Crate, Package, Type};
 
 pub struct PackageManager {
-    packages: HashMap<String, Package>,
+    pub(crate) packages: HashMap<String, Package>,
 }
 
 impl PackageManager {

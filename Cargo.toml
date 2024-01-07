@@ -44,9 +44,7 @@ clap = { version = "4.4.4", features = ["derive"] }
 ctrlc = "3.4.1"
 dotenv = "0.15.0"
 chrono = { version = "0.4", features = ["serde"] }
-mockall = "0.12.1"
 
 [dev-dependencies]
 #wasm-bindgen-test = "0.3.37"
 tokio-test = "0.4.3"
-mockall = "0.12.1"
