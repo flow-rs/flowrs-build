@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
 
-use mockall::automock;
-
 use crate::package::{Crate, Package, Type};
 
 pub struct PackageManager {
@@ -173,23 +171,6 @@ impl PackageManager {
         }
         Option::None
     }
-}
-
-#[automock]
-pub trait PackageManagerTrait {
-    fn get_all_packages(&self) -> Vec<Package>;
-    // Include other methods of PackageManager that you need to mock
-}
-
-impl PackageManagerTrait for PackageManager {
-    fn get_all_packages(&self) -> Vec<Package> {
-        return vec![Package {
-            name: "testpackage".to_string(),
-            version: "testversion".to_string(),
-            crates: HashMap::new(),
-        }];
-    }
-    // Implement other methods
 }
 
 #[cfg(test)]

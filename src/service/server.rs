@@ -8,7 +8,7 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 
 use crate::{
     api::rest_handlers::{
@@ -54,12 +54,9 @@ pub fn setup_server(server_config: ServiceConfig) -> Result<Router, Error> {
         )
     })?;
 
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
-    let mut app = Router::new()
+    let app = Router::new()
         .route("/packages/:package_name", get(get_package_by_name))
+        //.with_state(package_manager.clone())
         .route("/packages/", get(get_all_packages))
         .with_state(package_manager.clone())
         //.route("/projects/:project_name", get(get_project_by_name))
@@ -75,8 +72,8 @@ pub fn setup_server(server_config: ServiceConfig) -> Result<Router, Error> {
         .route("/projects/:project_name/run", post(run_project))
         .route("/processes/:process_id/stop", post(stop_process))
         .route("/processes/:process_id/logs", get(get_process_logs))
-        .with_state(project_manager.clone());
-    app = Router::new().nest("/api", app).layer(cors);
+        .with_state(project_manager.clone())
+        .layer(CorsLayer::permissive());
 
-    Ok(app)
+    Ok(Router::new().nest("/api", app))
 }
