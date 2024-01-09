@@ -10,7 +10,7 @@ use syn::Ident;
 use anyhow::{Error, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-struct ConnectionModel {
+pub struct ConnectionModel {
     from_node: String,
     to_node: String,
     to_input: String,
@@ -27,9 +27,9 @@ pub struct NodeModel {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FlowModel {
-    nodes: HashMap<String, NodeModel>,
-    connections: Vec<ConnectionModel>,
-    data: Value,
+    pub(crate) nodes: HashMap<String, NodeModel>,
+    pub(crate) connections: Vec<ConnectionModel>,
+    pub(crate) data: Value,
 }
 
 pub trait CodeEmitter {

@@ -38,15 +38,15 @@ pub struct FlowPackage {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FlowProject {
-    name: String,
-    version: String,
-    packages: Vec<FlowPackage>,
-    flow: FlowModel,
+    pub(crate) name: String,
+    pub(crate) version: String,
+    pub(crate) packages: Vec<FlowPackage>,
+    pub(crate) flow: FlowModel,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Process {
-    process_id: u32,
+    pub process_id: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -94,22 +94,22 @@ fn project_folder_default() -> String {
     "flow-projects".to_string()
 }
 
-fn project_json_file_name_default() -> String {
+pub fn project_json_file_name_default() -> String {
     "flow-project.json".to_string()
 }
 
-fn builtin_dependencies_default() -> Vec<String> {
+pub fn builtin_dependencies_default() -> Vec<String> {
     vec![
         "wasm-bindgen = \"0.2.87\"".to_string(),
         "serde_json = \"1.0.105\"".to_string(),
     ]
 }
 
-fn rust_fmt_path_default() -> String {
+pub fn rust_fmt_path_default() -> String {
     "rustfmt".to_string()
 }
 
-const fn do_formatting_default() -> bool {
+pub const fn do_formatting_default() -> bool {
     true
 }
 
@@ -250,14 +250,15 @@ impl FlowProjectManager {
         if option_project.is_none() {
             return Err(anyhow::anyhow!("{project_name} does not exist!"));
         }
-
         // construct path to folder
         let project_folder_path = self.config.project_folder.clone();
         let flow_project_path = format!("{project_folder_path}/{project_name}");
-
         if build_type.eq("cargo") {
             match Self::compile_cargo(flow_project_path.clone()) {
-                Err(value) => return Err(anyhow::Error::from(value)),
+                Err(value) => {
+                    assert_eq!("", value.to_string());
+                    return Err(anyhow::Error::from(value));
+                }
                 Ok(result) => {
                     let result_str = format!("{:?}", result);
                     if result_str.contains("error: could not compile") {
@@ -271,21 +272,26 @@ impl FlowProjectManager {
                 _ => {}
             };
         } else {
+            assert!(false);
             return Err(anyhow::anyhow!("{build_type} is not an allowed build_type"));
         }
-
         Ok("Das Rust-Projekt wurde erfolgreich kompiliert.".parse()?)
     }
 
     fn compile_cargo(flow_project_path: String) -> io::Result<Output> {
         // construct command for cargo build
         let mut binding = Command::new("cargo");
-        let command = binding.current_dir(flow_project_path).arg("build");
-
+        let command = binding.current_dir(flow_project_path.clone()).arg("build");
         // add release option if this rest-service is executed in release mode
         if !cfg!(debug_assertions) {
             command.arg("--release");
+        } else {
+            command.arg("--debug");
         }
+        // assert_eq!(
+        //     "",
+        //     flow_project_path //+ command.get_current_dir().unwrap().to_str().unwrap()
+        // );
         command.output()
     }
 
@@ -343,6 +349,7 @@ impl FlowProjectManager {
     fn run_cargo_project(&mut self, project_name: &str) -> io::Result<Child> {
         // get path to the projects executable
         let option_path_to_executable = self.get_path_to_executable(project_name, false);
+
         if option_path_to_executable.is_none() {
             return Err(io::Error::new(
                 ErrorKind::Other,
@@ -396,7 +403,6 @@ impl FlowProjectManager {
             return Some(project_dir_path);
         }
         let base_path = format!("{project_dir_path}/target/{build_type}");
-
         // name and ending combinations for windows, mac and linux
         let binding = format!("lib{project_name}");
         let possible_file_names = [project_name, binding.as_str()];
@@ -407,9 +413,8 @@ impl FlowProjectManager {
                 let formatted_path =
                     format!("{base_path}/{possible_file_name}{possible_file_ending}");
                 let possible_path_to_executable = Path::new(formatted_path.as_str());
-                if possible_path_to_executable.exists()
-                    && possible_path_to_executable.to_str().is_some()
-                {
+
+                if possible_path_to_executable.to_str().is_some() {
                     let correct_path_to_executable =
                         possible_path_to_executable.to_str().unwrap().to_string();
                     return Some(correct_path_to_executable);
@@ -463,8 +468,8 @@ impl FlowProjectManager {
             Ok(value) => value,
             Err(value) => return Err(value),
         };
-
         let mut outputs = process.outputs.lock().unwrap();
+
         let mut lines = Vec::new();
         for _i in 0..outputs.len() {
             let option = outputs.pop_front();
@@ -507,7 +512,7 @@ impl FlowProjectManager {
 
         self.projects
             .insert(flow_project.name.clone(), flow_project.clone());
-
+        print!("Hello");
         self.create_flow_project_folder(&flow_project, package_manager)?;
 
         Ok(flow_project)
@@ -667,7 +672,6 @@ impl FlowProjectManager {
         self.create_index_html(flow_project, &project_folder_name)?;
 
         self.create_flow_rust_code(flow_project, &src_folder, package_manager)?;
-
         Ok(())
     }
 
@@ -711,7 +715,7 @@ impl FlowProjectManager {
     }
 }
 
-fn delete_folder_recursive(folder_path: &Path) -> io::Result<()> {
+pub fn delete_folder_recursive(folder_path: &Path) -> io::Result<()> {
     if folder_path.is_dir() {
         for entry in fs::read_dir(folder_path)? {
             let entry = entry?;
@@ -749,7 +753,7 @@ mod tests {
     {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"feature-project7"},
     {"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}
     ],
-  "flow":{        
+  "flow":{
         "nodes": {
             "debug_node": {
                 "node_type": "flowrs_std::nodes::debug::DebugNode",
@@ -794,7 +798,7 @@ mod tests {
                 "to_node": "debug_node",
                 "to_input": "input"
             }
-        ], 
+        ],
         "data" : {
             "timer_config_node": {
                 "value": {"duration": {"secs": 1, "nanos": 0}}
@@ -815,7 +819,7 @@ mod tests {
     {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"feature-project7"},
     {"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}
     ],
-  "flow":{        
+  "flow":{
         "nodes": {
             "debug_node": {
                 "node_type": "flowrs_std::nodes::debug::DebugNode",
@@ -860,7 +864,7 @@ mod tests {
                 "to_node": "debug_node",
                 "to_input": "input"
             }
-        ], 
+        ],
         "data" : {
             "timer_config_node": {
                 "value": {"duration": {"secs": 1, "nanos": 0}}
@@ -881,7 +885,7 @@ mod tests {
     {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"feature-project7"},
     {"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}
     ],
-  "flow":{        
+  "flow":{
         "nodes": {
             "debug_node": {
                 "node_type": "flowrs_std::nodes::debug::DebugNode",
@@ -926,7 +930,7 @@ mod tests {
                 "to_node": "debug_node",
                 "to_input": "input"
             }
-        ], 
+        ],
         "data" : {
             "timer_config_node": {
                 "value": {"duration": {"secs": 1, "nanos": 0}}
