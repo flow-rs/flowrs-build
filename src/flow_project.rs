@@ -256,7 +256,6 @@ impl FlowProjectManager {
         if build_type.eq("cargo") {
             match Self::compile_cargo(flow_project_path.clone()) {
                 Err(value) => {
-                    assert_eq!("", value.to_string());
                     return Err(anyhow::Error::from(value));
                 }
                 Ok(result) => {
@@ -272,7 +271,6 @@ impl FlowProjectManager {
                 _ => {}
             };
         } else {
-            assert!(false);
             return Err(anyhow::anyhow!("{build_type} is not an allowed build_type"));
         }
         Ok("Das Rust-Projekt wurde erfolgreich kompiliert.".parse()?)
@@ -285,13 +283,8 @@ impl FlowProjectManager {
         // add release option if this rest-service is executed in release mode
         if !cfg!(debug_assertions) {
             command.arg("--release");
-        } else {
-            command.arg("--debug");
         }
-        // assert_eq!(
-        //     "",
-        //     flow_project_path //+ command.get_current_dir().unwrap().to_str().unwrap()
-        // );
+
         command.output()
     }
 
@@ -1022,8 +1015,10 @@ mod tests {
         let pm = PackageManager::new_from_folder("flow-packages");
         let create_res = fpm.create_flow_project(flow_project, &pm);
         assert!(!create_res.is_err());
+        thread::sleep(Duration::from_secs(2));
         let compile_res = fpm.compile_flow_project(PROJECT_NAME_3, build_type.clone());
         assert!(!compile_res.is_err());
+        thread::sleep(Duration::from_secs(2));
         let run_res = fpm.run_flow_project(PROJECT_NAME_3, build_type);
         assert!(!run_res.is_err());
         let run = run_res.unwrap();

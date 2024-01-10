@@ -291,6 +291,7 @@ mod tests {
     }
 
     const TEST_PROJECT_FOLDER: &str = "flow-projects-test-handlers";
+    const TEST_PROJECT_FOLDER_2: &str = "flow-projects-test-handlers2";
     const TEST_PROJECT_NAME: &str = "test-project";
     const TEST_PROJECT_NAME2: &str = "test-project2";
     const TEST_PROJECT_VERSION: &str = "1.0.0";
@@ -366,10 +367,10 @@ mod tests {
     }
 
     // Function to create and return a test FlowProjectManager
-    fn create_test_fpm() -> FlowProjectManager {
-        let _ = create_dir(std::path::Path::new(&TEST_PROJECT_FOLDER));
+    fn create_test_fpm(folder: &str) -> FlowProjectManager {
+        let _ = create_dir(std::path::Path::new(&folder));
         let config = FlowProjectManagerConfig {
-            project_folder: TEST_PROJECT_FOLDER.to_string(),
+            project_folder: folder.to_string(),
             project_json_file_name: project_json_file_name_default(),
             builtin_dependencies: builtin_dependencies_default(),
             rust_fmt_path: rust_fmt_path_default(),
@@ -398,8 +399,8 @@ mod tests {
         fpm
     }
 
-    fn cleanup_flow_projects() {
-        let _ = delete_folder_recursive(std::path::Path::new(&TEST_PROJECT_FOLDER));
+    fn cleanup_flow_projects(folder: &str) {
+        let _ = delete_folder_recursive(std::path::Path::new(&folder));
     }
 
     #[tokio::test]
@@ -441,7 +442,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_all_projects() {
         // Create test fpm
-        let mut fpm = create_test_fpm();
+        let mut fpm = create_test_fpm(TEST_PROJECT_FOLDER);
 
         // Add test project
         fpm = add_test_project(fpm);
@@ -453,7 +454,7 @@ mod tests {
         let flow_projects = get_all_projects(State(shared_fpm)).await.0;
 
         //Cleanup
-        cleanup_flow_projects();
+        cleanup_flow_projects(TEST_PROJECT_FOLDER);
 
         // Extract the response
         assert_eq!(flow_projects.len(), 1);
@@ -466,7 +467,7 @@ mod tests {
     #[tokio::test]
     async fn test_project_handlers() {
         // Create test FlowProjectManager and PackageManager
-        let fpm = create_test_fpm();
+        let fpm = create_test_fpm(TEST_PROJECT_FOLDER_2);
         let pm = PackageManager::new_from_folder("flow-packages");
 
         // Wrap FlowPackageManager and PackageManager in Arc and Mutex
@@ -483,7 +484,7 @@ mod tests {
         test_delete_project(shared_fpm.clone()).await;
 
         //Cleanup
-        cleanup_flow_projects();
+        cleanup_flow_projects(TEST_PROJECT_FOLDER_2);
     }
 
     async fn test_create_project(
