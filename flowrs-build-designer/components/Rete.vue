@@ -6,13 +6,15 @@ import {createEditor} from "~/rete";
 
 const eventsStore = useEventsStore();
 
+// subscribe to save button state on AppBar
 eventsStore.$subscribe((mutation, state) => {
   if (state.isSaveButtonClicked) {
     handleSaveButtonClick();
   }
 })
-const handleSaveButtonClick = async () => {
 
+// executes saving process and manages alert banner content
+const handleSaveButtonClick = async () => {
   eventsStore.setLoading(true)
   eventsStore.setErrorMessage("")
   eventsStore.setAlert(true)
@@ -37,6 +39,7 @@ import { createEditor} from "~/rete";
 
 export default defineComponent({
   mounted(){
+    // init rete editor
     createEditor(this.$refs.rete)
   }
 })

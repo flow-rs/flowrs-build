@@ -2,13 +2,17 @@ import {ClassicPreset, ClassicPreset as Classic, NodeEditor} from 'rete';
 import {
     type ConstructorDefinition,
     type ConstructorDescription,
-    type TypeDefinition,
+    type Type,
     type TypeDescription
 } from "~/repository/modules/packages";
 import {DropdownControl, type Schemes} from "~/rete/flowrs/editor";
 
 const socket = new Classic.Socket('socket');
 
+/**
+ * Custom Rete.js node representing a Flowrs node in the visual editor.
+ * @extends Classic.Node
+ */
 export class FlowrsNode extends Classic.Node<
     Record<string, ClassicPreset.Socket>,
     Record<string, ClassicPreset.Socket>,
@@ -27,29 +31,43 @@ export class FlowrsNode extends Classic.Node<
 
     private editor: NodeEditor<Schemes>;
 
+    /**
+     * Creates an instance of FlowrsNode.
+     * @param name - The name of the node.
+     * @param fullTypeName - The full type name of the node.
+     * @param data - Data associated with the node.
+     * @param constructor_type - The constructor type of the node.
+     * @param typeParameters - Type parameters of the node.
+     * @param typeDefinitionsMap - Map of all type definitions.
+     * @param editor - The Rete.js editor instance.
+     */
     constructor(name: string,
                 fullTypeName: string,
                 data: { [key: string]: any } | null,
                 constructor_type: string,
                 typeParameters: { [key: string]: string } | null,
-                allPossibleTypes: Map<string, TypeDefinition>,
+                typeDefinitionsMap: Map<string, Type>,
                 editor: NodeEditor<Schemes>
     ) {
         super(name);
 
         this.editor = editor;
         this.fullTypeName = fullTypeName;
-        let typeDefinition: TypeDefinition = allPossibleTypes.get(this.fullTypeName)!
+        let type: Type = typeDefinitionsMap.get(this.fullTypeName)!
         this.constructor_type = constructor_type;
         this.setNodeData(data);
         this.setTypeParameters(typeParameters);
-        let constructorDescription = this.getConstructorDescription(typeDefinition.constructors);
+        let constructorDescription = this.getConstructorDescription(type.constructors);
         this.addControlInputs(constructorDescription);
-        this.addDropdownControlsForGenericTypeParameters(typeDefinition.type_parameters, constructorDescription, allPossibleTypes);
-        this.addInputs(typeDefinition);
-        this.addOutputs(typeDefinition);
+        this.addDropdownControlsForGenericTypeParameters(type.type_parameters, constructorDescription, typeDefinitionsMap);
+        this.addInputs(type);
+        this.addOutputs(type);
     }
 
+    /**
+     * Sets data for the node based on the provided data object.
+     * @param data - The data object to set for the node.
+     */
     private setNodeData(data: { [key: string]: any } | null) {
         if (!data) {
             return
@@ -58,6 +76,10 @@ export class FlowrsNode extends Classic.Node<
         this.node_data = JSON.stringify(data, null, 2);
     }
 
+    /**
+     * Sets type parameters for the node based on the provided type parameters object.
+     * @param typeParameters - The type parameters object to set for the node.
+     */
     private setTypeParameters(typeParameters: { [p: string]: string } | null) {
         if (!typeParameters) {
             return;
@@ -70,6 +92,11 @@ export class FlowrsNode extends Classic.Node<
         console.log("Type parameters set:", this.typeParameters);
     }
 
+    /**
+     * Retrieves the constructor description based on the current constructor type.
+     * @param constructorDefinition - The constructor definition for the node's type.
+     * @returns The constructor description for the current constructor type.
+     */
     private getConstructorDescription(constructorDefinition: ConstructorDefinition) {
         if (!constructorDefinition) {
             return;
@@ -91,6 +118,10 @@ export class FlowrsNode extends Classic.Node<
         return currentConstructor[recordKeys[0]];
     }
 
+    /**
+     * Adds control inputs to the node based on the constructor description.
+     * @param constructor - The constructor description for the current constructor type.
+     */
     private addControlInputs(constructor: ConstructorDescription | undefined) {
         if (!constructor?.arguments) {
             return
@@ -112,14 +143,20 @@ export class FlowrsNode extends Classic.Node<
         }
     }
 
-    private addDropdownControlsForGenericTypeParameters(type_parameters: string[] | undefined, constructorDescription: undefined | ConstructorDescription, allPossibleTypes: Map<string, TypeDefinition>) {
+    /**
+     * Adds dropdown controls for generic type parameters to the node.
+     * @param type_parameters - The array of generic type parameters.
+     * @param constructorDescription - The constructor description for the current constructor type.
+     * @param typeDefinitionsMap - Map of type definitions for nodes.
+     */
+    private addDropdownControlsForGenericTypeParameters(type_parameters: string[] | undefined, constructorDescription: undefined | ConstructorDescription, typeDefinitionsMap: Map<string, Type>) {
         if (!type_parameters) {
             return;
         }
 
         for (const typeParameter of type_parameters) {
             let constructorNameToFilterFor: string | null = this.getConstructorNameToFilterFor(constructorDescription, typeParameter);
-            let possibleTypes: [string, TypeDefinition][] = this.chooseMethodAndGetPossibleTypes(constructorNameToFilterFor, allPossibleTypes);
+            let possibleTypes: [string, Type][] = this.chooseMethodAndGetPossibleTypes(constructorNameToFilterFor, typeDefinitionsMap);
             let possibleTypeNames: string[] = possibleTypes.map(([typeName, typeDefinition]) => typeName);
             this.addControl(
                 typeParameter,
@@ -137,6 +174,12 @@ export class FlowrsNode extends Classic.Node<
         }
     }
 
+    /**
+     * Retrieves the constructor name to filter possible types based on the type parameter.
+     * @param constructorDescription - The constructor description for the current constructor type.
+     * @param typeParameter - The type parameter to filter types.
+     * @returns The constructor name to filter possible types.
+     */
     private getConstructorNameToFilterFor(constructorDescription: ConstructorDescription | undefined, typeParameter: string): string | null {
         if (!constructorDescription?.arguments) {
             return null;
@@ -152,33 +195,48 @@ export class FlowrsNode extends Classic.Node<
         return restrictingConstructorType;
     }
 
-    private chooseMethodAndGetPossibleTypes(constructorNameToFilterFor: null | string, allPossibleTypes: Map<string, TypeDefinition>): [string, TypeDefinition][] {
+    /**
+     * Chooses a method and gets possible types based on the constructor name to filter for.
+     * @param constructorNameToFilterFor - The constructor name to filter possible types.
+     * @param typeDefinitionsMap - Map of type definitions for nodes.
+     * @returns An array of possible types.
+     */
+    private chooseMethodAndGetPossibleTypes(constructorNameToFilterFor: null | string, typeDefinitionsMap: Map<string, Type>): [string, Type][] {
         if (constructorNameToFilterFor) {
-            let possibleTypes = this.getFilteredTypesList(constructorNameToFilterFor, allPossibleTypes);
+            let possibleTypes = this.getFilteredTypesList(constructorNameToFilterFor, typeDefinitionsMap);
             console.log("RestrictingConstructorType resulted into filtered list", possibleTypes);
             return possibleTypes;
         } else {
-            let possibleTypes = Array.from(allPossibleTypes.entries());
+            let possibleTypes = Array.from(typeDefinitionsMap.entries());
             console.log("Full list available", possibleTypes);
             return possibleTypes;
         }
     }
 
-    // Man müsste nach Traits filtern --> Information noch nicht im code enthalten
-    private getFilteredTypesList(constructorNameToFilterFor: string, allPossibleTypes: Map<string, TypeDefinition>): [string, TypeDefinition][] {
-        let filteredTypes: [string, TypeDefinition][] = [];
-        for (const possibleType of allPossibleTypes) {
+    /**
+     * Filters types based on the constructor name to filter for.
+     * TODO Man müsste nach Traits filtern → Information noch nicht im code enthalten
+     * @param constructorNameToFilterFor - The constructor name to filter types.
+     * @param typeDefinitionsMap - Map of type definitions for nodes.
+     * @returns An array of filtered types.
+     */
+    private getFilteredTypesList(constructorNameToFilterFor: string, typeDefinitionsMap: Map<string, Type>): [string, Type][] {
+        let filteredTypes: [string, Type][] = [];
+        for (const possibleType of typeDefinitionsMap) {
             let typeDefinition = possibleType[1];
             let constructorDefinition = typeDefinition.constructors[constructorNameToFilterFor];
             if (constructorDefinition) {
                 filteredTypes.push(possibleType);
-                continue;
             }
         }
         return filteredTypes;
     }
 
-    private addOutputs(types: TypeDefinition) {
+    /**
+     * Adds output sockets to the node based on the type's output definitions.
+     * @param types - The type definitions for the node.
+     */
+    private addOutputs(types: Type) {
         for (let outputName in types.outputs) {
             let typeDescription = types.outputs[outputName].type;
             let typeName = this.getTypeName(typeDescription);
@@ -188,7 +246,11 @@ export class FlowrsNode extends Classic.Node<
         }
     }
 
-    private addInputs(types: TypeDefinition) {
+    /**
+     * Adds input sockets to the node based on the type's input definitions.
+     * @param types - The type definitions for the node.
+     */
+    private addInputs(types: Type) {
         for (let inputName in types.inputs) {
             let typeDescription = types.inputs[inputName].type;
             let typeName = this.getTypeName(typeDescription);
@@ -198,6 +260,11 @@ export class FlowrsNode extends Classic.Node<
         }
     }
 
+    /**
+     * Retrieves the type name based on the type description.
+     * @param typeDescription - The type description.
+     * @returns The type name.
+     */
     private getTypeName(typeDescription: TypeDescription) {
         if (typeDescription.Generic) {
             return typeDescription.Generic.name;
@@ -209,6 +276,11 @@ export class FlowrsNode extends Classic.Node<
         return "unknown";
     }
 
+    /**
+     * Retrieves the type associated with a given input/output on the node.
+     * @param key - The key representing an input or output.
+     * @returns The type associated with the key.
+     */
     public getTypeForKey(key: string): string | undefined {
         let typeName = this.inAndOutputToTypeParameterMap.get(key);
         if (!typeName) {
@@ -221,6 +293,10 @@ export class FlowrsNode extends Classic.Node<
         return typeName;
     }
 
+    /**
+     * Returns data associated with the node.
+     * @returns An object containing the node data.
+     */
     data() {
         const value = this.node_data;
         return {value,};

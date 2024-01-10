@@ -1,12 +1,12 @@
 <script setup lang="ts">
 
 import {usePackagesStore} from "~/store/packageStore";
-import type {TypeDefinition} from "~/repository/modules/packages";
+import type {Type} from "~/repository/modules/packages";
 
 const packagesStore = usePackagesStore()
 packagesStore.getAll()
 const selectedPackage = computed(() => packagesStore.selectedPackage);
-const selectedMap: Map<string, TypeDefinition> = computed(() => packagesStore.selectedMap);
+const selectedMap: Map<string, Type> = computed(() => packagesStore.selectedMap);
 
 </script>
 
