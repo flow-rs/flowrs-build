@@ -1,7 +1,7 @@
 <script setup lang="ts">
 
 import { usePackagesStore } from "~/store/packageStore.js";
-import { Crate } from "~/repository/modules/packages";
+import { Package } from "~/repository/modules/packages";
 import { reactive } from "vue";
 
 const packagesStore = usePackagesStore()
@@ -11,10 +11,10 @@ console.log(packagesStore.packages)
 const projectClicked = ref(false)
 
 
-const selectPackage = (crate: Crate) => {
-  console.log("Project was selected: " + crate.name)
-  packagesStore.selectPackage(crate)
-  packagesStore.getByName(crate.name)
+const selectPackage = (p: Package) => {
+  console.log("Project was selected: " + p.name)
+  packagesStore.selectPackage(p)
+  packagesStore.getByName(p.name)
 }
 
 const refreshPackageList = () => {

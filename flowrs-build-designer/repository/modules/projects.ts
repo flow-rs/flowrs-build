@@ -21,13 +21,13 @@ export type TimerTokenNode = {
     value: number
 };
 
-export type FlowNode = {
+export type NodeModel = {
     node_type: string;
     type_parameters: { [key: string]: string };
     constructor: string;
 };
 
-export type FlowConnection = {
+export type ConnectionModel = {
     from_node: string;
     from_output: string;
     to_node: string;
@@ -38,12 +38,6 @@ export type CompileError = {
     title: string,
     message: string,
 }
-
-type FlowData = {
-    timer_config_node: TimerConfigNode | null
-    timer_token_node: TimerTokenNode | null
-};
-
 export type FlowProject = {
     name: string;
     version: string;
@@ -55,8 +49,8 @@ export type FlowProject = {
         branch?: string;
     }>;
     flow: {
-        nodes: { [key: string]: FlowNode };
-        connections: FlowConnection[];
+        nodes: { [key: string]: NodeModel };
+        connections: ConnectionModel[];
         data: { [key: string]: any };
     };
 };
