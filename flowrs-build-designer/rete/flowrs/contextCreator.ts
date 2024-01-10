@@ -15,7 +15,9 @@ import type {Type} from "~/repository/modules/packages";
 import {usePackagesStore} from "~/store/packageStore.js";
 import {navigateTo} from "#app";
 
-
+/**
+ * Class responsible for creating, saving, and manipulating the state of a Rete.js flow editor.
+ */
 export class ContextCreator {
     private static editor: NodeEditor<Schemes> | undefined;
 
@@ -23,6 +25,10 @@ export class ContextCreator {
 
     private static constructableNodeList: ItemDefinition<Schemes>[];
 
+    /**
+     * Saves the current state of the Rete.js editor as a new project in the system.
+     * @throws Error if something goes wrong
+     */
     public static async saveBuilderStateAsProject() {
         const packagesStore = usePackagesStore();
         if (!this.editor) {
@@ -77,6 +83,10 @@ export class ContextCreator {
         }
     }
 
+    /**
+     * Sets the packages in the given flow project based on the active packages in the store.
+     * @param flowProject - The flow project to update with packages.
+     */
     private static async setPackagesInProject(flowProject: FlowProject) {
         const packagesStore = usePackagesStore();
 
@@ -112,6 +122,12 @@ export class ContextCreator {
         });
     }
 
+    /**
+     * Sets the nodes and data in the given flow project based on the Rete.js editor's nodes.
+     * @param flowProject - The flow project to update with nodes and data.
+     * @param allNodes - Array of all nodes in the Rete.js editor.
+     * @param typeDefinitionsMap - Map of type definitions for nodes.
+     */
     private static setNodesAndDataInProject(flowProject: FlowProject, allNodes: Schemes["Node"][], typeDefinitionsMap: Map<string, Type>) {
         flowProject.flow.nodes = {};
         flowProject.flow.data = {};
@@ -122,6 +138,12 @@ export class ContextCreator {
         }
     }
 
+    /**
+     * Adds a node to the given flow project based on a Rete.js node.
+     * @param typeDefinitionsMap - Map of type definitions for nodes.
+     * @param node - The Rete.js node to add to the project.
+     * @param flowProject - The flow project to update with the added node.
+     */
     private static addNodeToProject(typeDefinitionsMap: Map<string, Type>, node: FlowrsNode, flowProject: FlowProject) {
         let typeDefinitionOfCurrentNode = typeDefinitionsMap.get(node.fullTypeName);
         if (!typeDefinitionOfCurrentNode) {
@@ -149,6 +171,11 @@ export class ContextCreator {
         flowProject.flow.nodes[node.label] = flowNode;
     }
 
+    /**
+     * Adds data to the given flow project based on a Rete.js node.
+     * @param node - The Rete.js node to add data from.
+     * @param flowProject - The flow project to update with the added data.
+     */
     private static addDataToProject(node: FlowrsNode, flowProject: FlowProject) {
         if (node.node_data) {
             try {
@@ -160,6 +187,11 @@ export class ContextCreator {
         }
     }
 
+    /**
+     * Sets the connections in the given flow project based on the Rete.js editor's connections.
+     * @param flowProject - The flow project to update with connections.
+     * @param allConnections - Array of all connections in the Rete.js editor.
+     */
     private static setConnectionsInProject(flowProject: FlowProject, allConnections: Schemes["Connection"][]) {
         if (!this.editor) {
             throw new Error("Editor is undefined!");
@@ -186,6 +218,12 @@ export class ContextCreator {
         }
     }
 
+
+    /**
+     * Adds Flowrs elements to the Rete.js editor and returns a context menu with the constructable nodes.
+     * @param editor - The Rete.js editor to add elements to.
+     * @returns A Promise of the context menu with the constructable nodes.
+     */
     public static async addFlowrsElements(editor: NodeEditor<Schemes>) {
         const packagesStore = usePackagesStore();
 
@@ -204,6 +242,9 @@ export class ContextCreator {
         return await this.createContextMenuWithConstructableNodes(typeDefinitionsMap);
     }
 
+    /**
+     * Updates the context menu based on the current active packages.
+     */
     public static async updateContextMenu() {
         const packagesStore = usePackagesStore();
 
@@ -211,6 +252,11 @@ export class ContextCreator {
         this.constructableNodeList = await this.getConstructableNodeList(typeDefinitionsMap);
     }
 
+    /**
+     * Retrieves the currently selected project from the projects store.
+     * If no project is selected we navigate to the frontpage.
+     * @returns The currently selected FlowProject.
+     */
     private static getCurrentlySelectedProject(): FlowProject  {
         const projectsStore = useProjectsStore();
         const selectedProjectUnwrapped = computed(() => projectsStore.selectedProject);
@@ -221,6 +267,13 @@ export class ContextCreator {
         return selectedProject!;
     }
 
+    /**
+     * Adds nodes to the Rete.js editor based on the nodes in the given project.
+     * @param project - The project to extract nodes from.
+     * @param typeDefinitionsMap - Map of type definitions for nodes.
+     * @param editor - The Rete.js editor to add nodes to.
+     * @returns A map of added nodes with node names as keys.
+     */
     private static async addProjectNodes(project: FlowProject, typeDefinitionsMap: Map<string, Type>, editor: NodeEditor<Schemes>) {
         let allAddedNodes: Map<string, FlowrsNode> = new Map();
 
@@ -247,6 +300,12 @@ export class ContextCreator {
         return allAddedNodes;
     }
 
+    /**
+     * Connects nodes in the Rete.js editor based on the connections in the given project.
+     * @param project - The project to extract connections from.
+     * @param projectNodes - The map of added nodes in the editor.
+     * @param editor - The Rete.js editor to add connections to.
+     */
     private static async connectProjectNodes(project: FlowProject, projectNodes: Map<string, FlowrsNode>, editor: NodeEditor<Schemes>) {
         for (let flowConnection of project.flow.connections) {
             let source = projectNodes.get(flowConnection.from_node);
@@ -264,6 +323,11 @@ export class ContextCreator {
         }
     }
 
+    /**
+     * Retrieves a list of constructable nodes for the context menu based on type definitions.
+     * @param typeDefinitionsMap - Map of type definitions for nodes.
+     * @returns A Promise of an array of constructable nodes for the context menu.
+     */
     private static async getConstructableNodeList(typeDefinitionsMap: Map<string, Type>): Promise<ItemDefinition<Schemes>[]> {
         let output: ItemDefinition<Schemes>[] = [];
         for (const fullTypeName of typeDefinitionsMap.keys()) {
@@ -297,6 +361,10 @@ export class ContextCreator {
         return output;
     }
 
+    /**
+     * Prevents type-incompatible connections in the Rete.js editor.
+     * @param editor - The Rete.js editor to prevent type-incompatible connections in.
+     */
     private static preventTypeIncompatibleConnections(editor: NodeEditor<Schemes>) {
         editor.addPipe((context) => {
             if (context.type == "connectioncreate") {
@@ -311,6 +379,11 @@ export class ContextCreator {
         });
     }
 
+    /**
+     * Creates a context menu with constructable nodes based on type definitions.
+     * @param typeDefinitionsMap - Map of type definitions for nodes.
+     * @returns A Promise of the context menu with constructable nodes.
+     */
     private static async createContextMenuWithConstructableNodes(typeDefinitionsMap: Map<string, Type>) {
         this.constructableNodeList = await this.getConstructableNodeList(typeDefinitionsMap);
         return new ContextMenuPlugin<Schemes>({

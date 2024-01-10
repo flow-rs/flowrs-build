@@ -57,12 +57,20 @@ export type ArgumentDefinition = {
 class PackagesModule extends FetchFactory {
     private RESOURCE = '/packages/';
 
+    /**
+     * Asynchronously retrieves Flowrs packages.
+     * @returns A Promise resolving to an array of Flowrs packages.
+     */
     async getFlowrsPackages(): Promise<Package[]> {
         return await this.call<Package[]>('GET', `${this.RESOURCE}`)
     }
 
-    // returns a parsed map of all packages, where the full type name is mapped to its typeDefinition
-       async getFlowrsTypeDefinitionsMap(currentActive: string[]): Promise<Map<string, Type>> {
+    /**
+     * Asynchronously retrieves Flowrs type definitions and maps them to their full name.
+     * @param currentActive - An array of currently active packages.
+     * @returns A Promise resolving to a Map containing Flowrs type definitions as values, with the full type name as keys.
+     */
+    async getFlowrsTypeDefinitionsMap(currentActive: string[]): Promise<Map<string, Type>> {
         const packages = await this.getFlowrsPackages();
 
         console.log('mapped packages to js-objects', packages)
@@ -82,26 +90,37 @@ class PackagesModule extends FetchFactory {
             }
         }
 
-        return this.filterInactive(packageMap,currentActive)
+        return this.filterInactive(packageMap, currentActive)
     }
 
-    private filterInactive(map: Map<string, Type>,currentActive: string[]) {
+    /**
+     * Filters inactive types from the provided map based on the currently active packages.
+     * @param map - The map of type definitions to filter.
+     * @param currentActive - An array of currently active packages.
+     * @returns The filtered map of type definitions.
+     */
+    private filterInactive(map: Map<string, Type>, currentActive: string[]) {
         const keysToRemove: string[] = [];
         console.log(toRaw(currentActive));
         map.forEach((value, key) => {
-          let keyToSearch = key.substring(0, key.indexOf("::")).replace("_", "-");
-          if (!toRaw(currentActive).includes(keyToSearch) && keyToSearch) {
-            console.log(key);
-            keysToRemove.push(key);
-          }
+            let keyToSearch = key.substring(0, key.indexOf("::")).replace("_", "-");
+            if (!toRaw(currentActive).includes(keyToSearch) && keyToSearch) {
+                console.log(key);
+                keysToRemove.push(key);
+            }
         });
         keysToRemove.forEach((key) => {
-          map.delete(key);
+            map.delete(key);
         });
         console.log(map);
         return map;
-      }
+    }
 
+    /**
+     * Asynchronously retrieves Flowrs type definitions for a specific package name.
+     * @param name - The name of the package.
+     * @returns A Promise resolving to a Map containing Flowrs type definitions as values, with the full type name as keys.
+     */
     async getFlowrsTypeDefinitionsMapByName(name: string): Promise<Map<string, Type>> {
         const obj = await this.getFlowrsPackageByName(name);
         const crates = [obj]
@@ -125,11 +144,22 @@ class PackagesModule extends FetchFactory {
         return packageMap
     }
 
+    /**
+     * Asynchronously retrieves Flowrs package by name.
+     * @param packageName - The name of the package.
+     * @returns A Promise resolving to a Flowrs package.
+     */
     async getFlowrsPackageByName(packageName: string): Promise<Package> {
         return await this.call<Package>('GET', `${this.RESOURCE}${packageName}`)
     }
 
-    // recursively constructs the name and adds all type definition underneath that name to the map
+    /**
+     * Recursively populates the package map with type definitions from modules and types.
+     * @param moduleDefinition - The definition of modules.
+     * @param typeDefinition - The definition of types.
+     * @param packageMap - The map to populate with type definitions.
+     * @param packagePath - The current package path.
+     */
     private populatePackageMap(moduleDefinition: Record<string, Module>, typeDefinition: Record<string, Type>, packageMap: Map<string, Type>, packagePath: string) {
         // add all typeDefinitions under this name
         this.addTypeDefinitions(typeDefinition, packageMap, packagePath);
@@ -142,6 +172,12 @@ class PackagesModule extends FetchFactory {
         }
     }
 
+    /**
+     * Adds type definitions to the package map.
+     * @param typeDefinitions - The type definitions to add to the map.
+     * @param packageMap - The map to add the type definitions to.
+     * @param packagePath - The current package path.
+     */
     private addTypeDefinitions(typeDefinitions: Record<string, Type>, packageMap: Map<string, Type>, packagePath: string) {
         for (const typeDefinitionName in typeDefinitions) {
             let prefix = packagePath + "::";

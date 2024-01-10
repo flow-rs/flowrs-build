@@ -16,8 +16,6 @@ import {ContextCreator} from "~/rete/flowrs/contextCreator";
 
 import CustomDropdownControl from "../../components/CustomDropdownControl.vue";
 
-import type {Type} from "~/repository/modules/packages";
-
 type Node = FlowrsNode;
 type Conn =
     | Connection<FlowrsNode, FlowrsNode>;
@@ -33,6 +31,7 @@ type AreaExtra =
 export class Connection<A extends Node, B extends Node> extends Classic.Connection<A, B> {
 }
 
+// custom input element for setting type of typeParameter
 export class DropdownControl extends Classic.Control {
     typeName: string;
     possibleValues:string[];
