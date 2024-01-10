@@ -4,6 +4,7 @@
 </script>
 
 <template>
+ 
   <Rete/>
 </template>
 

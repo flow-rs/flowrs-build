@@ -112,8 +112,9 @@ export async function createEditor(container: HTMLElement) {
     await AreaExtensions.zoomAt(area, editor.getNodes());
 
     AreaExtensions.simpleNodesOrder(area);
-
     return {
         destroy: () => area.destroy(),
+        area,
+        editor
     };
 }

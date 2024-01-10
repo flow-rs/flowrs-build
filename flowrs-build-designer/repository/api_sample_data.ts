@@ -50,36 +50,10 @@ export const newFlowProject: FlowProject = {
     ],
     flow: {
         nodes: {
-            debug_node: debugNode,
-            timer_config_node: timerConfigNode,
-            timer_token_node: timerTokenNode,
-            timer_node: timerNode
-            // Define other nodes here
         },
         connections: [
-            {
-                from_node: 'timer_config_node',
-                to_node: 'timer_node',
-                to_input: 'config_input',
-                from_output: 'output',
-            },
-            {
-                from_node: 'timer_token_node',
-                to_node: 'timer_node',
-                to_input: 'token_input',
-                from_output: 'output',
-            },
-            {
-                from_node: 'timer_node',
-                to_node: 'debug_node',
-                to_input: 'input',
-                from_output: 'token_output',
-            },
-            // Define other connections here
         ],
         data: {
-            timer_config_node: timerConfigNodeData,
-            timer_token_node: timerTokenNodeData,
         },
     },
 };
