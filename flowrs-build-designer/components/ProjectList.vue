@@ -2,7 +2,7 @@
 
 import {useProjectsStore} from "~/store/projectStore.js";
 import type {FlowProject} from "~/repository/modules/projects";
-import {newFlowProject} from "~/repository/api_sample_data";
+import {emptyFlowProject, dummyFlowProject} from "~/repository/api_sample_data";
 
 const emits = defineEmits(['project-selected']);
 
@@ -35,11 +35,13 @@ const deleteProject = (name: string) => {
 }
 
 const createProject = () => {
-  // TODO: should create empty project
+  let projectToCreate = emptyFlowProject
+  projectToCreate.name = "flow_project_" + Math.floor(Math.random() * 2000) + 1;
+  projectsStore.createProject(projectToCreate)
 }
 
 const createDummyProject = () => {
-  let projectToCreate = newFlowProject
+  let projectToCreate = dummyFlowProject
   projectToCreate.name = "flow_project_" + Math.floor(Math.random() * 2000) + 1;
   projectsStore.createProject(projectToCreate)
 }
@@ -111,7 +113,7 @@ defineProps({
                 <v-btn prepend-icon="mdi-plus" color="success" @click="createProject()">add new project</v-btn>
                 <v-btn prepend-icon="mdi-creation" color="success"
                        @click="createDummyProject()">
-                  create basic project
+                  create Example project
                 </v-btn>
 
               </v-col>
