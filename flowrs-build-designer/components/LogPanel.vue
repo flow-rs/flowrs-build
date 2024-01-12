@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import {useProjectsStore} from "~/store/projectStore";
 
+// The LogPanel is responsible for listing the current logs of a running process. It also
+// shows the current process status, id, build type and compile errors.
+
 const projectsStore = useProjectsStore()
+// the current log entries of a project
 const logEntries = computed(() => projectsStore.getCurrentLogEntries());
 const projects = computed(() => projectsStore.projects);
 const selectedProject = computed(() => projectsStore.selectedProject)
+// indicates if a project has a compile error
 const compileError = computed(() => projectsStore.compileErrorForSelectedProjectExist())
 const emits = defineEmits(['compile-error-button-clicked']);
+
+/**
+ * If the compile error button is clicked, the event is emitted to open the dialog on top level page.
+ */
 const emitCompileErrorButtonClickEvent = () => {
   emits('compile-error-button-clicked')
 }

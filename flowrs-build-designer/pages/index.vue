@@ -8,6 +8,9 @@ import {useEventsStore} from "~/store/eventStore";
 import {navigateTo} from "#app";
 import ProjectList from "~/components/ProjectList.vue";
 
+// The index page is the landing page for the user. It shows the project list component and the editor (viewing mode) to
+// see the flow-project.json file.
+
 const projectsStore = useProjectsStore();
 
 projectsStore.getAll()
@@ -16,10 +19,16 @@ const errorMessage = computed(() => projectsStore.errorMessage);
 const editDisabled = ref(true);
 let json = ref()
 
+/**
+ * Catching the event if the user presses the edit button. Navigating to the editing mode of the json viewer.
+ */
 const handleEditButtonClick = async () => {
   navigateTo("/flowEditor");
 }
 
+/**
+ * Catching the project selection event and set the value of the json viewer.
+ */
 const handleProjectSelection = () => {
   json.value = selectedProject.value
   editDisabled.value = false;

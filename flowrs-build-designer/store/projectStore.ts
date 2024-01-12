@@ -3,12 +3,19 @@ import {type CompileError, type FlowProject, type ProjectIdentifier} from "~/rep
 import type {ProcessIdentifier} from "~/repository/modules/processes";
 
 
+/**
+ * Build type enum is used in UI dropdown.
+ */
 export enum BuildType {
     Wasm = "wasm",
     Cargo = "cargo",
 }
 
 
+/**
+ * Defining a pinia store. It is used to store project related infos and to work with the api methods defined in the
+ * repository.
+ */
 export const useProjectsStore = defineStore({
     id: 'projects',
     state: () => {
@@ -28,6 +35,10 @@ export const useProjectsStore = defineStore({
         });
     },
     actions: {
+
+        /**
+         * Calling the api method to get all projects. Sets the UI State like the error message.
+         */
         async getAll() {
             const {$api} = useNuxtApp();
             $api.projects.getProjects().then(listOfFlowProjects => {
@@ -41,6 +52,10 @@ export const useProjectsStore = defineStore({
 
                 .finally(() => (this.loading = false));
         },
+
+        /**
+         * Calling the api method to delete the project specified with project name. Sets the UI State like the error message.
+         */
         async deleteProject(project_name?: string) {
             const {$api} = useNuxtApp();
             let name = ""
@@ -67,6 +82,10 @@ export const useProjectsStore = defineStore({
                 .finally(() => (this.loading = false))
         },
 
+        /**
+         * Calling the api method to run a project specified with project name and build type.
+         * Sets the UI State like the error message.
+         */
         async runProjectRequest(projectName: string, buildType: string) {
             const {$api} = useNuxtApp();
             const projectIdentifier: ProjectIdentifier = {
@@ -84,6 +103,9 @@ export const useProjectsStore = defineStore({
                 .finally(() => (this.loading = false))
         },
 
+        /**
+         * Calling the api method to stop the currently selected project.
+         */
         async stopProcessRequest() {
             const {$api} = useNuxtApp();
             if (this.selectedProject !== null) {
@@ -108,6 +130,10 @@ export const useProjectsStore = defineStore({
             }
         },
 
+        /**
+         * Calling the api method to compile a project specified with project name and build type.
+         * Sets the UI State like the error message like the compile errors.
+         */
         async compileProjectRequest(projectName: string, buildType: string) {
             const {$api} = useNuxtApp();
             const projectIdentifier: ProjectIdentifier = {
@@ -147,12 +173,19 @@ export const useProjectsStore = defineStore({
                 .finally(() => (this.loading = false))
         },
 
+        /**
+         * Extracting the error messages from process output from the backend.
+         * @param text - the logs containing the error messages.
+         */
         extractErrors(text: string): string[] {
             const pattern = /error\[\s*([\s\S]*?)(?=error\[|error: could not|$)/g;
             const matches = text.match(pattern);
             return matches || [];
         },
 
+        /**
+         * Calling the API method to get the logs of the currently selected project.
+         */
         async getLogs() {
             if (this.selectedProject !== null) {
                 const {$api} = useNuxtApp();
@@ -176,6 +209,9 @@ export const useProjectsStore = defineStore({
             }
         },
 
+        /**
+         * Called by the user via UI to set the selected project as state in the pinia store.
+         */
         selectProject(project: FlowProject, setLastCompile?: boolean) {
             this.selectedProject = project;
             this.projectClickedInList = true
@@ -184,6 +220,10 @@ export const useProjectsStore = defineStore({
             }
         },
 
+        /**
+         * Calling the API method to create the flow project.
+         * @param project - the flow project to create.
+         */
         async createProject(project: FlowProject) {
             const { $api } = useNuxtApp();
 
@@ -197,6 +237,10 @@ export const useProjectsStore = defineStore({
             }
         },
 
+        /**
+         * Used to set the build type which is selected via Dropdown Menu on the compile, run and metrics page.
+         * @param buildType
+         */
         selectBuildType(buildType: BuildType) {
             this.selectedBuildType = buildType;
         },
@@ -208,6 +252,11 @@ export const useProjectsStore = defineStore({
             }
         },
 
+        /**
+         * Updating the map of log entries of all projects.
+         * @param entries - an array of log entries.
+         * @param entryToAdd - the log entry to append at the array of log entries.
+         */
         updateLogEntryMap(entries: string[] | undefined, entryToAdd: string) {
             if (this.selectedProject !== null) {
                 if (entries != undefined) {
@@ -228,6 +277,9 @@ export const useProjectsStore = defineStore({
             return entryList
         },
 
+        /**
+         * Get the current process id of the selected project.
+         */
         getCurrentProcessId() {
             if (this.selectedProject != null) {
                 let processId = this.runningProcessesMap.get(this.selectedProject.name)
@@ -239,6 +291,9 @@ export const useProjectsStore = defineStore({
 
         },
 
+        /**
+         * Get the current logs of the selected project.
+         */
         getCurrentLogEntries() {
             if (this.selectedProject === null) {
                 return []
@@ -253,6 +308,9 @@ export const useProjectsStore = defineStore({
             return undefined
         },
 
+        /**
+         * Check if a compile error of the currently selected project exists.
+         */
         compileErrorForSelectedProjectExist(): boolean {
             if (this.selectedProject !== null) {
                 const compileErrors = this.compileErrorMap.get(this.selectedProject.name)
@@ -261,10 +319,18 @@ export const useProjectsStore = defineStore({
             return false;
         },
 
+        /**
+         * Set the current compile errors of a project in a map to save it for later use.
+         * @param projectName
+         * @param compileErrors
+         */
         setCurrentCompileErrorsOfProject(projectName: string, compileErrors: CompileError[] | undefined) {
             this.compileErrorMap.set(projectName, compileErrors)
         },
 
+        /**
+         * Calling the api backend method to get the last compile timestamp of a project.
+         */
         async getLastCompileOfProject() {
             const {$api} = useNuxtApp();
             if (this.selectedProject !== null) {
@@ -282,6 +348,9 @@ export const useProjectsStore = defineStore({
             }
         },
 
+        /**
+         * Get the last compile timestamp for the selected project from pinia store.
+         */
         getLastCompileFromMap(): string | undefined {
             if (this.selectedProject !== null) {
                 return this.compileTimestampMap.get(this.selectedProject.name)
@@ -289,6 +358,9 @@ export const useProjectsStore = defineStore({
             return undefined
         },
 
+        /**
+         * Formatting timestamp (last compile of a project).
+         */
         getCurrentTimestamp(): string {
             const currentDate = new Date();
             const formatter = new Intl.DateTimeFormat('de-DE', {
@@ -304,6 +376,9 @@ export const useProjectsStore = defineStore({
             return formatter.format(currentDate);
         },
 
+        /**
+         * Get all running flow projects as an array of strings with the names of the projects.
+         */
         getRunningFlowProjects(): string[] {
             const stringsWithDefinedNumbers: string[] = [];
 

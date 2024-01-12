@@ -3,37 +3,59 @@ import {useProjectsStore} from "~/store/projectStore";
 import {ref} from "vue";
 import {FlowProject} from "~/repository/modules/projects";
 
+
+// With the control panel the user can compile a project, start and stop a process, has an overview about the
+// overall status (running projects) and can select the desired build type.
+
 const projectsStore = useProjectsStore()
 
+// get currently selected project
 const selectedProject = ref(projectsStore.selectedProject);
+// activate/deactivate loading indicator
 const loading = computed(() => projectsStore.loading);
+// a list of flowrs project
 const projects = computed(() => projectsStore.projects);
+// a map of the currently running processes
 const processes = computed(() => projectsStore.runningProcessesMap);
 const currentProcessId = computed(() => projectsStore.getCurrentProcessId())
 const lastCompiled = computed(() => projectsStore.getLastCompileFromMap());
 const buildType = ref(projectsStore.getBuildTypeArray());
 const selectedBuildType = ref(projectsStore.selectedBuildType)
+// only the names of the currently running processes
 const runningProcesses = computed(() => projectsStore.getRunningFlowProjects());
 
-
+// Watch status change of dropdown menu.
 watch(selectedProject, () => projectsStore.selectProject(selectedProject.value as FlowProject, true))
 
+// Watch status change of dropdown menu.
 watch(selectedBuildType, () => projectsStore.selectBuildType(selectedBuildType.value))
 
+/**
+ * Get last compile time of the selected project if the page get mounted.
+ */
 onMounted(() => {
   projectsStore.getLastCompileOfProject()
 })
 
+/**
+ * Called if the user clicks the run button.
+ */
 const run = () => {
   if (selectedProject.value != null) {
     projectsStore.runProjectRequest(selectedProject.value.name, selectedBuildType.value)
   }
 }
 
+/**
+ * Called if the user clicks the stop button.
+ */
 const stop = () => {
   projectsStore.stopProcessRequest()
 }
 
+/**
+ * Used to display the overall status over the projects (running / not running).
+ */
 const getStatus = () => {
   const valuesArray = [...processes.value.values()];
   const containsNumber = valuesArray.some(value => typeof value === 'number');
@@ -43,6 +65,9 @@ const getStatus = () => {
   return "red"
 }
 
+/**
+ * Called if the user clicks the compile button.
+ */
 const compile = () => {
   if (selectedProject.value != null) {
     projectsStore.compileProjectRequest(selectedProject.value.name, selectedBuildType.value)
