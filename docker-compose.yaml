@@ -57,6 +57,8 @@ services:
       - "9091:9091"
     networks:
       - flowrs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/health"]
 
   prometheus:
     image: prom/prometheus:latest
@@ -66,6 +68,8 @@ services:
       - "./live-analytics-server/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"
     networks:
       - flowrs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/-/healthy"]
 
   grafana:
     # http://localhost:3000
@@ -85,6 +89,8 @@ services:
       - tempo
     networks:
       - flowrs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
 
 volumes:
   nodemodules:
