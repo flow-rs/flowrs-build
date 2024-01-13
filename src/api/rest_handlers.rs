@@ -474,11 +474,11 @@ mod tests {
         let shared_fpm = Arc::new(Mutex::new(fpm));
         let shared_pm = Arc::new(Mutex::new(pm));
         test_create_project(shared_fpm.clone(), shared_pm).await;
-        sleep(Duration::from_secs(100)).await;
+        sleep(Duration::from_secs(1)).await;
         test_compile_project(shared_fpm.clone()).await;
-        sleep(Duration::from_secs(10)).await;
+        sleep(Duration::from_secs(1)).await;
         let process_id: String = test_run_project(shared_fpm.clone()).await;
-        sleep(Duration::from_secs(10)).await;
+        sleep(Duration::from_secs(1)).await;
         test_get_process_logs(shared_fpm.clone(), process_id.clone()).await;
         test_stop_project(shared_fpm.clone(), process_id).await;
         test_delete_project(shared_fpm.clone()).await;

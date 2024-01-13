@@ -349,14 +349,12 @@ impl FlowProjectManager {
                 "Couldn't find path to executable for project {project_name}",
             ));
         }
-
         // execute runner_main --flow
         let runner_executable_path = if cfg!(debug_assertions) {
             "target/debug/runner_main"
         } else {
             "target/release/runner_main"
         };
-
         Command::new(runner_executable_path)
             .arg("--flow")
             .arg(option_path_to_executable.unwrap())
@@ -391,33 +389,29 @@ impl FlowProjectManager {
         } else {
             "release"
         };
-        let project_dir_path = format!("{project_folder_path}/{project_name}");
+        let project_dir_path = format!("{}/{}", project_folder_path, project_name);
         if is_wasm {
             return Some(project_dir_path);
         }
-        let base_path = format!("{project_dir_path}/target/{build_type}");
+        let base_path = format!("{}/target/{}", project_dir_path, build_type);
         // name and ending combinations for windows, mac and linux
-        let binding = format!("lib{project_name}");
-        let possible_file_names = [project_name, binding.as_str()];
-        let possible_file_endings = [".dll", ".dylib", ".so"];
+        let binding = format!("lib{}", project_name);
+        let possible_file_names = [project_name, &binding];
+        let possible_file_endings = [".so", ".dylib", ".dll"];
         // find correct executable
-        for possible_file_name in possible_file_names {
-            for possible_file_ending in possible_file_endings {
-                let formatted_path =
-                    format!("{base_path}/{possible_file_name}{possible_file_ending}");
-                let possible_path_to_executable = Path::new(formatted_path.as_str());
-
-                if possible_path_to_executable.exists()
-                    && possible_path_to_executable.to_str().is_some()
-                {
-                    let correct_path_to_executable =
-                        possible_path_to_executable.to_str().unwrap().to_string();
-                    return Some(correct_path_to_executable);
-                }
+        for &possible_file_name in &possible_file_names {
+            for &possible_file_ending in &possible_file_endings {
+                let formatted_path = format!(
+                    "{}/{}{}",
+                    base_path, possible_file_name, possible_file_ending
+                );
+                //if fs::metadata(&formatted_path).is_ok() {
+                return Some(formatted_path);
+                //}
             }
         }
 
-        return None;
+        None
     }
 
     fn start_logs_export_thread(
