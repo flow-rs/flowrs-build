@@ -407,7 +407,9 @@ impl FlowProjectManager {
                     format!("{base_path}/{possible_file_name}{possible_file_ending}");
                 let possible_path_to_executable = Path::new(formatted_path.as_str());
 
-                if possible_path_to_executable.to_str().is_some() {
+                if possible_path_to_executable.exists()
+                    && possible_path_to_executable.to_str().is_some()
+                {
                     let correct_path_to_executable =
                         possible_path_to_executable.to_str().unwrap().to_string();
                     return Some(correct_path_to_executable);
