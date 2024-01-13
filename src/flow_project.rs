@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 use crate::flow_model::FlowModel;
 use crate::package_manager::PackageManager;
 
+use fs2::FileExt;
 use std::collections::{HashMap, VecDeque};
+use std::fs::File;
 use std::fs::Metadata;
 use std::io;
 use std::io::{BufRead, BufReader, ErrorKind, Write};
@@ -394,33 +396,23 @@ impl FlowProjectManager {
             return Some(project_dir_path);
         }
         let base_path = format!("{}/target/{}", project_dir_path, build_type);
-        // name and ending combinations for windows, mac and linux
-        let binding = format!("lib{}", project_name);
-        let possible_file_names = [project_name, &binding];
-        let possible_file_endings = [".so", ".dylib", ".dll"];
-        // find correct executable
-        let mut retry_count = 0;
-        while retry_count < 5 {
-            for &possible_file_name in &possible_file_names {
-                for &possible_file_ending in &possible_file_endings {
-                    let formatted_path = format!(
-                        "{}/{}{}",
-                        base_path, possible_file_name, possible_file_ending
-                    );
 
-                    if fs::metadata(&formatted_path).is_ok() {
-                        return Some(formatted_path);
-                    }
-                }
-            }
+        // Platform-specific logic for file name and extension
+        let (file_name, file_ending) = if cfg!(target_os = "macos") {
+            (format!("lib{}", project_name), ".so")
+        } else if cfg!(target_os = "linux") {
+            (format!("lib{}", project_name), ".dylib")
+        } else if cfg!(target_os = "windows") {
+            (project_name.to_string(), ".dll")
+        } else {
+            // return None/error if unsupported platform
+            return None;
+        };
 
-            retry_count += 1;
-            if retry_count < 5 {
-                thread::sleep(Duration::from_secs(5));
-            }
-        }
+        let formatted_path = format!("{}/{}{}", base_path, file_name, file_ending);
+        //let path = Path::new(&formatted_path);
 
-        None
+        return Some(formatted_path);
     }
 
     fn start_logs_export_thread(
