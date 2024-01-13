@@ -505,7 +505,6 @@ impl FlowProjectManager {
 
         self.projects
             .insert(flow_project.name.clone(), flow_project.clone());
-        print!("Hello");
         self.create_flow_project_folder(&flow_project, package_manager)?;
 
         Ok(flow_project)
