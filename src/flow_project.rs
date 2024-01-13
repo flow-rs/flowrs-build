@@ -399,15 +399,24 @@ impl FlowProjectManager {
         let possible_file_names = [project_name, &binding];
         let possible_file_endings = [".so", ".dylib", ".dll"];
         // find correct executable
-        for &possible_file_name in &possible_file_names {
-            for &possible_file_ending in &possible_file_endings {
-                let formatted_path = format!(
-                    "{}/{}{}",
-                    base_path, possible_file_name, possible_file_ending
-                );
-                //if fs::metadata(&formatted_path).is_ok() {
-                return Some(formatted_path);
-                //}
+        let mut retry_count = 0;
+        while retry_count < 5 {
+            for &possible_file_name in &possible_file_names {
+                for &possible_file_ending in &possible_file_endings {
+                    let formatted_path = format!(
+                        "{}/{}{}",
+                        base_path, possible_file_name, possible_file_ending
+                    );
+
+                    if fs::metadata(&formatted_path).is_ok() {
+                        return Some(formatted_path);
+                    }
+                }
+            }
+
+            retry_count += 1;
+            if retry_count < 5 {
+                thread::sleep(Duration::from_secs(5));
             }
         }
 

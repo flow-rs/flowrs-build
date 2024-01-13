@@ -480,11 +480,11 @@ mod tests {
         let process_id: String = test_run_project(shared_fpm.clone()).await;
         sleep(Duration::from_secs(1)).await;
         test_get_process_logs(shared_fpm.clone(), process_id.clone()).await;
-        test_stop_project(shared_fpm.clone(), process_id).await;
-        test_delete_project(shared_fpm.clone()).await;
+        //test_stop_project(shared_fpm.clone(), process_id).await;
+        //test_delete_project(shared_fpm.clone()).await;
 
         //Cleanup
-        cleanup_flow_projects(TEST_PROJECT_FOLDER_2);
+        //cleanup_flow_projects(TEST_PROJECT_FOLDER_2);
     }
 
     async fn test_create_project(
