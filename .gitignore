@@ -24,3 +24,5 @@ executable-files.txt
 lcov.info
 
 tmp_*
+.vscode/*
+flow-project-test

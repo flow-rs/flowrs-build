@@ -3,7 +3,7 @@
 FROM rust:slim-bookworm
 
 WORKDIR /app
-
+ENV TZ=Europe/Berlin
 # install missing rustfmt
 RUN rustup component add rustfmt
 
