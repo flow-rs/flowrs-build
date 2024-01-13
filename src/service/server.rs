@@ -35,23 +35,24 @@ pub fn setup_server(server_config: ServiceConfig) -> Result<Router, Error> {
     )));
 
     project_manager
-        .lock()
-        .unwrap()
-        .load_projects()
-        .map_err(|err| {
+    .lock()
+    .unwrap()
+    .load_projects()
+    .map_err(|err| {
+        if let Err(inner_err) = fs::create_dir(&project_folder) {
+            // If the directory creation fails, report both errors.
+            anyhow!(
+                "Failed to create new project folder '{}': {}. -> Failed to read project folder '{}'. Reason: {}",
+                project_folder, inner_err, project_folder, err
+            )
+        } else {
+            // If the directory creation succeeds, report only the original error.
             anyhow!(
                 "-> Failed to read project folder '{}'. Reason: {}",
                 project_folder,
                 err
             )
-        })?;
-
-    fs::create_dir(&project_folder).map_err(|err| {
-        anyhow!(
-            "Failed to create new project folder '{}': {}",
-            project_folder,
-            err
-        )
+        }
     })?;
 
     let app = Router::new()
