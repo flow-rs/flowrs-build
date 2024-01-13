@@ -17,7 +17,7 @@ use std::os::windows::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use handlebars::Handlebars;
 use serde_json;
@@ -147,10 +147,10 @@ impl FlowProjectManager {
         Ok(())
     }
 
-    fn format_timestamp(timestamp: std::time::SystemTime) -> String {
+    fn format_timestamp(timestamp: SystemTime) -> String {
         match Local.timestamp_opt(
             timestamp
-                .duration_since(std::time::UNIX_EPOCH)
+                .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs() as i64,
             0,
