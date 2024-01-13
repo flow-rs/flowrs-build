@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {useProjectsStore} from "~/store/projectStore";
+import {BuildType, useProjectsStore} from "~/store/projectStore";
 
 // The LogPanel is responsible for listing the current logs of a running process. It also
 // shows the current process status, id, build type and compile errors.
@@ -46,6 +46,13 @@ const emitCompileErrorButtonClickEvent = () => {
            class="mt-1 mb-1">Show error details
     </v-btn>
   </div>
+  <v-card v-if="projectsStore.selectedBuildType==BuildType.Wasm" class="mt-1 mb-1">
+    <div class="pb-2 pl-2 pt-2 flex-content">
+      <v-icon class="opacity" icon="mdi-information"></v-icon>
+      <div class="ml-2">      Info: If you compile with wasm, a python webserver is started if you press run.
+        To get the log output open localhost:8000 in the browser and show the developer console.</div>
+</div>
+  </v-card>
   <v-card class="mt-3 pl-2 pt-2 scroll" height="400px">
     <div v-for="logEntry in logEntries" :key="logEntry">{{ logEntry }}</div>
   </v-card>
@@ -60,5 +67,8 @@ const emitCompileErrorButtonClickEvent = () => {
 .flex-content {
   display: flex;
   align-items: center
+}
+.opacity {
+  opacity: 0.7;
 }
 </style>
