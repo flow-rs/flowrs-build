@@ -10,6 +10,7 @@ interface IApiInstance {
     processes: ProcessesModule;
 }
 
+// define the api as nuxt plugin
 export default defineNuxtPlugin((nuxtApp) => {
     const config = useRuntimeConfig();
     const fetchOptions: FetchOptions = {

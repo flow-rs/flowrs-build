@@ -4,36 +4,54 @@ import {onBeforeUnmount, onMounted, ref} from 'vue';
 import MetricPanelPlaceholder from "~/components/MetricPanelPlaceholder.vue";
 import MetricPanel from "~/components/MetricPanel.vue";
 
+// The compile, run and metrics page displays the log, control, and metric panel components.
 
 // Set up an interval variable
 let interval: NodeJS.Timeout;
 const projectsStore = useProjectsStore()
 projectsStore.getAll()
+// Get the compile errors of a project.
 const compileErrorObjects = computed(() => projectsStore.getCurrentCompileErrorsOfProject());
 const currentProcessId = computed(() => projectsStore.getCurrentProcessId());
 let openCompileErrorDialog = ref(false);
+
+/**
+ * Catch the event if the compile error button is clicked in log panel component.
+ */
 const handleCompileErrorButtonClick = () => {
   openCompileErrorDialog.value = true
 }
 
+/**
+ * Called to close the dialog.
+ */
 const closeDialog = () => {
   openCompileErrorDialog.value = false;
 }
 
+/**
+ * Get the current logs of the project.
+ */
 const getCurrentLogs = () => {
   projectsStore.getLogs()
 }
 
+/**
+ * Formatting the compile error message.
+ * @param message - unformatted error message.
+ */
 const formattedErrorMessage = (message: string) => {
   const formatted = message.replace(/\\n/g, '<br>');
   return formatted
 }
 
+// if the page is mounted the current logs are fetched and the timer to automatically fetch logs is called
 onMounted(() => {
   getCurrentLogs(); // Fetch data immediately when the component is mounted
-  interval = setInterval(getCurrentLogs, 5000);
+  interval = setInterval(getCurrentLogs, 2500);
 });
 
+// clear the timer
 onBeforeUnmount(() => {
   clearInterval(interval);
 });

@@ -7,6 +7,8 @@ import {FlowProject} from "~/repository/modules/projects";
 import {useEventsStore} from "~/store/eventStore";
 import {FetchError} from "ofetch";
 
+// The flow editor shows the currently selected project. The user can edit the project in json format.
+
 const projectsStore = useProjectsStore();
 const selectedProject = computed(() => projectsStore.selectedProject);
 let json = ref();
@@ -14,13 +16,19 @@ let json = ref();
 
 const eventsStore = useEventsStore();
 
+/**
+ * Subscribing to the Button-State of the save button.
+ */
 eventsStore.$subscribe((mutation, state) => {
   if (state.isSaveButtonClicked) {
     handleSaveButtonClick();
   }
 })
-const handleSaveButtonClick = async () => {
 
+/**
+ * Saving project and handle ui state of error message.
+ */
+const handleSaveButtonClick = async () => {
   eventsStore.setLoading(true)
   eventsStore.setErrorMessage("")
   eventsStore.setAlert(true)
@@ -38,6 +46,9 @@ const handleSaveButtonClick = async () => {
 
 }
 
+/**
+ * Uses the create and delete project api calls to save the project in the backend.
+ */
 const saveProjectFromTextEditor = async () => {
   let fileModified = true;
   try {
@@ -90,8 +101,6 @@ const saveProjectFromTextEditor = async () => {
   }
 
 }
-
-
 
 onMounted(() => {
   json.value = selectedProject.value

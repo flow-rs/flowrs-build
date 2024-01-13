@@ -6,6 +6,9 @@ const showDialog = computed(() => projectsStore.showDialog);
 
 const { errorMessage } = defineProps(['errorMessage']);
 
+/**
+ * Called if the user closes the dialog.
+ */
 const closePopup = () => {
     projectsStore.setCurrentErrorMessage("");
     projectsStore.setDialog(false)

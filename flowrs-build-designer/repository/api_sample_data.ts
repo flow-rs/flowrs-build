@@ -5,6 +5,7 @@ import {
     type TimerTokenNode
 } from "~/repository/modules/projects";
 
+// The file contains example data of flow projects. It is used to create the dummy and example project.
 
 const timerConfigNodeData: TimerConfigNode = {value: {duration: {secs: 1, nanos: 0}}};
 const timerTokenNodeData: TimerTokenNode = {value: 42}

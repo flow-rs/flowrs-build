@@ -1,5 +1,9 @@
 <script setup lang="ts">
 
+// The Component is used to display a short instruction about the control, run and metrics page. The placeholder
+// is shown until a process is started. It gets replaced by the metrics of the running process.
+
+
 </script>
 
 <template>

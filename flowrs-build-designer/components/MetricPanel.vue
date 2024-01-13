@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {useProjectsStore} from "~/store/projectStore";
 
+// The metric panel is displaying the grafana dashoards as iframe integration.
+
 const projectsStore = useProjectsStore()
 
 const currentProcessId = computed(() => projectsStore.getCurrentProcessId());
