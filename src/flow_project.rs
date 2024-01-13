@@ -166,7 +166,6 @@ impl FlowProjectManager {
         #[cfg(unix)]
         {
             // Unix systems: use the `mtime` method from `MetadataExt`.
-            use std::time::{Duration, UNIX_EPOCH};
             let mtime = metadata.mtime();
             let mtime_nsec = metadata.mtime_nsec();
             Ok(UNIX_EPOCH + Duration::new(mtime as u64, mtime_nsec as u32))
@@ -397,9 +396,9 @@ impl FlowProjectManager {
 
         // Platform-specific logic for file name and extension
         let (file_name, file_ending) = if cfg!(target_os = "macos") {
-            (format!("lib{}", project_name), ".so")
-        } else if cfg!(target_os = "linux") {
             (format!("lib{}", project_name), ".dylib")
+        } else if cfg!(target_os = "linux") {
+            (format!("lib{}", project_name), ".so")
         } else if cfg!(target_os = "windows") {
             (project_name.to_string(), ".dll")
         } else {
