@@ -5,6 +5,9 @@ export RUSTFLAGS="-C instrument-coverage"
 # Uncomment the line below if needed
 # export RUSTDOCFLAGS="-C instrument-coverage -Z unstable-options --persist-doctests target/debug/doctestbins"
 
+rustup component add llvm-tools-preview
+cargo install grcov
+
 cargo clean
 cargo build
 cargo test
