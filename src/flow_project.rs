@@ -3,13 +3,11 @@ use serde::{Deserialize, Serialize};
 use crate::flow_model::FlowModel;
 use crate::package_manager::PackageManager;
 
-use fs2::FileExt;
 use std::collections::{HashMap, VecDeque};
-use std::fs::File;
 use std::fs::Metadata;
 use std::io;
 use std::io::{BufRead, BufReader, ErrorKind, Write};
-use std::{fs, thread};
+use std::thread;
 
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
