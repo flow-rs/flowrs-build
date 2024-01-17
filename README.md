@@ -180,7 +180,12 @@ Running ```cargo build``` locally does not run any unit tests. Normally, one wou
 Due to the fact that the live-analytics are using Grafana and an incompatible library
 for wasm, an execution with wasm is currently not possible. To enable the execution with wasm changes need to be made in the following repositories and files:
 
-1. flowrs-build / Cargo.toml: Replace the line `flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "feature-project7"}` with
+### flowrs-build:
+1. Replace the line `flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "feature-project7"}` in the Cargo.toml with
 `flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "dev"}`. --> Setting the dependency to dev.
-2. flowrs-std / Cargo.toml: Replace the line `flowrs = {git = "https://github.com/flow-rs/flowrs", branch = "feature-project7"}` with
+2. Set the package dependency for new project to `{"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}` in the json file (e.g. rest.http).
+3. Set the package dependency for new project to `{"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"dev"}` in the json file (e.g. rest.http).
+
+### flowrs-std:
+1. flowrs-std / Cargo.toml: Replace the line `flowrs = {git = "https://github.com/flow-rs/flowrs", branch = "feature-project7"}` in the Cargo.toml with
    `flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "dev"}`. --> Setting the dependency to dev.
