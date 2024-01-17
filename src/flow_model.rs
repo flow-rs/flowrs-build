@@ -1,3 +1,5 @@
+use crate::package::{Namespace, ObjectDescription};
+use crate::package_manager::PackageManager;
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::{Deserialize, Serialize};
@@ -5,36 +7,29 @@ use serde_json::Value;
 use std::collections::HashMap;
 use syn::Ident;
 
-use std::path::PathBuf;
-use std::process::Command;
-
-use crate::package::{Constructor, Namespace, ObjectDescription, Package};
-use crate::package_manager::PackageManager;
-
 use anyhow::{Error, Result};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct ConnectionModel {
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct ConnectionModel {
     from_node: String,
     to_node: String,
     to_input: String,
     from_output: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct NodeModel {
     node_type: String,
     type_parameters: HashMap<String, String>,
-    constructor: String
-    //inputs: HashMap<String, InputModel>,
-    //outputs: HashMap<String, OutputModel>
+    constructor: String, //inputs: HashMap<String, InputModel>,
+                         //outputs: HashMap<String, OutputModel>
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FlowModel {
-    nodes: HashMap<String, NodeModel>,
-    connections: Vec<ConnectionModel>,
-    data: Value,
+    pub(crate) nodes: HashMap<String, NodeModel>,
+    pub(crate) connections: Vec<ConnectionModel>,
+    pub(crate) data: Value,
 }
 
 pub trait CodeEmitter {
@@ -58,7 +53,7 @@ impl StandardCodeEmitter {
             #[cfg(target_arch = "wasm32")]
             #[wasm_bindgen]
             pub fn wasm_run() {
-                
+
                 let mut ctx = Box::new(init());
 
                 let node_updater = SingleThreadedNodeUpdater::new(None);
@@ -78,7 +73,7 @@ impl StandardCodeEmitter {
             #[no_mangle]
             pub extern "C" fn native_run(num_workers: usize, ctx_handle: *mut ExecutionContextHandle) -> *const c_char {
                 let mut ctx = unsafe { Box::from_raw(ctx_handle.cast::<ExecutionContext>()) };
-                
+
                 let node_updater = MultiThreadedNodeUpdater::new(num_workers);
                 let scheduler = RoundRobinScheduler::new();
 
@@ -105,7 +100,11 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn emit_init_function_body(&self, flow: &FlowModel, pm: &PackageManager) -> Result<TokenStream, Error> {
+    fn emit_init_function_body(
+        &self,
+        flow: &FlowModel,
+        pm: &PackageManager,
+    ) -> Result<TokenStream, Error> {
         let mut body = TokenStream::new();
 
         self.emit_std_locals(&mut body, flow);
@@ -121,7 +120,12 @@ impl StandardCodeEmitter {
         Ok(body)
     }
 
-    fn emit_nodes(&self, flow: &FlowModel, tokens: &mut TokenStream, pm: &PackageManager) -> Result<(), Error> {
+    fn emit_nodes(
+        &self,
+        flow: &FlowModel,
+        tokens: &mut TokenStream,
+        pm: &PackageManager,
+    ) -> Result<(), Error> {
         for (node_name, node) in &flow.nodes {
             let generated_code = self.emit_node(node_name, node, pm)?;
             tokens.extend(generated_code);
@@ -136,7 +140,12 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn node_model_to_object(&self, node_name: &String, node: &NodeModel, pm: &PackageManager) -> ObjectDescription {
+    fn node_model_to_object(
+        &self,
+        node_name: &String,
+        node: &NodeModel,
+        pm: &PackageManager,
+    ) -> ObjectDescription {
         ObjectDescription {
             name: node_name.clone(),
             type_name: node.node_type.clone(),
@@ -152,28 +161,36 @@ impl StandardCodeEmitter {
                 self.emit_type_parameter_part_rec(&tp, &node.type_parameters, pm, &mut tp_part);
             }
         }
-        tp_part 
+        tp_part
     }
 
-    fn emit_type_parameter_part_rec(&self, type_parameters: &Vec<String>, resolved_type_parameters: &HashMap<String, String>, pm: &PackageManager, tp_part: &mut String) {
-        
+    fn emit_type_parameter_part_rec(
+        &self,
+        type_parameters: &Vec<String>,
+        resolved_type_parameters: &HashMap<String, String>,
+        pm: &PackageManager,
+        tp_part: &mut String,
+    ) {
         if !type_parameters.is_empty() {
             tp_part.push_str("<");
         }
 
         for type_parameter in type_parameters {
-
             if let Some(type_name) = resolved_type_parameters.get(type_parameter) {
-
                 tp_part.push_str(type_name);
                 if let Some(t) = pm.get_type(type_name) {
                     if let Some(tps) = &t.type_parameters {
-                        self.emit_type_parameter_part_rec(tps, resolved_type_parameters, pm, tp_part);  
-                    }      
-                } 
+                        self.emit_type_parameter_part_rec(
+                            tps,
+                            resolved_type_parameters,
+                            pm,
+                            tp_part,
+                        );
+                    }
+                }
                 tp_part.push_str(",");
             } else {
-                //TODO: Error Reporting. 
+                //TODO: Error Reporting.
             }
         }
         if !type_parameters.is_empty() {
@@ -182,11 +199,14 @@ impl StandardCodeEmitter {
         }
     }
 
-    fn emit_node(&self, node_name: &str, node: &NodeModel, pm: &PackageManager) -> Result<TokenStream, Error>  {
+    fn emit_node(
+        &self,
+        node_name: &str,
+        node: &NodeModel,
+        pm: &PackageManager,
+    ) -> Result<TokenStream, Error> {
         if let Some(node_type) = pm.get_type(&node.node_type) {
-
             if let Some(constructor) = node_type.constructors.get(&node.constructor) {
-                
                 let res = constructor.emit_code_template(
                     &self.node_model_to_object(&node_name.to_string(), node, pm),
                     &node.type_parameters,
@@ -195,23 +215,26 @@ impl StandardCodeEmitter {
                 );
 
                 match res {
-                    Ok(code)=> { 
+                    Ok(code) => {
                         let tok: TokenStream = code.parse().unwrap();
                         Ok(quote! {
                             #tok
-                        }) 
-                    },
-                    Err(err) => {
-                        Err(err)
+                        })
                     }
+                    Err(err) => Err(err),
                 }
             } else {
-                Err(anyhow::Error::msg(format!("Cannot find constructor '{}' for node '{}' with type '{}'", node.constructor, node_name, node.node_type)))
+                Err(anyhow::Error::msg(format!(
+                    "Cannot find constructor '{}' for node '{}' with type '{}'",
+                    node.constructor, node_name, node.node_type
+                )))
             }
         } else {
-            Err(anyhow::Error::msg(format!("Cannot find type '{}' for node '{}'.", node.node_type, node_name)))
+            Err(anyhow::Error::msg(format!(
+                "Cannot find type '{}' for node '{}'.",
+                node.node_type, node_name
+            )))
         }
-       
     }
 
     fn emit_node_connection(&self, connection: &ConnectionModel) -> TokenStream {
@@ -227,7 +250,6 @@ impl StandardCodeEmitter {
     }
 
     fn emit_std_locals(&self, tokens: &mut TokenStream, flow: &FlowModel) {
-
         let data_str = serde_json::to_string(&flow.data).unwrap();
 
         tokens.extend(quote! {
@@ -285,9 +307,8 @@ impl StandardCodeEmitter {
 
 impl CodeEmitter for StandardCodeEmitter {
     fn emit_flow_code(&self, flow: &FlowModel, pm: &PackageManager) -> Result<String, Error> {
-        
         let init_function_body = self.emit_init_function_body(flow, pm)?;
-        
+
         Ok(format!(
             "{}{}",
             self.emit_use_decls(),
@@ -296,87 +317,367 @@ impl CodeEmitter for StandardCodeEmitter {
     }
 }
 
-#[test]
-fn test() {
-    let package_json = r#"
-    
-    {
-        "name":"flowrs-std",
-        "version":"1.0.0",
-        "crates":{
-           "flowrs_std":{
-              "types":{
-                 
-              },
-              "modules":{
-                 "nodes":{
-                    "types":{
-                       
-                    },
-                    "modules":{
-                       "debug":{
-                          "modules":{
-                             
-                          },
-                          "types":{
-                             "DebugNode":{
-                                "inputs":[
-                                   "input"
-                                ],
-                                "outputs":[
-                                   "output"
-                                ],
-                                "type_parameters":[
-                                   "I"
-                                ],
-                                "constructor":"NewWithObserver"
-                             }
-                          }
-                       }
-                    }
-                 }
-              }
-           }
+#[cfg(test)]
+mod tests {
+    use crate::package::Package;
+
+    use super::*;
+    const PACKAGE_JSON: &str = r#"
+{
+   "name":"flowrs-std",
+   "version":"1.0.0",
+   "crates":{
+      "flowrs_std":{
+         "types":{
+            
+         },
+         "modules":{
+            "nodes":{
+               "types":{
+                  
+               },
+               "modules":{
+                  "debug":{
+                     "modules":{
+                        
+                     },
+                     "types":{
+                        "DebugNode":{
+                           "inputs":{
+                              "input":{
+                                 "type":{
+                                    "Generic":{
+                                       "name":"I"
+                                    }
+                                 }
+                              }
+                           },
+                           "outputs":{
+                              "output":{
+                                 "type":{
+                                    "Generic":{
+                                       "name":"I"
+                                    }
+                                 }
+                              }
+                           },
+                           "type_parameters":[
+                              "I"
+                           ],
+                           "constructors":{
+                              "New":{
+                                 "NewWithObserver":{
+                                    
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  },
+                  "value":{
+                     "modules":{
+                        
+                     },
+                     "types":{
+                        "ValueType":{
+                           "constructors":{
+                              "Json":"FromJson"
+                           }
+                        },
+                        "ValueNode":{
+                           "outputs":{
+                              "output":{
+                                 "type":{
+                                    "Generic":{
+                                       "name":"I"
+                                    }
+                                 }
+                              }
+                           },
+                           "type_parameters":[
+                              "I"
+                           ],
+                           "constructors":{
+                              "New":{
+                                 "NewWithArbitraryArgs":{
+                                    "arguments":[
+                                       {
+                                          "type":{
+                                             "Generic":{
+                                                "name":"I"
+                                             }
+                                          },
+                                          "name":"value",
+                                          "passing":"Move",
+                                          "construction":{
+                                             "Constructor":"Json"
+                                          }
+                                       },
+                                       {
+                                          "type":{
+                                             "Type":{
+                                                "name":"()"
+                                             }
+                                          },
+                                          "name":"change_observer",
+                                          "passing":"Clone",
+                                          "construction":{
+                                             "ExistingObject":[
+                                                
+                                             ]
+                                          }
+                                       }
+                                    ]
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  },
+                  "timer":{
+                     "modules":{
+                        
+                     },
+                     "types":{
+                        "TimerNodeConfig":{
+                           "constructors":{
+                              "Json":"FromJson"
+                           }
+                        },
+                        "PollTimer":{
+                           "type_parameters":[
+                              "U"
+                           ],
+                           "constructors":{
+                              "New":{
+                                 "New":{
+                                    
+                                 }
+                              }
+                           }
+                        },
+                        "SelectedTimer":{
+                           "type_parameters":[
+                              "U"
+                           ],
+                           "constructors":{
+                              "New":{
+                                 "New":{
+                                    
+                                 }
+                              }
+                           }
+                        },
+                        "TimerNode":{
+                           "inputs":{
+                              "config_input":{
+                                 "type":{
+                                    "Type":{
+                                       "name":"flowrs_std::nodes::timer::TimerNodeConfig"
+                                    }
+                                 }
+                              },
+                              "token_input":{
+                                 "type":{
+                                    "Generic":{
+                                       "name":"U"
+                                    }
+                                 }
+                              }
+                           },
+                           "outputs":{
+                              "token_output":{
+                                 "type":{
+                                    "Generic":{
+                                       "name":"U"
+                                    }
+                                 }
+                              }
+                           },
+                           "type_parameters":[
+                              "T",
+                              "U"
+                           ],
+                           "constructors":{
+                              "NewWithToken":{
+                                 "NewWithArbitraryArgs":{
+                                    "function_name":"new_with_token",
+                                    "arguments":[
+                                       {
+                                          "type":{
+                                             "Generic":{
+                                                "name":"T",
+                                                "type_parameters":[
+                                                   {
+                                                      "Generic":{
+                                                         "name":"U"
+                                                      }
+                                                   }
+                                                ]
+                                             }
+                                          },
+                                          "name":"timer",
+                                          "passing":"Move",
+                                          "construction":{
+                                             "Constructor":"New"
+                                          }
+                                       },
+                                       {
+                                          "type":{
+                                             "Generic":{
+                                                "name":"U"
+                                             }
+                                          },
+                                          "name":"token_object",
+                                          "passing":"Move",
+                                          "construction":{
+                                             "Constructor":"New"
+                                          }
+                                       },
+                                       {
+                                          "type":{
+                                             "Type":{
+                                                "name":"()"
+                                             }
+                                          },
+                                          "name":"change_observer",
+                                          "passing":"Clone",
+                                          "construction":{
+                                             "ExistingObject":[
+                                                
+                                             ]
+                                          }
+                                       }
+                                    ]
+                                 }
+                              },
+                              "New":{
+                                 "NewWithArbitraryArgs":{
+                                    "arguments":[
+                                       {
+                                          "type":{
+                                             "Generic":{
+                                                "name":"T",
+                                                "type_parameters":[
+                                                   {
+                                                      "Generic":{
+                                                         "name":"U"
+                                                      }
+                                                   }
+                                                ]
+                                             }
+                                          },
+                                          "name":"timer",
+                                          "passing":"Move",
+                                          "construction":{
+                                             "Constructor":"New"
+                                          }
+                                       },
+                                       {
+                                          "type":{
+                                             "Type":{
+                                                "name":"()"
+                                             }
+                                          },
+                                          "name":"change_observer",
+                                          "passing":"Clone",
+                                          "construction":{
+                                             "ExistingObject":[
+                                                
+                                             ]
+                                          }
+                                       }
+                                    ]
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+}
+
+    "#;
+
+    const FLOW_JSON: &str = r#"
+{
+    "nodes": {
+        "debug_node": {
+            "node_type": "flowrs_std::nodes::debug::DebugNode",
+            "type_parameters": {"I": "i32"},
+            "constructor": "New"
+
+        },
+        "timer_config_node": {
+            "node_type": "flowrs_std::nodes::value::ValueNode",
+            "type_parameters": {"I": "flowrs_std::nodes::timer::TimerNodeConfig"},
+            "constructor": "New"
+
+        },
+        "timer_token_node": {
+            "node_type": "flowrs_std::nodes::value::ValueNode",
+            "type_parameters": {"I": "i32"},
+            "constructor": "New"
+
+        },
+         "timer_node": {
+            "node_type": "flowrs_std::nodes::timer::TimerNode",
+            "type_parameters": {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"},
+            "constructor": "New"
+        }
+    },
+    "connections": [
+        {
+            "from_node": "timer_config_node",
+            "from_output": "output",
+            "to_node": "timer_node",
+            "to_input": "config_input"
+        },
+        {
+            "from_node": "timer_token_node",
+            "from_output": "output",
+            "to_node": "timer_node",
+            "to_input": "token_input"
+        },
+        {
+            "from_node": "timer_node",
+            "from_output": "token_output",
+            "to_node": "debug_node",
+            "to_input": "input"
+        }
+    ],
+    "data" : {
+        "timer_config_node": {
+            "value": {"duration": {"secs": 1, "nanos": 0}}
+        },
+         "timer_token_node": {
+            "value": 42
         }
     }
-   
+}
     "#;
+    #[test]
+    fn test() {
+        let flow_model: FlowModel = serde_json::from_str(&FLOW_JSON).expect("wrong format.");
 
-    let flow_json = r#"
-    {
-        "nodes": {
-            "node1": {
-                "node_type": "flowrs_std::nodes::debug::DebugNode",
-                "type_parameters": {"I": "i32"}
+        let mut pm = PackageManager::new();
 
-            },
-            "node2": {
-                "node_type": "flowrs_std::nods::debug::DebugNode",
-                "type_parameters": {"I": "i32"}
-            }
-        },
-        "connections": [
-            {
-                "input_node": "node1",
-                "output_node": "node2",
-                "input": "input",
-                "output": "output"
-            }
-        ]
+        let p: Package = serde_json::from_str(PACKAGE_JSON).expect("format wrong.");
+
+        pm.add_package(p);
+
+        let rce = StandardCodeEmitter {};
+        println!(
+            "{}",
+            rce.emit_flow_code(&flow_model, &pm)
+                .expect("flow code wrong.")
+        );
+
+        //let pack = StandardWasmPackager::new(rce);
+        //pack.compile_package(&flow_model);
     }
-    "#;
-
-    let flow_model: FlowModel = serde_json::from_str(&flow_json).expect("wrong format.");
-
-    let mut pm = PackageManager::new();
-
-    let p: Package = serde_json::from_str(package_json).expect("format wrong.");
-
-    pm.add_package(p);
-
-    let rce = StandardCodeEmitter {};
-    println!("{}", rce.emit_flow_code(&flow_model, &pm).expect("flow code wrong."));
-
-    //let pack = StandardWasmPackager::new(rce);
-    //pack.compile_package(&flow_model);
 }

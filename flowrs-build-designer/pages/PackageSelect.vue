@@ -1,0 +1,63 @@
+<script setup lang="ts">
+
+import {usePackagesStore} from "~/store/packageStore";
+import type {Type} from "~/repository/modules/packages";
+
+const packagesStore = usePackagesStore()
+packagesStore.getAll()
+const selectedPackage = computed(() => packagesStore.selectedPackage);
+const selectedMap: Map<string, Type> = computed(() => packagesStore.selectedMap);
+
+</script>
+
+
+<template>
+  <v-container fluid>
+    <v-row>
+      <v-col class="text-center">
+        <PackageList :card-title="'Packages'"></PackageList>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col class="text-center mt-5 mr-5">
+        <v-card v-if="selectedPackage !== null"
+                :title="selectedPackage ? selectedPackage.name : 'No package selected!'">
+          <v-divider class="mb-5"></v-divider>
+          <v-row v-if="selectedMap !== null">
+            <v-col cols="12 d-flex" class="d-flex justify-center align-center">
+              <v-chip class="ma-2" color="blue" label text-color="white">
+                <v-icon start icon="mdi-alpha-t-box-outline"></v-icon>
+                Type Parameter
+
+              </v-chip>
+              <v-chip class="ma-2" color="green" label text-color="white">
+                <v-icon start icon="mdi-arrow-right-bold-outline"></v-icon>
+                Input
+              </v-chip>
+              <v-chip class="ma-2" color="red" label text-color="white">
+                Output
+                <v-icon class="mx-1" start icon="mdi-arrow-right-bold-outline"></v-icon>
+              </v-chip>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="4 d-flex" v-for="[key, value] in selectedMap">
+              <PackageCard class="flex-grow-1" :name="key" :value="value"></PackageCard>
+            </v-col>
+          </v-row>
+          <v-row>
+          </v-row>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<style scoped>
+div.scroll {
+  height: 650px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 20px;
+}
+</style>

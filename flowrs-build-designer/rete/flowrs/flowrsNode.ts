@@ -1,0 +1,304 @@
+import {ClassicPreset, ClassicPreset as Classic, NodeEditor} from 'rete';
+import {
+    type ConstructorDefinition,
+    type ConstructorDescription,
+    type Type,
+    type TypeDescription
+} from "~/repository/modules/packages";
+import {DropdownControl, type Schemes} from "~/rete/flowrs/editor";
+
+const socket = new Classic.Socket('socket');
+
+/**
+ * Custom Rete.js node representing a Flowrs node in the visual editor.
+ * @extends Classic.Node
+ */
+export class FlowrsNode extends Classic.Node<
+    Record<string, ClassicPreset.Socket>,
+    Record<string, ClassicPreset.Socket>,
+    Record<
+        string,
+        | DropdownControl
+        | ClassicPreset.InputControl<"number">
+        | ClassicPreset.InputControl<"text">>> {
+    width = 470;
+    height = 60;
+    public node_data: string | undefined;
+    public typeParameters: Map<string, string> = new Map();
+    private inAndOutputToTypeParameterMap: Map<string, string> = new Map();
+    public constructor_type: string = "New";
+    public fullTypeName: string;
+
+    private editor: NodeEditor<Schemes>;
+
+    /**
+     * Creates an instance of FlowrsNode.
+     * @param name - The name of the node.
+     * @param fullTypeName - The full type name of the node.
+     * @param data - Data associated with the node.
+     * @param constructor_type - The constructor type of the node.
+     * @param typeParameters - Type parameters of the node.
+     * @param typeDefinitionsMap - Map of all type definitions.
+     * @param editor - The Rete.js editor instance.
+     */
+    constructor(name: string,
+                fullTypeName: string,
+                data: { [key: string]: any } | null,
+                constructor_type: string,
+                typeParameters: { [key: string]: string } | null,
+                typeDefinitionsMap: Map<string, Type>,
+                editor: NodeEditor<Schemes>
+    ) {
+        super(name);
+
+        this.editor = editor;
+        this.fullTypeName = fullTypeName;
+        let type: Type = typeDefinitionsMap.get(this.fullTypeName)!
+        this.constructor_type = constructor_type;
+        this.setNodeData(data);
+        this.setTypeParameters(typeParameters);
+        let constructorDescription = this.getConstructorDescription(type.constructors);
+        this.addControlInputs(constructorDescription);
+        this.addDropdownControlsForGenericTypeParameters(type.type_parameters, constructorDescription, typeDefinitionsMap);
+        this.addInputs(type);
+        this.addOutputs(type);
+    }
+
+    /**
+     * Sets data for the node based on the provided data object.
+     * @param data - The data object to set for the node.
+     */
+    private setNodeData(data: { [key: string]: any } | null) {
+        if (!data) {
+            return
+        }
+
+        this.node_data = JSON.stringify(data, null, 2);
+    }
+
+    /**
+     * Sets type parameters for the node based on the provided type parameters object.
+     * @param typeParameters - The type parameters object to set for the node.
+     */
+    private setTypeParameters(typeParameters: { [p: string]: string } | null) {
+        if (!typeParameters) {
+            return;
+        }
+
+        for (const typeParametersKey in typeParameters) {
+            this.typeParameters.set(typeParametersKey, typeParameters[typeParametersKey]);
+        }
+
+        console.log("Type parameters set:", this.typeParameters);
+    }
+
+    /**
+     * Retrieves the constructor description based on the current constructor type.
+     * @param constructorDefinition - The constructor definition for the node's type.
+     * @returns The constructor description for the current constructor type.
+     */
+    private getConstructorDescription(constructorDefinition: ConstructorDefinition) {
+        if (!constructorDefinition) {
+            return;
+        }
+        console.log(constructorDefinition, this.constructor_type)
+        let currentConstructor = constructorDefinition[this.constructor_type];
+        if (!currentConstructor) {
+            console.error("Current constructor doesnt exist", this.constructor_type, constructorDefinition)
+            return;
+        }
+        if (typeof currentConstructor == "string") {
+            console.error("Current constructor is a string constructor", this.constructor_type, constructorDefinition)
+            return;
+        }
+        let recordKeys = Object.keys(currentConstructor);
+        if (recordKeys.length > 1) {
+            console.error("Package endpoint malformed output?", currentConstructor);
+        }
+        return currentConstructor[recordKeys[0]];
+    }
+
+    /**
+     * Adds control inputs to the node based on the constructor description.
+     * @param constructor - The constructor description for the current constructor type.
+     */
+    private addControlInputs(constructor: ConstructorDescription | undefined) {
+        if (!constructor?.arguments) {
+            return
+        }
+        for (const argument of constructor.arguments) {
+            // TODO streng genommen müsste bei Json constructorDescription ein TextInputField hinzu gefügt werden genau dann wenn Key == Json und gewählter generic typ den constructor value FromJson hat --> "Json": "FromJson"
+            // ist aber ein riesen aufwand mit reaktivität vom dropdown auf mögliche x inputfelder --> darum nur auf json fürs erste prüfen
+            if (argument.construction.Constructor == "Json") {
+                this.addControl(
+                    'data',
+                    new Classic.InputControl('text', {
+                        initial: this.node_data, readonly: false, change: value => {
+                            this.node_data = value;
+                        }
+                    })
+                );
+                this.height += 38;
+            }
+        }
+    }
+
+    /**
+     * Adds dropdown controls for generic type parameters to the node.
+     * @param type_parameters - The array of generic type parameters.
+     * @param constructorDescription - The constructor description for the current constructor type.
+     * @param typeDefinitionsMap - Map of type definitions for nodes.
+     */
+    private addDropdownControlsForGenericTypeParameters(type_parameters: string[] | undefined, constructorDescription: undefined | ConstructorDescription, typeDefinitionsMap: Map<string, Type>) {
+        if (!type_parameters) {
+            return;
+        }
+
+        for (const typeParameter of type_parameters) {
+            let constructorNameToFilterFor: string | null = this.getConstructorNameToFilterFor(constructorDescription, typeParameter);
+            let possibleTypes: [string, Type][] = this.chooseMethodAndGetPossibleTypes(constructorNameToFilterFor, typeDefinitionsMap);
+            let possibleTypeNames: string[] = possibleTypes.map(([typeName, typeDefinition]) => typeName);
+            this.addControl(
+                typeParameter,
+                new DropdownControl(typeParameter, possibleTypeNames, this.typeParameters.get(typeParameter), (selectedTypeName: string) => {
+                    this.typeParameters.set(typeParameter, selectedTypeName);
+
+                    for (let connection of this.editor.getConnections()) {
+                        if (this.id == connection.target || this.id == connection.source) {
+                            this.editor.removeConnection(connection.id);
+                        }
+                    }
+                })
+            );
+            this.height += 90;
+        }
+    }
+
+    /**
+     * Retrieves the constructor name to filter possible types based on the type parameter.
+     * @param constructorDescription - The constructor description for the current constructor type.
+     * @param typeParameter - The type parameter to filter types.
+     * @returns The constructor name to filter possible types.
+     */
+    private getConstructorNameToFilterFor(constructorDescription: ConstructorDescription | undefined, typeParameter: string): string | null {
+        if (!constructorDescription?.arguments) {
+            return null;
+        }
+        let restrictingConstructorType: string | null = null;
+        for (const argument of constructorDescription.arguments) {
+            console.log("Checking for restrictingConstructorType for", typeParameter, "\n", argument)
+            if (argument.type.Generic && argument.type.Generic.name == typeParameter && argument.construction.Constructor) {
+                restrictingConstructorType = argument.construction.Constructor;
+                break;
+            }
+        }
+        return restrictingConstructorType;
+    }
+
+    /**
+     * Chooses a method and gets possible types based on the constructor name to filter for.
+     * @param constructorNameToFilterFor - The constructor name to filter possible types.
+     * @param typeDefinitionsMap - Map of type definitions for nodes.
+     * @returns An array of possible types.
+     */
+    private chooseMethodAndGetPossibleTypes(constructorNameToFilterFor: null | string, typeDefinitionsMap: Map<string, Type>): [string, Type][] {
+        if (constructorNameToFilterFor) {
+            let possibleTypes = this.getFilteredTypesList(constructorNameToFilterFor, typeDefinitionsMap);
+            console.log("RestrictingConstructorType resulted into filtered list", possibleTypes);
+            return possibleTypes;
+        } else {
+            let possibleTypes = Array.from(typeDefinitionsMap.entries());
+            console.log("Full list available", possibleTypes);
+            return possibleTypes;
+        }
+    }
+
+    /**
+     * Filters types based on the constructor name to filter for.
+     * TODO Man müsste nach Traits filtern → Information noch nicht im code enthalten
+     * @param constructorNameToFilterFor - The constructor name to filter types.
+     * @param typeDefinitionsMap - Map of type definitions for nodes.
+     * @returns An array of filtered types.
+     */
+    private getFilteredTypesList(constructorNameToFilterFor: string, typeDefinitionsMap: Map<string, Type>): [string, Type][] {
+        let filteredTypes: [string, Type][] = [];
+        for (const possibleType of typeDefinitionsMap) {
+            let typeDefinition = possibleType[1];
+            let constructorDefinition = typeDefinition.constructors[constructorNameToFilterFor];
+            if (constructorDefinition) {
+                filteredTypes.push(possibleType);
+            }
+        }
+        return filteredTypes;
+    }
+
+    /**
+     * Adds output sockets to the node based on the type's output definitions.
+     * @param types - The type definitions for the node.
+     */
+    private addOutputs(types: Type) {
+        for (let outputName in types.outputs) {
+            let typeDescription = types.outputs[outputName].type;
+            let typeName = this.getTypeName(typeDescription);
+            this.addOutput(outputName, new Classic.Output(socket, outputName + ':' + typeName, false));
+            this.inAndOutputToTypeParameterMap.set(outputName, typeName);
+            this.height += 36;
+        }
+    }
+
+    /**
+     * Adds input sockets to the node based on the type's input definitions.
+     * @param types - The type definitions for the node.
+     */
+    private addInputs(types: Type) {
+        for (let inputName in types.inputs) {
+            let typeDescription = types.inputs[inputName].type;
+            let typeName = this.getTypeName(typeDescription);
+            this.addInput(inputName, new Classic.Input(socket, inputName + ':' + typeName, false));
+            this.inAndOutputToTypeParameterMap.set(inputName, typeName);
+            this.height += 36;
+        }
+    }
+
+    /**
+     * Retrieves the type name based on the type description.
+     * @param typeDescription - The type description.
+     * @returns The type name.
+     */
+    private getTypeName(typeDescription: TypeDescription) {
+        if (typeDescription.Generic) {
+            return typeDescription.Generic.name;
+        } else if (typeDescription.Type) {
+            return typeDescription.Type.name;
+        } else {
+            console.error("Type not supported", typeDescription)
+        }
+        return "unknown";
+    }
+
+    /**
+     * Retrieves the type associated with a given input/output on the node.
+     * @param key - The key representing an input or output.
+     * @returns The type associated with the key.
+     */
+    public getTypeForKey(key: string): string | undefined {
+        let typeName = this.inAndOutputToTypeParameterMap.get(key);
+        if (!typeName) {
+            return;
+        }
+        let genericResolutionType = this.typeParameters.get(typeName);
+        if (genericResolutionType) {
+            return genericResolutionType
+        }
+        return typeName;
+    }
+
+    /**
+     * Returns data associated with the node.
+     * @returns An object containing the node data.
+     */
+    data() {
+        const value = this.node_data;
+        return {value,};
+    }
+}

@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::fs;
 
-use crate::package::{Crate, Constructor, Package, Type};
+use crate::package::{Crate, Package, Type};
 
 pub struct PackageManager {
-    packages: HashMap<String, Package>,
+    pub(crate) packages: HashMap<String, Package>,
 }
 
 impl PackageManager {
@@ -51,7 +51,7 @@ impl PackageManager {
                         }
                     }
                 }
-            },
+            }
             Err(e) => {
                 eprintln!(
                     "-> Failed to read package folder '{}'. Reason: {}",
@@ -61,7 +61,6 @@ impl PackageManager {
             }
         }
 
-        
         let mut pm = PackageManager { packages: packages };
         pm.add_built_in_package();
 
@@ -69,7 +68,6 @@ impl PackageManager {
     }
 
     fn add_built_in_package(&mut self) {
-
         // primitive types.
         let prims: [&str; 16] = [
             "i8", "i16", "i32", "i64", "i128", "u8", "u16", "u32", "u64", "u128", "isize", "usize",
@@ -78,10 +76,7 @@ impl PackageManager {
 
         let mut types = HashMap::new();
         for prim in prims {
-            types.insert(
-                prim.to_string(),
-                Type::new_primitive_type(),
-            );
+            types.insert(prim.to_string(), Type::new_primitive_type());
         }
 
         // the "no-type".
@@ -175,5 +170,29 @@ impl PackageManager {
             }
         }
         Option::None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_package_test() {
+        let pm = PackageManager::new();
+        let package_opt = pm.get_package("built-in");
+
+        assert!(!package_opt.is_none());
+        let package = package_opt.unwrap();
+        assert_eq!("built-in", package.name);
+    }
+
+    #[test]
+    fn get_all_packages_test() {
+        let pm = PackageManager::new();
+        let package_opt = pm.get_package("built-in");
+        let package = package_opt.unwrap();
+        let package_vec = pm.get_all_packages();
+        assert!(package_vec.contains(package));
     }
 }
