@@ -1,8 +1,9 @@
 # flowrs-build
-Tools for flow development. Following tools: 
+Tools for flow development. This repository contains the Frontend (flowrs designer) and the
+corresponding REST-API.
 
 ## Getting started
-1. clone the repository
+1. Clone the repository.
 2. Start both the backend service and the frontend server with docker using:
    ```docker compose up --build```. With docker compose you are starting also the analytics with grafana.
 3. navigate to localhost:3001 in your browser to access the frontend
@@ -13,12 +14,13 @@ Tools for flow development. Following tools:
     - use the process endpoint to retrieve logs
 
 ## Frontend
-The code for the frontend is located in ```flowrs-build-designer```. It is developed using
+The code for the frontend is located in `flowrs-build-designer`. It is developed using
 Nuxt and Vue.js in combination with Rete.js.
 
 ### Run Frontend without docker
-Go into the directory ```flowrs-build-designer``` and run ``yarn install``. After installing all dependencies you can
-start the frontend with ``yarn run dev``.
+1. Go into the directory `flowrs-build-designer`.
+2. Copy the file `.env.example` and rename to `.env` to set all environment variables. 
+3. Run `yarn install`. After installing all dependencies you can start the frontend with `yarn run dev`.
 
 ## Backend
 The backend is located inside `flowrs-build`. It is programmed with Rust and is used as REST-API.
@@ -26,7 +28,8 @@ The backend is located inside `flowrs-build`. It is programmed with Rust and is 
 ### Run Backend without docker
 1. Run ``cargo build`` to install the dependencies.
 2. Copy the file `.env.example` and rename to `.env` to set all environment variables.
-3. Start the project with the `service_main` located in `./target/debug`. Further information below.
+3. Start the project with the `service_main` located in `./target/debug` with the command `target/debug/service_main
+   ` (depending on the operating system). Further information below.
 
 ## Service 
 REST service to create and maintain new flow projects and flow packages.
@@ -52,9 +55,11 @@ All fields are not mandatory. However, it is important that `flow_package_folder
 
 **Example** (Windows Powershell):
 ```bash
- .\service_main.exe --config-file config.json
+ ./target/debug/service_main.exe
 ```
-Runs the service with a config file named "config.json". 
+
+The flag --config-file is replaced by an environment variable. You can set the variable in the `.env` file in top-level directory or directly in the `docker-compose.yml`.
+
 ### Endpoints
 
 | HTTP-Method | Endpoint URL                           | Description                                                                                       |
