@@ -68,7 +68,7 @@ content-type: application/json
                 "value": "Give me a small list comprehension example in Python."
             },
             "js_code_input_node": {
-                "value": "function main(input) { return { url: \"http://10.28.229.17:3007/v1/generate\", method: \"POST\", headers: {\"content-type\": \"application/json\"}, body: \"{ \\\"prompt\\\": \\\"\" + input + \"\\\" }\" }; }"
+                "value": "function main(input) { return { url: \"http://10.28.229.17:3006/v1/generate\", method: \"POST\", headers: {\"content-type\": \"application/json\"}, body: \"{ \\\"prompt\\\": \\\"\" + input + \"\\\" }\" }; }"
             }
         }
     }
