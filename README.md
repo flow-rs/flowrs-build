@@ -1,17 +1,35 @@
 # flowrs-build
-Tools for flow development. Following tools: 
+Tools for flow development. This repository contains the Frontend (flowrs designer) and the
+corresponding REST-API.
 
 ## Getting started
-
-1. clone the repository
+1. Clone the repository.
 2. Start both the backend service and the frontend server with docker using:
-   ```docker compose up --build```
+   ```docker compose up --build```. With docker compose you are starting also the analytics with grafana.
 3. navigate to localhost:3001 in your browser to access the frontend
-4. to test the backend, use the http requests listed in the rest.http file
+4. to test the backend, use the http requests listed in the rest.http file or use the browser ui
     - create a new project
     - compile the project
     - run the project
     - use the process endpoint to retrieve logs
+
+## Frontend
+The code for the frontend is located in `flowrs-build-designer`. It is developed using
+Nuxt and Vue.js in combination with Rete.js.
+
+### Run Frontend without docker
+1. Go into the directory `flowrs-build-designer`.
+2. Copy the file `.env.example` and rename to `.env` to set all environment variables. 
+3. Run `yarn install`. After installing all dependencies you can start the frontend with `yarn run dev`.
+
+## Backend
+The backend is located inside `flowrs-build`. It is programmed with Rust and is used as REST-API.
+
+### Run Backend without docker
+1. Run ``cargo build`` to install the dependencies.
+2. Copy the file `.env.example` and rename to `.env` to set all environment variables.
+3. Start the project with the `service_main` located in `./target/debug` with the command `target/debug/service_main
+   ` (depending on the operating system). Further information below.
 
 ## Service 
 REST service to create and maintain new flow projects and flow packages.
@@ -37,14 +55,26 @@ All fields are not mandatory. However, it is important that `flow_package_folder
 
 **Example** (Windows Powershell):
 ```bash
- .\service_main.exe --config-file config.json
+ ./target/debug/service_main.exe
 ```
-Runs the service with a config file named "config.json". 
+
+The flag --config-file is replaced by an environment variable. You can set the variable in the `.env` file in top-level directory or directly in the `docker-compose.yml`.
+
 ### Endpoints
 
-- /packages/[package_name]: GET (get description of package [package_name])  
-- /packages/: GET (get all package descriptions)
-- /projects/: GET (get all project descriptions), POST (create a new project)
+| HTTP-Method | Endpoint URL                           | Description                                                                                       |
+|-------------|----------------------------------------|---------------------------------------------------------------------------------------------------|
+| GET         | /packages/:package\_name               | Get a specific flow-package by name.                                                              |
+| GET         | /packages/                             | Get all flow-packages.                                                                            |
+| POST        | /projects/                             | Create a new project with a flow-project.json file.                                               |
+| GET         | /projects/                             | Get all projects from backend.                                                                    |
+| DELETE      | /projects/:project\_name/              | Delete a project by name.                                                                         |
+| POST        | /projects/:project\_name/compile       | Compile a project (project\_name). Specify the build\_type with a query param (wasm or cargo).    |
+| GET         | /projects/:project\_name/last\_compile | Get last compile time of the project. Specify the build\_type with a query param (wasm or cargo). |
+| POST        | /projects/:project\_name/run           | Run a specific project as a process. Specify the build\_type with a query param (wasm or cargo).  |
+| POST        | /processes/:process\_id/stop           | Stop the process with the process id returned by the run request.                                 |
+| GET         | /processes/:process\_id/logs           | Get the current log output of a process with the process id.                                      |
+
 
 
 **Example** (minimal package description)
@@ -145,3 +175,17 @@ To compile a flow for execution in the browser, execute the following steps:
 ## Testing and Code Coverage
 
 Running ```cargo build``` locally does not run any unit tests. Normally, one would use ```cargo test``` for this purpose. To easily integrate [source based code coverage](https://doc.rust-lang.org/rustc/instrument-coverage.html) in rust, you can use the **test.sh** script on *nix machines and MacOs and the **test.ps1** script on Windows machines. This runs the unit tests and generates very accurate code coverage, which is better that most coverage plugins for rust right now, as it does support correct branch coverage tracking. The scripts generate coverage data in form of an **coverage.lcov** file ([https://github.com/linux-test-project/lcov](https://github.com/linux-test-project/lcov)), which can easily be interpreted by most coverage tools. For Visual Studio Code Integration, we recommend the [Coverage Gutters](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters) Extension.
+
+## Current Problems
+Due to the fact that the live-analytics are using Grafana and an incompatible library
+for wasm, an execution with wasm is currently not possible. To enable the execution with wasm changes need to be made in the following repositories and files:
+
+### flowrs-build:
+1. Replace the line `flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "feature-project7"}` in the Cargo.toml with
+`flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "dev"}`. --> Setting the dependency to dev.
+2. Set the package dependency for new project to `{"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}` in the json file (e.g. rest.http).
+3. Set the package dependency for new project to `{"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"dev"}` in the json file (e.g. rest.http).
+
+### flowrs-std:
+1. flowrs-std / Cargo.toml: Replace the line `flowrs = {git = "https://github.com/flow-rs/flowrs", branch = "feature-project7"}` in the Cargo.toml with
+   `flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "dev"}`. --> Setting the dependency to dev.
