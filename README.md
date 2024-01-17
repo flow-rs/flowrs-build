@@ -2,16 +2,31 @@
 Tools for flow development. Following tools: 
 
 ## Getting started
-
 1. clone the repository
 2. Start both the backend service and the frontend server with docker using:
-   ```docker compose up --build```
+   ```docker compose up --build```. With docker compose you starting also the analytics with grafana.
 3. navigate to localhost:3001 in your browser to access the frontend
-4. to test the backend, use the http requests listed in the rest.http file
+4. to test the backend, use the http requests listed in the rest.http file or use the browser ui
     - create a new project
     - compile the project
     - run the project
     - use the process endpoint to retrieve logs
+
+## Frontend
+The code for the frontend is located in ```flowrs-build-designer```. It is developed using
+Nuxt and Vue.js in combination with Rete.js.
+
+### Run Frontend without docker
+Go into the directory ```flowrs-build-designer``` and run ``yarn install``. After installing all dependencies you can
+start the frontend with ``yarn run dev``.
+
+## Backend
+The backend is located inside `flowrs-build`. It is programmed with Rust and is used as REST-API.
+
+### Run Backend without docker
+1. Run ``cargo build`` to install the dependencies.
+2. Copy the file `.env.example` and rename to `.env` to set all environment variables.
+3. Start the project with the `service_main` located in `./target/debug`. Further information below.
 
 ## Service 
 REST service to create and maintain new flow projects and flow packages.
@@ -42,9 +57,19 @@ All fields are not mandatory. However, it is important that `flow_package_folder
 Runs the service with a config file named "config.json". 
 ### Endpoints
 
-- /packages/[package_name]: GET (get description of package [package_name])  
-- /packages/: GET (get all package descriptions)
-- /projects/: GET (get all project descriptions), POST (create a new project)
+| HTTP-Method | Endpoint URL                           | Description                                                                                       |
+|-------------|----------------------------------------|---------------------------------------------------------------------------------------------------|
+| GET         | /packages/:package\_name               | Get a specific flow-package by name.                                                              |
+| GET         | /packages/                             | Get all flow-packages.                                                                            |
+| POST        | /projects/                             | Create a new project with a flow-project.json file.                                               |
+| GET         | /projects/                             | Get all projects from backend.                                                                    |
+| DELETE      | /projects/:project\_name/              | Delete a project by name.                                                                         |
+| POST        | /projects/:project\_name/compile       | Compile a project (project\_name). Specify the build\_type with a query param (wasm or cargo).    |
+| GET         | /projects/:project\_name/last\_compile | Get last compile time of the project. Specify the build\_type with a query param (wasm or cargo). |
+| POST        | /projects/:project\_name/run           | Run a specific project as a process. Specify the build\_type with a query param (wasm or cargo).  |
+| POST        | /processes/:process\_id/stop           | Stop the process with the process id returned by the run request.                                 |
+| GET         | /processes/:process\_id/logs           | Get the current log output of a process with the process id.                                      |
+
 
 
 **Example** (minimal package description)
