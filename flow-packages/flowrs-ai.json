@@ -1,0 +1,219 @@
+{
+    "name":"flowrs-ai",
+    "version":"1.0.0",
+    "crates":{
+       "flowrs_ai": {
+        "types": {
+
+        },
+        "modules": {
+            "nodes": {
+               "types": {
+ 
+               },
+               "modules": {
+                 "model":{
+                     "modules":{
+                        
+                     },
+                     "types":{
+                        "ModelConfig":{
+                            "constructors":{
+                               "Json":"FromJson"
+                            }
+                         },
+                        "ModelNode":{
+                           "inputs":{
+                              "model_input":{
+                                "type":{
+                                  "Generic":{
+                                    "name":"I"
+                                  }
+                                }
+                              },
+                              "input_model_config":{
+                                 "type":{
+                                   "Type":{
+                                     "name":"flowrs-ai::nodes::model::ModelConfig"
+                                   }
+                                 }
+                              }
+                            },
+                            "outputs":{
+                              "output":{
+                                "type":{
+                                  "Generic":{
+                                    "name":"I"
+                                  }
+                                }
+                              }
+                            },
+                           "type_parameters":[
+                              "I"
+                           ],
+                           "constructors":{
+                              "New":{"NewWithObserver": {}}
+                           }
+                        }
+                     }
+                  },
+                  "image_scaling":{
+                     "modules":{
+                        
+                     },
+                     "types":{
+                        "ScalingConfig":{
+                           "constructors":{
+                              "Json":"FromJson"
+                           }
+                        },
+                        "ImageScalingNode": {
+                           "inputs":{
+                              "image":{
+                                 "type":{
+                                   "Generic":{
+                                     "name":"I"
+                                   }
+                                 }
+                              }
+                           },
+                           "outputs":{
+                              "output":{
+                                 "type":{
+                                   "Generic":{
+                                     "name":"I"
+                                   }
+                                 }
+                              }
+                           },
+                           "constructors":{
+                              "New":{"NewWithObserver": {}}
+                           }
+                        }
+                     }
+                  },
+                  "array_reshape":{
+                     "modules":{
+                        
+                     },
+                     "types":{
+                        "ArrayReshapeNodeConfig":{
+                            "constructors":{
+                               "Json":"FromJson"
+                            }
+                         },
+                        "ArrayReshapeNode":{
+                           "inputs": {
+                              "array_input":{
+                                 "type":{
+                                    "Generic":{
+                                       "name":"D"
+                                      }
+                                 }
+                              }
+                           },
+                           "outputs":{
+                              "array_output":{
+                                 "type":{
+                                   "Generic":{
+                                     "name":"D"
+                                    }
+                                 }
+                              }
+                           },
+                           "type_parameters":[
+                              "D"
+                           ],
+                           "constructors":{
+                              "New":{"NewWithObserver": {}}
+                           }
+                        }
+                     }
+                  },
+                  "normalize": {
+                     "modules": {
+
+                     },
+                     "types": {
+                        "NormalizeNode": {
+                           "inputs":{
+                              "input":{
+                                 "type":{
+                                   "Generic":{
+                                     "name":"I"
+                                   }
+                                 }
+                              }
+                           },
+                           "outputs":{
+                              "output":{
+                                 "type":{
+                                   "Generic":{
+                                     "name":"I"
+                                   }
+                                 }
+                              }
+                           },
+                           "type_parameters":[
+                              "I"
+                           ],
+                           "constructors":{
+                              "New":{"NewWithObserver": {}}
+                           }
+                        }
+                     }
+                  },
+                  "post_processing": {
+                     "modules": {
+                        "max_output_value": {
+                           "modules": {
+
+                           },
+                           "types": {
+                              "MaxOutputNode": {
+                                 "inputs": {
+                                    "output_tensor":{
+                                       "type":{
+                                         "Type":{
+                                           "name":"ndarray::ArrayD"
+                                         }
+                                       }  
+                                    },
+                                    "input_tensor":{
+                                       "type":{
+                                         "Generic":{
+                                           "name":"I"
+                                         }            
+                                       }
+                                    }
+                                 },
+                                 
+                                 "outputs": {
+                                    "output_class":{
+                                       "type":{
+                                         "Generic":{
+                                           "name":"I"
+                                         } 
+                                       }
+                                    }
+                                 },
+                                 "type_parameters":[
+                                    "I"
+                                 ],
+                                 "constructors":{
+                                    "New":{"NewWithObserver": {}}
+                                 }
+                              }
+                           }
+                        }
+                     },
+                     "types": {
+
+                     }
+                  }
+               }
+            }
+         }
+      }
+    }
+ }
