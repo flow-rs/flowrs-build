@@ -20,12 +20,11 @@ categories = ["data-structures", "wasm"]
 name = "service_main"
 path = "src/bin/service_main.rs"
 
-# Custom section for repositories to import flow-nodes from.
-# These are loaded during build using the build.rs script.
-# Including repositories here only imports the nodes.
-# To use the repos as normal dependency, please add them under
-# [dependencies] as well
-[node-dependencies]
+# Custom section for repositories to import packages from.
+# Including repositories here only imports the flow-nodes bundles as package,
+# and not the dependency itself. To use the repositories as normal dependency, 
+# please add them under [dependencies] as well
+[package-repositories]
 flowrs-std = {git = "https://github.com/flow-rs/flowrs-std", branch = "feature-project1"}
 
 [dependencies]
@@ -56,3 +55,10 @@ chrono = { version = "0.4", features = ["serde"] }
 [dev-dependencies]
 #wasm-bindgen-test = "0.3.37"
 tokio-test = "0.4.4"
+
+[build-dependencies]
+cargo_metadata = "0.15.0"
+
+# Add dependencies containing flow-nodes here. The dependency will be imported
+# as a flow-package if it contains the keyword "flow-package"
+flowrs-std = {git = "https://github.com/flow-rs/flowrs-std", branch = "mtMophima-dev"}
