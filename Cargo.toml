@@ -30,8 +30,8 @@ flowrs-std = {git = "https://github.com/flow-rs/flowrs-std", branch = "feature-p
 [dependencies]
 axum = "0.7.5"
 tokio = { version = "1.37.0", features = ["full"] }
-serde = { version = "1.0.200", features = ["derive"] }
-serde_json = "1.0.116"
+serde = { version = "1.0.201", features = ["derive"] }
+serde_json = "1.0.117"
 tower = "0.4"
 tower-http = { version = "0.5.2", features = ["cors"] }
 tracing = "0.1"
@@ -39,10 +39,10 @@ tracing-subscriber = "0.3.18"
 
 quote = "1.0"
 proc-macro2 = "1.0"
-syn = "2.0.60"
+syn = "2.0.61"
 flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "feature-project7"}
 
-anyhow = "1.0"
+anyhow = "1.0.83"
 tokio-util = {version = "0.7.11", features = ["io"] }
 mime_guess = "2.0.4"
 handlebars = "5.1.2"
@@ -57,9 +57,9 @@ chrono = { version = "0.4", features = ["serde"] }
 tokio-test = "0.4.4"
 
 [build-dependencies]
-cargo_metadata = "0.15.0"
+cargo_metadata = "0.18.1"
 syn = "2.0.61"
-quote = "1.0"
+flowrs-package = {git = "https://github.com/flow-rs/flowrs-package", branch = "main"}
 
 # Add dependencies containing flow-nodes here. The dependency will be imported
 # as a flow-package if it contains the keyword "flow-package"
