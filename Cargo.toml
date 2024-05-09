@@ -58,6 +58,8 @@ tokio-test = "0.4.4"
 
 [build-dependencies]
 cargo_metadata = "0.15.0"
+syn = "2.0.61"
+quote = "1.0"
 
 # Add dependencies containing flow-nodes here. The dependency will be imported
 # as a flow-package if it contains the keyword "flow-package"
