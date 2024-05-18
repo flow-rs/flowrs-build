@@ -23,11 +23,13 @@ fn debug(message: String) {
     }
 }
 
+#[derive(Debug)]
 pub struct FlowModuleWrapper {
     pub name: String,
     pub flow_module: FlowModule,
 }
 
+#[derive(Debug)]
 pub struct FlowTypeWrapper {
     pub name: String,
     pub flow_type: FlowType,
@@ -71,7 +73,7 @@ fn extract_flow_package_name_and_version(package_path: &Path) -> Result<FlowPack
 }
 
 // Function to extract flow-crates from cargo-package
-fn extract_flow_crates(_cargo_package: Package, package_path: &Path) -> HashMap<String, FlowCrate> {
+fn extract_flow_crates(cargo_package: Package, package_path: &Path) -> HashMap<String, FlowCrate> {
     let src_path = package_path.join("src");
     //let nodes_path = src_path.join("nodes");
     let lib_path = src_path.join("lib.rs");
@@ -80,42 +82,73 @@ fn extract_flow_crates(_cargo_package: Package, package_path: &Path) -> HashMap<
     let file_content = fs::read_to_string(lib_path).expect("Unable to read lib.rs");
     let lib_tree = syn::parse_file(&file_content).expect("Unable to parse lib.rs file content");
     let mut crates: HashMap<String, FlowCrate> = HashMap::new();
-    let mut types: HashMap<String, FlowType> = HashMap::new();
-    let mut modules: HashMap<String, FlowModule> = HashMap::new();
+    let mut sub_types: HashMap<String, FlowType> = HashMap::new();
+    let mut sub_modules: HashMap<String, FlowModule> = HashMap::new();
+
     for item in lib_tree.items {
         match item {
             Item::Mod(m) => {
                 let module_wrapper = parse_module(m, package_path);
-                modules.insert(module_wrapper.name, module_wrapper.flow_module);
+                sub_modules.insert(module_wrapper.name, module_wrapper.flow_module);
             }
             Item::Type(t) => {
                 let type_wrapper = parse_type(t);
-                types.insert(type_wrapper.name, type_wrapper.flow_type);
+                sub_types.insert(type_wrapper.name, type_wrapper.flow_type);
             }
-            _ => (), // Non-Mod Items are not relevant
+            _ => (), // Other Items are not relevant
         }
     }
 
-    HashMap::new()
+    crates.insert(
+        cargo_package.name,
+        FlowCrate {
+            types: sub_types,
+            modules: sub_modules,
+        },
+    );
+
+    crates
 }
 
 fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
     let module_name = module.ident.to_string();
     let module_file_path = path.join(module_name.clone()).with_extension("rs");
-    // try to parse module file
-    let file_content = match fs::read_to_string(module_file_path) {
-        Ok(file_content) => file_content,
-        Err(_) => return,
-    };
+
+    let file_content = fs::read_to_string(module_file_path.clone()).expect(
+        format!(
+            "Unable to read module file at {:?}",
+            module_file_path.to_str()
+        )
+        .as_str(),
+    );
     let module_tree = syn::parse_file(&file_content)
         .expect(format!("Unable to parse {}.rs file content", module_name.clone()).as_str());
+    let mut sub_modules: HashMap<String, FlowModule> = HashMap::new();
+    let mut sub_types: HashMap<String, FlowType> = HashMap::new();
+
     for item in module_tree.items {
         match item {
-            Item::Mod(m) => parse_module(m, &path.join(module_name.clone())),
-            _ => (), // Non-Mod Items are not relevant
+            Item::Mod(m) => {
+                let sub_module_wrapper = parse_module(m, &path.join(module_name.clone()));
+                sub_modules.insert(sub_module_wrapper.name, sub_module_wrapper.flow_module);
+            }
+            Item::Type(t) => {
+                let sub_type_wrapper = parse_type(t);
+                sub_types.insert(sub_type_wrapper.name, sub_type_wrapper.flow_type);
+            }
+            _ => (), // Other Items are not relevant
         }
     }
-    //debug(format!("{:?}", module_file_path));
+
+    let flow_module = FlowModule {
+        types: sub_types,
+        modules: sub_modules,
+    };
+
+    FlowModuleWrapper {
+        name: module_name,
+        flow_module: flow_module,
+    }
 }
 
 fn parse_type(flow_type: ItemType) -> FlowTypeWrapper {
