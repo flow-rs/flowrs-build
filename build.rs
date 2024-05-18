@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fs::read_to_string;
 use std::io::{self, ErrorKind};
 use std::{fs, path::Path};
 use toml::{self, Value};
@@ -31,24 +30,24 @@ fn is_flow_package(package: Package) -> bool {
 fn extract_flow_package_name_and_version(package_path: &Path) -> Result<FlowPackage, io::Error> {
     // Read Cargo.toml
     let file_path = package_path.join("Cargo.toml");
-    let file_content: String = read_to_string(file_path)?;
+    let file_content: String = fs::read_to_string(file_path)?;
     let data: Value = file_content.parse()?;
 
     // Read name and version values
     debug(format!("{:?}", data));
     let package_section = data
         .get("package")
-        .ok_or(io::Error::from(ErrorKind::NotFound))
+        .ok_or(io::Error::from(ErrorKind::InvalidData))
         .unwrap();
     let name = package_section
         .get("name")
         .and_then(Value::as_str)
-        .ok_or(io::Error::from(ErrorKind::NotFound))
+        .ok_or(io::Error::from(ErrorKind::InvalidData))
         .unwrap();
     let version = package_section
         .get("version")
         .and_then(Value::as_str)
-        .ok_or(io::Error::from(ErrorKind::NotFound))
+        .ok_or(io::Error::from(ErrorKind::InvalidData))
         .unwrap();
 
     // Set name and version values and return flow package
