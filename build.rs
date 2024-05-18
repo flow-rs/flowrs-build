@@ -12,7 +12,15 @@ use flowrs_package::flow_package::package::Crate as FlowCrate;
 use flowrs_package::flow_package::package::Package as FlowPackage;
 //use flowrs_package::flow_package::package_manager::PackageManager as FlowPackageManager;
 
-const DEBUG: &str = "cargo::warning= [DEBUG]: ";
+const DEBUG_STR: &str = "cargo::warning= [DEBUG]:";
+
+fn debug(message: String) {
+    let debug = true;
+
+    if debug {
+        println!("{} {}", DEBUG_STR, message)
+    }
+}
 
 // Function to determine if a Cargo Package is a flow-package
 fn is_flow_package(package: Package) -> bool {
@@ -27,7 +35,7 @@ fn extract_flow_package_name_and_version(package_path: &Path) -> Result<FlowPack
     let data: Value = file_content.parse()?;
 
     // Read name and version values
-    println!("{}{:?}", DEBUG, data);
+    debug(format!("{:?}", data));
     let package_section = data
         .get("package")
         .ok_or(io::Error::from(ErrorKind::NotFound))
@@ -88,8 +96,6 @@ fn extract_flow_crates(_cargo_package: Package, package_path: &Path) -> HashMap<
 fn parse_module(_module: ItemMod) {}
 
 fn main() {
-    let debug: bool = true;
-
     // Fetch Metadata from the cargo.toml
     let metadata = MetadataCommand::new()
         .exec()
@@ -99,13 +105,15 @@ fn main() {
         // Filter for dependencies containing nodes
         if is_flow_package(crate_package.clone()) {
             let package_path = Path::new(&crate_package.manifest_path).parent().unwrap();
-            if debug {
-                println!("{}PACKAGE-PATH={}", DEBUG, package_path.to_str().unwrap(),);
-            }
+            debug(package_path.to_str().unwrap().to_string());
 
             // Extract Node and Flow-Package information
             let mut flow_package: FlowPackage =
                 extract_flow_package_name_and_version(package_path).unwrap();
+            debug(format!(
+                "Flow-Package [name={}, version={}]",
+                flow_package.name, flow_package.version
+            ));
             flow_package.crates = extract_flow_crates(crate_package.clone(), package_path);
         }
     }
