@@ -74,17 +74,19 @@ fn extract_flow_package_name_and_version(package_path: &Path) -> Result<FlowPack
 
 // Function to extract flow-crates from cargo-package
 fn extract_flow_crates(cargo_package: Package, package_path: &Path) -> HashMap<String, FlowCrate> {
+    // Read file
     let src_path = package_path.join("src");
-    //let nodes_path = src_path.join("nodes");
     let lib_path = src_path.join("lib.rs");
 
-    // Parse lib.rs to get the module structure
     let file_content = fs::read_to_string(lib_path).expect("Unable to read lib.rs");
     let lib_tree = syn::parse_file(&file_content).expect("Unable to parse lib.rs file content");
+
+    // Define necessary output variables
     let mut crates: HashMap<String, FlowCrate> = HashMap::new();
     let mut sub_types: HashMap<String, FlowType> = HashMap::new();
     let mut sub_modules: HashMap<String, FlowModule> = HashMap::new();
 
+    // Parse lib.rs to get the module structure
     for item in lib_tree.items {
         match item {
             Item::Mod(m) => {
@@ -99,6 +101,7 @@ fn extract_flow_crates(cargo_package: Package, package_path: &Path) -> HashMap<S
         }
     }
 
+    // Return result
     crates.insert(
         cargo_package.name,
         FlowCrate {
@@ -111,9 +114,13 @@ fn extract_flow_crates(cargo_package: Package, package_path: &Path) -> HashMap<S
 }
 
 fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
+    // Define necessary output variables
     let module_name = module.ident.to_string();
-    let module_file_path = path.join(module_name.clone()).with_extension("rs");
+    let mut sub_modules: HashMap<String, FlowModule> = HashMap::new();
+    let mut sub_types: HashMap<String, FlowType> = HashMap::new();
 
+    // Read file
+    let module_file_path = path.join(module_name.clone()).with_extension("rs");
     let file_content = fs::read_to_string(module_file_path.clone()).expect(
         format!(
             "Unable to read module file at {:?}",
@@ -123,9 +130,8 @@ fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
     );
     let module_tree = syn::parse_file(&file_content)
         .expect(format!("Unable to parse {}.rs file content", module_name.clone()).as_str());
-    let mut sub_modules: HashMap<String, FlowModule> = HashMap::new();
-    let mut sub_types: HashMap<String, FlowType> = HashMap::new();
 
+    // Parse module syntax structure
     for item in module_tree.items {
         match item {
             Item::Mod(m) => {
@@ -140,6 +146,7 @@ fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
         }
     }
 
+    // Return result
     let flow_module = FlowModule {
         types: sub_types,
         modules: sub_modules,
@@ -151,8 +158,28 @@ fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
     }
 }
 
-fn parse_type(flow_type: ItemType) -> FlowTypeWrapper {
+fn parse_type(itemtype: ItemType) -> FlowTypeWrapper {
+    // Define necessary output variables
+    let type_name = itemtype.ident.to_string();
+    let inputs = None;
+    let outputs = None;
+    let type_parameters = None;
+    let constructors = HashMap::new();
+
+    // Parse type syntax structure
     todo!();
+
+    // Return result
+    let flow_type = FlowType {
+        inputs: inputs,
+        outputs: outputs,
+        type_parameters: type_parameters,
+        constructors: constructors,
+    };
+    FlowTypeWrapper {
+        name: type_name,
+        flow_type: flow_type,
+    }
 }
 
 fn main() {
