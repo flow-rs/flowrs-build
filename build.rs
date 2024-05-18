@@ -5,7 +5,7 @@ use toml::{self, Value};
 
 use cargo_metadata::{MetadataCommand, Package};
 
-use syn::{Item, ItemMod, ItemType};
+use syn::{Item, ItemMod, ItemStruct, ItemType};
 
 use flowrs_package::flow_package::package::Crate as FlowCrate;
 use flowrs_package::flow_package::package::Module as FlowModule;
@@ -48,7 +48,6 @@ fn extract_flow_package_name_and_version(package_path: &Path) -> Result<FlowPack
     let data: Value = file_content.parse()?;
 
     // Read name and version values
-    debug(format!("{:?}", data));
     let package_section = data
         .get("package")
         .ok_or(io::Error::from(ErrorKind::InvalidData))
@@ -90,10 +89,12 @@ fn extract_flow_crates(cargo_package: Package, package_path: &Path) -> HashMap<S
     for item in lib_tree.items {
         match item {
             Item::Mod(m) => {
-                let module_wrapper = parse_module(m, package_path);
+                debug(format!("PARSING MODULE [{:?}]", m.clone()));
+                let module_wrapper = parse_module(m, &src_path);
                 sub_modules.insert(module_wrapper.name, module_wrapper.flow_module);
             }
-            Item::Type(t) => {
+            Item::Struct(t) => {
+                debug(format!("PARSING TYPE[{:?}]", t.clone()));
                 let type_wrapper = parse_type(t);
                 sub_types.insert(type_wrapper.name, type_wrapper.flow_type);
             }
@@ -135,10 +136,12 @@ fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
     for item in module_tree.items {
         match item {
             Item::Mod(m) => {
+                debug(format!("PARSING SUBMODULE [{:?}]", m.clone()));
                 let sub_module_wrapper = parse_module(m, &path.join(module_name.clone()));
                 sub_modules.insert(sub_module_wrapper.name, sub_module_wrapper.flow_module);
             }
-            Item::Type(t) => {
+            Item::Struct(t) => {
+                debug(format!("PARSING SUBTYPE[{:?}]", t.clone()));
                 let sub_type_wrapper = parse_type(t);
                 sub_types.insert(sub_type_wrapper.name, sub_type_wrapper.flow_type);
             }
@@ -158,7 +161,7 @@ fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
     }
 }
 
-fn parse_type(itemtype: ItemType) -> FlowTypeWrapper {
+fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
     // Define necessary output variables
     let type_name = itemtype.ident.to_string();
     let inputs = None;
@@ -167,7 +170,10 @@ fn parse_type(itemtype: ItemType) -> FlowTypeWrapper {
     let constructors = HashMap::new();
 
     // Parse type syntax structure
-    todo!();
+    debug(format!(
+        "TYPE: [type_name: {}, type_structure: {:?}",
+        type_name, itemtype
+    ));
 
     // Return result
     let flow_type = FlowType {
@@ -192,16 +198,18 @@ fn main() {
         // Filter for dependencies containing nodes
         if is_flow_package(crate_package.clone()) {
             let package_path = Path::new(&crate_package.manifest_path).parent().unwrap();
-            debug(package_path.to_str().unwrap().to_string());
-
             // Extract Node and Flow-Package information
             let mut flow_package: FlowPackage =
                 extract_flow_package_name_and_version(package_path).unwrap();
             debug(format!(
-                "Flow-Package [name={}, version={}]",
-                flow_package.name, flow_package.version
+                "PARSING FLOW-PACKAGE [name={}, version={}, path={}]",
+                flow_package.name,
+                flow_package.version,
+                package_path.to_str().unwrap().to_string()
             ));
             flow_package.crates = extract_flow_crates(crate_package.clone(), package_path);
+            let package_json = serde_json::to_string(&flow_package);
+            debug(package_json.unwrap());
         }
     }
 }
