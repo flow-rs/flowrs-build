@@ -20,13 +20,6 @@ categories = ["data-structures", "wasm"]
 name = "service_main"
 path = "src/bin/service_main.rs"
 
-# Custom section for repositories to import packages from.
-# Including repositories here only imports the flow-nodes bundles as package,
-# and not the dependency itself. To use the repositories as normal dependency, 
-# please add them under [dependencies] as well
-[package-repositories]
-flowrs-std = {git = "https://github.com/flow-rs/flowrs-std", branch = "feature-project1"}
-
 [dependencies]
 axum = "0.7.5"
 tokio = { version = "1.37.0", features = ["full"] }
@@ -59,6 +52,7 @@ tokio-test = "0.4.4"
 [build-dependencies]
 cargo_metadata = "0.18.1"
 syn = "2.0.61"
+toml = "0.5"
 flowrs-package = {git = "https://github.com/flow-rs/flowrs-package", branch = "main"}
 
 # Add dependencies containing flow-nodes here. The dependency will be imported
