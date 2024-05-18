@@ -66,33 +66,22 @@ fn extract_flow_crates(_cargo_package: Package, package_path: &Path) -> HashMap<
 
     // Parse lib.rs to get the module structure
     let file_content = fs::read_to_string(lib_path).expect("Unable to read lib.rs");
-    let syntax_tree = syn::parse_file(&file_content).expect("Unable to parse lib.rs file content");
-    for item in syntax_tree.items {
+    let lib_tree = syn::parse_file(&file_content).expect("Unable to parse lib.rs file content");
+    for item in lib_tree.items {
         match item {
-            Item::Mod(m) => parse_module(m),
-            Item::Const(_) => (),
-            Item::Enum(_) => (),
-            Item::ExternCrate(_) => (),
-            Item::Fn(_) => (),
-            Item::ForeignMod(_) => (),
-            Item::Impl(_) => (),
-            Item::Macro(_) => (),
-            Item::Static(_) => (),
-            Item::Struct(_) => (),
-            Item::Trait(_) => (),
-            Item::TraitAlias(_) => (),
-            Item::Type(_) => (),
-            Item::Union(_) => (),
-            Item::Use(_) => (),
-            Item::Verbatim(_) => (),
-            _ => (),
+            Item::Mod(m) => parse_module(m, package_path),
+            _ => (), // Non-Mod Items are not relevant
         }
     }
 
     HashMap::new()
 }
 
-fn parse_module(_module: ItemMod) {}
+fn parse_module(module: ItemMod, path: &Path) {
+    let module_name = module.ident.to_string();
+    let module_file_path = path.join(module_name).with_extension("rs");
+    debug(format!("{:?}", module_file_path));
+}
 
 fn main() {
     // Fetch Metadata from the cargo.toml
