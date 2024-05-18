@@ -21,7 +21,7 @@ fn is_flow_package(package: Package) -> bool {
 
 // Crates new FlowPackage and adds extracted name and version from crate package
 fn extract_flow_package_name_and_version(package_path: &Path) -> Result<FlowPackage, io::Error> {
-    // Read Cargo.toml into HashMap
+    // Read Cargo.toml
     let file_path = package_path.join("Cargo.toml");
     let file_content: String = read_to_string(file_path)?;
     let data: Value = file_content.parse()?;
