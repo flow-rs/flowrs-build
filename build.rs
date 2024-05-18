@@ -5,10 +5,12 @@ use toml::{self, Value};
 
 use cargo_metadata::{MetadataCommand, Package};
 
-use syn::{Item, ItemMod};
+use syn::{Item, ItemMod, ItemType};
 
 use flowrs_package::flow_package::package::Crate as FlowCrate;
+use flowrs_package::flow_package::package::Module as FlowModule;
 use flowrs_package::flow_package::package::Package as FlowPackage;
+use flowrs_package::flow_package::package::Type as FlowType;
 //use flowrs_package::flow_package::package_manager::PackageManager as FlowPackageManager;
 
 const DEBUG_STR: &str = "cargo::warning= [DEBUG]:";
@@ -19,6 +21,16 @@ fn debug(message: String) {
     if debug {
         println!("{} {}", DEBUG_STR, message)
     }
+}
+
+pub struct FlowModuleWrapper {
+    pub name: String,
+    pub flow_module: FlowModule,
+}
+
+pub struct FlowTypeWrapper {
+    pub name: String,
+    pub flow_type: FlowType,
 }
 
 // Function to determine if a Cargo Package is a flow-package
@@ -67,9 +79,19 @@ fn extract_flow_crates(_cargo_package: Package, package_path: &Path) -> HashMap<
     // Parse lib.rs to get the module structure
     let file_content = fs::read_to_string(lib_path).expect("Unable to read lib.rs");
     let lib_tree = syn::parse_file(&file_content).expect("Unable to parse lib.rs file content");
+    let mut crates: HashMap<String, FlowCrate> = HashMap::new();
+    let mut types: HashMap<String, FlowType> = HashMap::new();
+    let mut modules: HashMap<String, FlowModule> = HashMap::new();
     for item in lib_tree.items {
         match item {
-            Item::Mod(m) => parse_module(m, package_path),
+            Item::Mod(m) => {
+                let module_wrapper = parse_module(m, package_path);
+                modules.insert(module_wrapper.name, module_wrapper.flow_module);
+            }
+            Item::Type(t) => {
+                let type_wrapper = parse_type(t);
+                types.insert(type_wrapper.name, type_wrapper.flow_type);
+            }
             _ => (), // Non-Mod Items are not relevant
         }
     }
@@ -77,10 +99,27 @@ fn extract_flow_crates(_cargo_package: Package, package_path: &Path) -> HashMap<
     HashMap::new()
 }
 
-fn parse_module(module: ItemMod, path: &Path) {
+fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
     let module_name = module.ident.to_string();
-    let module_file_path = path.join(module_name).with_extension("rs");
-    debug(format!("{:?}", module_file_path));
+    let module_file_path = path.join(module_name.clone()).with_extension("rs");
+    // try to parse module file
+    let file_content = match fs::read_to_string(module_file_path) {
+        Ok(file_content) => file_content,
+        Err(_) => return,
+    };
+    let module_tree = syn::parse_file(&file_content)
+        .expect(format!("Unable to parse {}.rs file content", module_name.clone()).as_str());
+    for item in module_tree.items {
+        match item {
+            Item::Mod(m) => parse_module(m, &path.join(module_name.clone())),
+            _ => (), // Non-Mod Items are not relevant
+        }
+    }
+    //debug(format!("{:?}", module_file_path));
+}
+
+fn parse_type(flow_type: ItemType) -> FlowTypeWrapper {
+    todo!();
 }
 
 fn main() {
