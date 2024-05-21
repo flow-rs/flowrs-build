@@ -5,12 +5,12 @@ use toml::{self, Value};
 
 use cargo_metadata::{MetadataCommand, Package};
 
-use syn::{Item, ItemMod, ItemStruct, ItemType};
+use syn::{Item, ItemMod, ItemStruct, ItemType, Type};
 
-use flowrs_package::flow_package::package::Crate as FlowCrate;
 use flowrs_package::flow_package::package::Module as FlowModule;
 use flowrs_package::flow_package::package::Package as FlowPackage;
 use flowrs_package::flow_package::package::Type as FlowType;
+use flowrs_package::flow_package::package::{Crate as FlowCrate, Input};
 //use flowrs_package::flow_package::package_manager::PackageManager as FlowPackageManager;
 
 const DEBUG_STR: &str = "cargo::warning= [DEBUG]:";
@@ -174,6 +174,21 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
         "TYPE: [type_name: {}, type_structure: {:?}",
         type_name, itemtype
     ));
+
+    let fields = itemtype.fields;
+    let mut input_fields: HashMap<String, Input> = HashMap::new();
+    for field in fields {
+        let field_attrs = field.attrs;
+        let field_mutability = field.mutability;
+        let field_type = field.ty;
+
+        for attr in field_attrs {
+            if attr.path().is_ident("input") {
+                // field is correctly identified as input field
+                Type::Path::input = Input {}
+            }
+        }
+    }
 
     // Return result
     let flow_type = FlowType {
