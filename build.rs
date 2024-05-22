@@ -5,12 +5,12 @@ use toml::{self, Value};
 
 use cargo_metadata::{MetadataCommand, Package};
 
-use syn::{Item, ItemMod, ItemStruct, ItemType, Type};
+use syn::{GenericArgument, Ident, Item, ItemMod, ItemStruct, ItemType, PathArguments, Type};
 
-use flowrs_package::flow_package::package::Module as FlowModule;
 use flowrs_package::flow_package::package::Package as FlowPackage;
 use flowrs_package::flow_package::package::Type as FlowType;
 use flowrs_package::flow_package::package::{Crate as FlowCrate, Input};
+use flowrs_package::flow_package::package::{Module as FlowModule, TypeDescription};
 //use flowrs_package::flow_package::package_manager::PackageManager as FlowPackageManager;
 
 const DEBUG_STR: &str = "cargo::warning= [DEBUG]:";
@@ -161,10 +161,37 @@ fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
     }
 }
 
+// See https://stackoverflow.com/a/56264023
+fn extract_type_path(ty: &syn::Type) -> Option<&syn::Path> {
+    match *ty {
+        syn::Type::Path(ref typepath) if typepath.qself.is_none() => Some(&typepath.path),
+        _ => None,
+    }
+}
+
+fn extract_generic(path: &syn::Path) -> Option<syn::Ident> {
+    // Generic segment should be the last segment of the syn::Path
+    if let Some(last_segment) = path.segments.last() {
+        if let PathArguments::AngleBracketed(ref pathArg) = last_segment.arguments {
+            for arg in pathArg.args.iter() {
+                if let GenericArgument::Type(Type::Path(ref generic_type)) = arg {
+                    debug(format!(
+                        "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO{:?}",
+                        generic_type
+                    ));
+                    //return Some(last_segment.ident.clone());
+                    return Some(generic_type.path.segments.last().unwrap().ident.clone());
+                }
+            }
+        }
+    }
+    None
+}
+
 fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
     // Define necessary output variables
     let type_name = itemtype.ident.to_string();
-    let inputs = None;
+    let mut inputs: HashMap<String, Input> = HashMap::new();
     let outputs = None;
     let type_parameters = None;
     let constructors = HashMap::new();
@@ -181,18 +208,40 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
         let field_attrs = field.attrs;
         let field_mutability = field.mutability;
         let field_type = field.ty;
+        let field_name = field.ident.unwrap().to_string();
+
+        // debug(format!(
+        //     "OLAKSJDLKAJSLKDKLÖASD{:?}",
+        //     extract_type_path(&field_type).unwrap().to_owned()
+        // ));
 
         for attr in field_attrs {
             if attr.path().is_ident("input") {
-                // field is correctly identified as input field
-                Type::Path::input = Input {}
+                // Field is correctly identified as input field
+                if let Some(generic_type) =
+                    extract_type_path(&field_type).and_then(|path| extract_generic(path))
+                {
+                    inputs.insert(
+                        field_name.clone(),
+                        Input {
+                            input_type: TypeDescription::Generic {
+                                name: generic_type.to_string(),
+                                type_parameters: None,
+                            },
+                        },
+                    );
+                    debug(format!(
+                        "Input field: {} with type: {}",
+                        field_name, generic_type
+                    ));
+                }
             }
         }
     }
 
     // Return result
     let flow_type = FlowType {
-        inputs: inputs,
+        inputs: Some(inputs),
         outputs: outputs,
         type_parameters: type_parameters,
         constructors: constructors,
