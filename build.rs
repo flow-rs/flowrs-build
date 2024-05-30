@@ -5,12 +5,16 @@ use toml::{self, Value};
 
 use cargo_metadata::{MetadataCommand, Package};
 
-use syn::{GenericArgument, Ident, Item, ItemMod, ItemStruct, ItemType, PathArguments, Type};
+use syn::{
+    GenericArgument, GenericParam, Ident, Item, ItemMod, ItemStruct, ItemType, PathArguments,
+    PredicateType, Type, TypeParamBound, WhereClause,
+};
 
+use flowrs_package::flow_package::package::Crate as FlowCrate;
+use flowrs_package::flow_package::package::Module as FlowModule;
+use flowrs_package::flow_package::package::Package as FlowPackage;
 use flowrs_package::flow_package::package::Type as FlowType;
-use flowrs_package::flow_package::package::{Crate as FlowCrate, Input};
-use flowrs_package::flow_package::package::{Module as FlowModule, TypeDescription};
-use flowrs_package::flow_package::package::{Output, Package as FlowPackage};
+use flowrs_package::flow_package::package::{Input, Output, TypeDescription, TypeParameter};
 //use flowrs_package::flow_package::package_manager::PackageManager as FlowPackageManager;
 
 const DEBUG_STR: &str = "cargo::warning= [DEBUG]:";
@@ -188,12 +192,64 @@ fn extract_generic(path: &syn::Path) -> Option<syn::Ident> {
     None
 }
 
+fn extract_matching_constraints(
+    all_constraints: Option<WhereClause>,
+    type_ident: Ident,
+) -> Vec<String> {
+    let mut constraints: Vec<String> = Vec::new();
+    if let Some(where_clause) = all_constraints {
+        constraints = where_clause
+            .predicates
+            .iter()
+            // We do not allow lifetime parameters or other where clause types
+            .filter_map(|predicate| {
+                if let syn::WherePredicate::Type(pred_ty) = predicate {
+                    if let Type::Path(path) = &pred_ty.bounded_ty {
+                        if let Some(ident) = path
+                            .path
+                            .segments
+                            .last()
+                            .map(|segment| segment.ident.clone())
+                        {
+                            if type_ident.eq(&ident) {
+                                Some(pred_ty.bounds.clone())
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .map(|bounds| {
+                bounds
+                    .iter()
+                    .filter_map(|type_param_bound| {
+                        if let TypeParamBound::Trait(trait_bound) = type_param_bound {
+                            trait_bound.path.get_ident()
+                        } else {
+                            None
+                        }
+                    })
+                    .map(|ident| ident.to_string())
+                    .collect()
+            })
+            .collect();
+    }
+    constraints
+}
+
 fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
     // Define necessary output variables
     let type_name = itemtype.ident.to_string();
     let mut inputs: HashMap<String, Input> = HashMap::new();
     let mut outputs: HashMap<String, Output> = HashMap::new();
-    let type_parameters = None;
+    let mut type_parameters: Vec<TypeParameter> = Vec::new();
     let constructors = HashMap::new();
 
     // Parse type syntax structure
@@ -201,6 +257,24 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
         "TYPE: [type_name: {}, type_structure: {:?}",
         type_name, itemtype
     ));
+
+    // Extract generic parameter and where clause constraints
+    let all_constraints = itemtype.generics.where_clause;
+    type_parameters = itemtype
+        .generics
+        .params
+        .iter()
+        .filter_map(|param| match param {
+            GenericParam::Type(ty) => Some(TypeParameter {
+                name: ty.ident.to_string(),
+                constraints: extract_matching_constraints(
+                    all_constraints.clone(),
+                    ty.ident.clone(),
+                ),
+            }),
+            _ => None,
+        })
+        .collect();
 
     let fields = itemtype.fields;
     //let mut input_fields: HashMap<String, Input> = HashMap::new();
@@ -263,7 +337,7 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
     let flow_type = FlowType {
         inputs: Some(inputs),
         outputs: Some(outputs),
-        type_parameters: type_parameters,
+        type_parameters: Some(type_parameters),
         constructors: constructors,
     };
     FlowTypeWrapper {
