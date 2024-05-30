@@ -7,10 +7,10 @@ use cargo_metadata::{MetadataCommand, Package};
 
 use syn::{GenericArgument, Ident, Item, ItemMod, ItemStruct, ItemType, PathArguments, Type};
 
-use flowrs_package::flow_package::package::Package as FlowPackage;
 use flowrs_package::flow_package::package::Type as FlowType;
 use flowrs_package::flow_package::package::{Crate as FlowCrate, Input};
 use flowrs_package::flow_package::package::{Module as FlowModule, TypeDescription};
+use flowrs_package::flow_package::package::{Output, Package as FlowPackage};
 //use flowrs_package::flow_package::package_manager::PackageManager as FlowPackageManager;
 
 const DEBUG_STR: &str = "cargo::warning= [DEBUG]:";
@@ -192,7 +192,7 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
     // Define necessary output variables
     let type_name = itemtype.ident.to_string();
     let mut inputs: HashMap<String, Input> = HashMap::new();
-    let outputs = None;
+    let mut outputs: HashMap<String, Output> = HashMap::new();
     let type_parameters = None;
     let constructors = HashMap::new();
 
@@ -203,10 +203,10 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
     ));
 
     let fields = itemtype.fields;
-    let mut input_fields: HashMap<String, Input> = HashMap::new();
+    //let mut input_fields: HashMap<String, Input> = HashMap::new();
     for field in fields {
         let field_attrs = field.attrs;
-        let field_mutability = field.mutability;
+        //let field_mutability = field.mutability;
         let field_type = field.ty;
         let field_name = field.ident.unwrap().to_string();
 
@@ -216,6 +216,7 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
         // ));
 
         for attr in field_attrs {
+            // Check for #[input] and #[output] other fields are not relevant
             if attr.path().is_ident("input") {
                 // Field is correctly identified as input field
                 if let Some(generic_type) =
@@ -235,6 +236,25 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
                         field_name, generic_type
                     ));
                 }
+            } else if attr.path().is_ident("output") {
+                // Field is correctly identified as output field
+                if let Some(generic_type) =
+                    extract_type_path(&field_type).and_then(|path| extract_generic(path))
+                {
+                    outputs.insert(
+                        field_name.clone(),
+                        Output {
+                            output_type: TypeDescription::Generic {
+                                name: generic_type.to_string(),
+                                type_parameters: None,
+                            },
+                        },
+                    );
+                    debug(format!(
+                        "Output field: {} with type: {}",
+                        field_name, generic_type
+                    ));
+                }
             }
         }
     }
@@ -242,7 +262,7 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
     // Return result
     let flow_type = FlowType {
         inputs: Some(inputs),
-        outputs: outputs,
+        outputs: Some(outputs),
         type_parameters: type_parameters,
         constructors: constructors,
     };
