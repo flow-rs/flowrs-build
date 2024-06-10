@@ -398,13 +398,13 @@ fn extract_type_path(ty: &syn::Type) -> Option<&syn::Path> {
     }
 }
 
-fn extract_generic(path: &syn::Path) -> Option<syn::Ident> {
+fn extract_generic(path: &syn::Path) -> Option<syn::Path> {
     // Generic segment should be the last segment of the syn::Path
     if let Some(last_segment) = path.segments.last() {
-        if let PathArguments::AngleBracketed(ref pathArg) = last_segment.arguments {
-            for arg in pathArg.args.iter() {
+        if let PathArguments::AngleBracketed(ref path_arg) = last_segment.arguments {
+            for arg in path_arg.args.iter() {
                 if let GenericArgument::Type(Type::Path(ref generic_type)) = arg {
-                    return Some(generic_type.path.segments.last().unwrap().ident.clone());
+                    return Some(generic_type.path.clone());
                 }
             }
         }
@@ -496,6 +496,8 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
         })
         .collect();
 
+    let generics: Vec<String> = type_parameters.iter().map(|tp| tp.name.clone()).collect();
+
     // Extract inputs and outputs
     let fields = itemtype.fields;
     for field in fields {
@@ -513,18 +515,38 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
             // Check for #[input] and #[output] other fields are not relevant
             if attr.path().is_ident("input") {
                 // Field is correctly identified as input field
-                if let Some(generic_type) =
+                if let Some(generic_path) =
                     extract_type_path(&field_type).and_then(|path| extract_generic(path))
                 {
-                    inputs.insert(
-                        field_name.clone(),
-                        Input {
-                            input_type: TypeDescription::Generic {
-                                name: generic_type.to_string(),
-                                type_parameters: None,
+                    let generic_type = generic_path.segments.last().unwrap().ident.to_string();
+                    if generics.contains(&generic_type.to_string()) {
+                        inputs.insert(
+                            field_name.clone(),
+                            Input {
+                                input_type: TypeDescription::Generic {
+                                    name: generic_type.to_string(),
+                                    type_parameters: None,
+                                },
                             },
-                        },
-                    );
+                        );
+                    } else {
+                        let full_path: String = (*generic_path
+                            .segments
+                            .iter()
+                            .map(|segment| segment.ident.to_string())
+                            .collect::<Vec<String>>()
+                            .join("::"))
+                        .to_string();
+                        inputs.insert(
+                            field_name.clone(),
+                            Input {
+                                input_type: TypeDescription::Type {
+                                    name: full_path,
+                                    type_parameters: None, // TODO: Extract generics
+                                },
+                            },
+                        );
+                    }
                     // debug(format!(
                     //     "Input field: {} with type: {}",
                     //     field_name, generic_type
@@ -532,18 +554,38 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
                 }
             } else if attr.path().is_ident("output") {
                 // Field is correctly identified as output field
-                if let Some(generic_type) =
+                if let Some(generic_path) =
                     extract_type_path(&field_type).and_then(|path| extract_generic(path))
                 {
-                    outputs.insert(
-                        field_name.clone(),
-                        Output {
-                            output_type: TypeDescription::Generic {
-                                name: generic_type.to_string(),
-                                type_parameters: None,
+                    let generic_type = generic_path.segments.last().unwrap().ident.to_string();
+                    if generics.contains(&generic_type.to_string()) {
+                        outputs.insert(
+                            field_name.clone(),
+                            Output {
+                                output_type: TypeDescription::Generic {
+                                    name: generic_type.to_string(),
+                                    type_parameters: None,
+                                },
                             },
-                        },
-                    );
+                        );
+                    } else {
+                        let full_path: String = (*generic_path
+                            .segments
+                            .iter()
+                            .map(|segment| segment.ident.to_string())
+                            .collect::<Vec<String>>()
+                            .join("::"))
+                        .to_string();
+                        outputs.insert(
+                            field_name.clone(),
+                            Output {
+                                output_type: TypeDescription::Type {
+                                    name: full_path,
+                                    type_parameters: None, // TODO: Extract generics
+                                },
+                            },
+                        );
+                    }
                     // debug(format!(
                     //     "Output field: {} with type: {}",
                     //     field_name, generic_type
