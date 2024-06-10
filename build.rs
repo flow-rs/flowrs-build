@@ -1,19 +1,23 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, LinkedList};
 use std::io::{self, ErrorKind};
+use std::num::NonZeroUsize;
 use std::{fs, path::Path};
+use syn::punctuated::Punctuated;
+use syn::token::Impl;
 use toml::{self, Value};
 
 use cargo_metadata::{MetadataCommand, Package};
 
 use syn::{
-    GenericArgument, GenericParam, Ident, Item, ItemMod, ItemStruct, ItemType, PathArguments,
-    PredicateType, Type, TypeParamBound, WhereClause,
+    AngleBracketedGenericArguments, FnArg, GenericArgument, GenericParam, Ident, Item, ItemImpl,
+    ItemMod, ItemStruct, ItemType, PathArguments, PathSegment, PredicateType, Type, TypeParamBound,
+    WhereClause,
 };
 
-use flowrs_package::flow_package::package::Crate as FlowCrate;
-use flowrs_package::flow_package::package::Module as FlowModule;
-use flowrs_package::flow_package::package::Package as FlowPackage;
-use flowrs_package::flow_package::package::Type as FlowType;
+use flowrs_package::flow_package::package::{Argument, Module as FlowModule};
+use flowrs_package::flow_package::package::{ArgumentConstruction, Type as FlowType};
+use flowrs_package::flow_package::package::{ArgumentPassing, Package as FlowPackage};
+use flowrs_package::flow_package::package::{Constructor, Crate as FlowCrate};
 use flowrs_package::flow_package::package::{Input, Output, TypeDescription, TypeParameter};
 //use flowrs_package::flow_package::package_manager::PackageManager as FlowPackageManager;
 
@@ -118,11 +122,225 @@ fn extract_flow_crates(cargo_package: Package, package_path: &Path) -> HashMap<S
     crates
 }
 
+fn input_to_parameter_list(input: &FnArg) -> Vec<(String, String, ArgumentPassing)> {
+    let mut parameter_list: Vec<(String, String, ArgumentPassing)> = Vec::new();
+    if let FnArg::Typed(pat_type) = input {
+        if let syn::Pat::Ident(parameter_ident) = *pat_type.clone().pat {
+            if let Type::Path(parameter_path) = *pat_type.ty.clone() {
+                let syn::Path { segments, .. } = parameter_path.path.clone();
+                let parameter_name = parameter_ident.ident.to_string();
+                let parameter_type = segments[0].ident.to_string();
+                debug(format!(
+                    "ssssssssssssssssssssssssssssssssssssssssssssssssssssss{:?},{:?}, {:?}",
+                    parameter_type, parameter_name, parameter_path
+                ));
+                let parameter_passing: ArgumentPassing;
+                if parameter_ident.by_ref.is_some() && parameter_ident.mutability.is_some() {
+                    parameter_passing = ArgumentPassing::MutableReference;
+                } else if parameter_ident.by_ref.is_some() {
+                    parameter_passing = ArgumentPassing::Reference;
+                } else {
+                    parameter_passing = ArgumentPassing::Clone;
+                }
+                // No way to identify move?
+                parameter_list.push((parameter_type, parameter_name, parameter_passing));
+            }
+        }
+    }
+    return parameter_list;
+}
+
+fn convert_parameters_to_arguments(
+    parameters: Vec<(String, String, ArgumentPassing)>,
+    type_parameters: Option<Vec<TypeParameter>>,
+) -> Vec<Argument> {
+    return parameters
+        .iter()
+        .map(|(p_value, p_name, p_passing)| -> Argument {
+            if p_name == "change_observer" {
+                return Argument::new_change_observer_arg();
+            } else if p_name == "context" {
+                return Argument::new_context_arg();
+            } else {
+                let type_description: TypeDescription;
+                let mut passing = p_passing.clone();
+                let mut construction = ArgumentConstruction::ExistingObject();
+                if type_parameters.is_some() {
+                    let generics: Vec<String> = type_parameters
+                        .clone()
+                        .unwrap()
+                        .iter()
+                        .map(|tp| tp.name.clone())
+                        .collect();
+
+                    if generics.contains(p_value) {
+                        type_description = TypeDescription::Generic {
+                            name: p_value.to_string(),
+                            type_parameters: None, // Currently no support for nested generics
+                        };
+                        passing = ArgumentPassing::Move;
+                        construction = ArgumentConstruction::Constructor("Json".to_string());
+                        debug(format!(
+                            "GENERICS:{:?}, DESC:{:?},",
+                            generics, type_description,
+                        ));
+                    } else {
+                        type_description = TypeDescription::Type {
+                            name: p_value.to_string(),
+                            type_parameters: None, // Currently no support for nested generics
+                        };
+                    }
+                } else {
+                    type_description = TypeDescription::Type {
+                        name: p_value.to_string(),
+                        type_parameters: None, // Currently no support for nested generics
+                    };
+                }
+                return Argument {
+                    arg_type: Box::new(type_description),
+                    name: p_name.to_string(),
+                    passing: passing,
+                    construction: construction,
+                };
+            }
+        })
+        .collect();
+}
+
+fn create_matching_constructor(
+    fn_name: String,
+    parameters: Vec<(String, String, ArgumentPassing)>,
+    type_parameters: Option<Vec<TypeParameter>>,
+) -> Constructor {
+    if parameters.len() == 0 {
+        // New Constructor
+        return Constructor::New {
+            function_name: Some(fn_name),
+        };
+    } else if parameters.len() == 1
+        && parameters.contains(&(
+            "Option".to_owned(),
+            "change_observer".to_owned(),
+            ArgumentPassing::Clone,
+        ))
+    {
+        // NewWithObserver Constructor
+        return Constructor::NewWithObserver {
+            function_name: Some(fn_name),
+        };
+    } else if parameters.len() == 2
+        && parameters.contains(&(
+            "Option".to_owned(),
+            "change_observer".to_owned(),
+            ArgumentPassing::Clone,
+        ))
+        && parameters.contains(&(
+            "Context".to_owned(),
+            "context".to_owned(),
+            ArgumentPassing::Clone,
+        ))
+    {
+        // NewWithObserverAndContextConstructor
+        return Constructor::NewWithObserverAndContext {
+            function_name: Some(fn_name),
+        };
+    } else if parameters.len() == 1 {
+        // FromJson Constructor
+        return Constructor::FromJson;
+    } else {
+        //NewWithArbitraryArgs Constructor
+        let arguments = convert_parameters_to_arguments(parameters, type_parameters);
+        return Constructor::NewWithArbitraryArgs {
+            function_name: Some(fn_name),
+            arguments: arguments,
+        };
+    }
+}
+
+fn retrieve_constructors(
+    function: &syn::ImplItemFn,
+    type_parameters: Option<Vec<TypeParameter>>,
+) -> (String, Constructor) {
+    let parameters: Vec<(String, String, ArgumentPassing)> = function
+        .sig
+        .inputs
+        .iter()
+        .inspect(|i| {
+            debug(format!(
+                "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS{:?}",
+                i
+            ))
+        })
+        .flat_map(|input: &FnArg| input_to_parameter_list(input))
+        .collect();
+    let fn_name = function.sig.ident.to_string().clone();
+
+    parameters.iter().for_each(|(p1, p2, _)| {
+        debug(format!(
+            "ddddddddddddddddddddddddddddddddddddddddddddddddddddd{:?},{:?}",
+            p1, p2
+        ));
+    });
+
+    (
+        fn_name.clone(),
+        create_matching_constructor(fn_name, parameters, type_parameters),
+    )
+}
+
+fn insert_constructors_to_type(
+    implementation: &syn::ItemImpl,
+    sub_types: &mut HashMap<String, FlowType>,
+    function: &syn::ImplItemFn,
+) {
+    let implemented_type = *implementation.self_ty.clone();
+    if let syn::Type::Path(impl_ty_path) = implemented_type {
+        if let Some(segment) = impl_ty_path.path.segments.first() {
+            if let Some(sub_type) = sub_types.get_mut(&segment.ident.to_string()) {
+                // debug(format!(
+                //     "KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK{:?}",
+                //     sub_type
+                // ));
+                // At this Point we have retrieved the sub-type
+                let (constructor_type, constructor) =
+                    retrieve_constructors(function, sub_type.type_parameters.clone());
+                sub_type.constructors.insert(constructor_type, constructor);
+            }
+        }
+    }
+}
+
+// Extracts all constructor functions by looking at for the return type "Self"
+fn extract_constructor_functions(
+    sub_types: &mut HashMap<String, FlowType>,
+    sub_impls: &LinkedList<ItemImpl>,
+) {
+    for implementation in sub_impls {
+        for item in &implementation.items {
+            match item {
+                syn::ImplItem::Fn(function) => {
+                    if let syn::ReturnType::Type(_, type_box) = &function.sig.output {
+                        if let syn::Type::Path(type_path) = *type_box.clone() {
+                            if type_path.path.is_ident("Self") {
+                                // At this Point we have a constructor function
+                                insert_constructors_to_type(implementation, sub_types, function)
+                            }
+                        }
+                    }
+                }
+                // }
+                _ => {} // Other items are not relevant
+            }
+        }
+    }
+}
+
 fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
     // Define necessary output variables
     let module_name = module.ident.to_string();
     let mut sub_modules: HashMap<String, FlowModule> = HashMap::new();
     let mut sub_types: HashMap<String, FlowType> = HashMap::new();
+    let mut sub_impls: LinkedList<ItemImpl> = LinkedList::new();
 
     // Read file
     let module_file_path = path.join(module_name.clone()).with_extension("rs");
@@ -140,18 +358,25 @@ fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
     for item in module_tree.items {
         match item {
             Item::Mod(m) => {
-                debug(format!("PARSING SUBMODULE [{:?}]", m.clone()));
+                //debug(format!("PARSING SUBMODULE [{:?}]", m.clone()));
                 let sub_module_wrapper = parse_module(m, &path.join(module_name.clone()));
                 sub_modules.insert(sub_module_wrapper.name, sub_module_wrapper.flow_module);
             }
             Item::Struct(t) => {
-                debug(format!("PARSING SUBTYPE[{:?}]", t.clone()));
+                //debug(format!("PARSING SUBTYPE[{:?}]", t.clone()));
                 let sub_type_wrapper = parse_type(t);
                 sub_types.insert(sub_type_wrapper.name, sub_type_wrapper.flow_type);
             }
-            _ => (), // Other Items are not relevant
+            Item::Impl(i) => {
+                //debug(format!("PARSING IMPLEMENTATION[{:?}]", i.clone()));
+                sub_impls.push_back(i);
+            }
+            _ => {} // Other items are not relevant
         }
     }
+
+    // Extract constructors from implementations
+    extract_constructor_functions(&mut sub_types, &sub_impls);
 
     // Return result
     let flow_module = FlowModule {
@@ -179,11 +404,6 @@ fn extract_generic(path: &syn::Path) -> Option<syn::Ident> {
         if let PathArguments::AngleBracketed(ref pathArg) = last_segment.arguments {
             for arg in pathArg.args.iter() {
                 if let GenericArgument::Type(Type::Path(ref generic_type)) = arg {
-                    debug(format!(
-                        "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO{:?}",
-                        generic_type
-                    ));
-                    //return Some(last_segment.ident.clone());
                     return Some(generic_type.path.segments.last().unwrap().ident.clone());
                 }
             }
@@ -249,14 +469,14 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
     let type_name = itemtype.ident.to_string();
     let mut inputs: HashMap<String, Input> = HashMap::new();
     let mut outputs: HashMap<String, Output> = HashMap::new();
-    let mut type_parameters: Vec<TypeParameter> = Vec::new();
+    let type_parameters: Vec<TypeParameter>;
     let constructors = HashMap::new();
 
     // Parse type syntax structure
-    debug(format!(
-        "TYPE: [type_name: {}, type_structure: {:?}",
-        type_name, itemtype
-    ));
+    // debug(format!(
+    //     "TYPE: [type_name: {}, type_structure: {:?}",
+    //     type_name, itemtype
+    // ));
 
     // Extract generic parameter and where clause constraints
     let all_constraints = itemtype.generics.where_clause;
@@ -276,8 +496,8 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
         })
         .collect();
 
+    // Extract inputs and outputs
     let fields = itemtype.fields;
-    //let mut input_fields: HashMap<String, Input> = HashMap::new();
     for field in fields {
         let field_attrs = field.attrs;
         //let field_mutability = field.mutability;
@@ -305,10 +525,10 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
                             },
                         },
                     );
-                    debug(format!(
-                        "Input field: {} with type: {}",
-                        field_name, generic_type
-                    ));
+                    // debug(format!(
+                    //     "Input field: {} with type: {}",
+                    //     field_name, generic_type
+                    // ));
                 }
             } else if attr.path().is_ident("output") {
                 // Field is correctly identified as output field
@@ -324,14 +544,16 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
                             },
                         },
                     );
-                    debug(format!(
-                        "Output field: {} with type: {}",
-                        field_name, generic_type
-                    ));
+                    // debug(format!(
+                    //     "Output field: {} with type: {}",
+                    //     field_name, generic_type
+                    // ));
                 }
             }
         }
     }
+
+    // Extract constructors
 
     // Return result
     let flow_type = FlowType {
@@ -345,6 +567,15 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
         flow_type: flow_type,
     }
 }
+
+// fn extract_constructors(crate_without_constructors: (&String, &FlowCrate)) -> (String, FlowCrate) {
+//     let mut crate_with_constructors: FlowCrate = crate_without_constructors.1.to_owned();
+//     //crate_with_constructors.
+//     (
+//         crate_without_constructors.0.to_string(),
+//         crate_with_constructors,
+//     )
+// }
 
 fn main() {
     // Fetch Metadata from the cargo.toml
@@ -366,6 +597,11 @@ fn main() {
                 package_path.to_str().unwrap().to_string()
             ));
             flow_package.crates = extract_flow_crates(crate_package.clone(), package_path);
+            // // Use second pass to extract constructors
+            // flow_package
+            //     .crates
+            //     .iter()
+            //     .map(|crate_| extract_constructors(crate_));
             let package_json = serde_json::to_string(&flow_package);
             debug(package_json.unwrap());
         }
