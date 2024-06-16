@@ -1,5 +1,5 @@
 use flowrs_package::flow_package::{
-    package::{Namespace, ObjectDescription},
+    package::{Namespace, ObjectDescription, TypeParameter},
     package_manager::PackageManager,
 };
 use proc_macro2::TokenStream;
@@ -168,7 +168,7 @@ impl StandardCodeEmitter {
 
     fn emit_type_parameter_part_rec(
         &self,
-        type_parameters: &Vec<String>,
+        type_parameters: &Vec<TypeParameter>,
         resolved_type_parameters: &HashMap<String, String>,
         pm: &PackageManager,
         tp_part: &mut String,
@@ -178,7 +178,7 @@ impl StandardCodeEmitter {
         }
 
         for type_parameter in type_parameters {
-            if let Some(type_name) = resolved_type_parameters.get(type_parameter) {
+            if let Some(type_name) = resolved_type_parameters.get(&type_parameter.name) {
                 tp_part.push_str(type_name);
                 if let Some(t) = pm.get_type(type_name) {
                     if let Some(tps) = &t.type_parameters {

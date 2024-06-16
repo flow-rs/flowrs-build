@@ -20,7 +20,7 @@ use flowrs_package::flow_package::package::{Input, Output, TypeDescription, Type
 const DEBUG_STR: &str = "cargo::warning= [DEBUG]:";
 
 fn debug(message: String) {
-    let debug = true;
+    let debug = false;
 
     if debug {
         println!("{} {}", DEBUG_STR, message)
@@ -126,10 +126,6 @@ fn input_to_parameter_list(input: &FnArg) -> Vec<(String, String, ArgumentPassin
                 let syn::Path { segments, .. } = parameter_path.path.clone();
                 let parameter_name = parameter_ident.ident.to_string();
                 let parameter_type = segments[0].ident.to_string();
-                debug(format!(
-                    "ssssssssssssssssssssssssssssssssssssssssssssssssssssss{:?},{:?}, {:?}",
-                    parameter_type, parameter_name, parameter_path
-                ));
                 let parameter_passing: ArgumentPassing;
                 if parameter_ident.by_ref.is_some() && parameter_ident.mutability.is_some() {
                     parameter_passing = ArgumentPassing::MutableReference;
@@ -176,10 +172,10 @@ fn convert_parameters_to_arguments(
                         };
                         passing = ArgumentPassing::Move;
                         construction = ArgumentConstruction::Constructor("Json".to_string());
-                        debug(format!(
-                            "GENERICS:{:?}, DESC:{:?},",
-                            generics, type_description,
-                        ));
+                        // debug(format!(
+                        //     "GENERICS:{:?}, DESC:{:?},",
+                        //     generics, type_description,
+                        // ));
                     } else {
                         type_description = TypeDescription::Type {
                             name: p_value.to_string(),
@@ -261,22 +257,9 @@ fn retrieve_constructors(
         .sig
         .inputs
         .iter()
-        .inspect(|i| {
-            debug(format!(
-                "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS{:?}",
-                i
-            ))
-        })
         .flat_map(|input: &FnArg| input_to_parameter_list(input))
         .collect();
     let fn_name = function.sig.ident.to_string().clone();
-
-    parameters.iter().for_each(|(p1, p2, _)| {
-        debug(format!(
-            "ddddddddddddddddddddddddddddddddddddddddddddddddddddd{:?},{:?}",
-            p1, p2
-        ));
-    });
 
     (
         fn_name.clone(),
@@ -293,10 +276,6 @@ fn insert_constructors_to_type(
     if let syn::Type::Path(impl_ty_path) = implemented_type {
         if let Some(segment) = impl_ty_path.path.segments.first() {
             if let Some(sub_type) = sub_types.get_mut(&segment.ident.to_string()) {
-                // debug(format!(
-                //     "KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK{:?}",
-                //     sub_type
-                // ));
                 // At this Point we have retrieved the sub-type
                 let (constructor_type, constructor) =
                     retrieve_constructors(function, sub_type.type_parameters.clone());
@@ -354,7 +333,7 @@ fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
     for item in module_tree.items {
         match item {
             Item::Mod(m) => {
-                //debug(format!("PARSING SUBMODULE [{:?}]", m.clone()));
+                debug(format!("PARSING SUBMODULE [{:?}]", m.clone()));
                 let sub_module_wrapper = parse_module(m, &path.join(module_name.clone()));
                 sub_modules.insert(sub_module_wrapper.name, sub_module_wrapper.flow_module);
             }
@@ -468,12 +447,6 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
     let type_parameters: Vec<TypeParameter>;
     let constructors = HashMap::new();
 
-    // Parse type syntax structure
-    // debug(format!(
-    //     "TYPE: [type_name: {}, type_structure: {:?}",
-    //     type_name, itemtype
-    // ));
-
     // Extract generic parameter and where clause constraints
     let all_constraints = itemtype.generics.where_clause;
     type_parameters = itemtype
@@ -501,11 +474,6 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
         //let field_mutability = field.mutability;
         let field_type = field.ty;
         let field_name = field.ident.unwrap().to_string();
-
-        // debug(format!(
-        //     "OLAKSJDLKAJSLKDKLÖASD{:?}",
-        //     extract_type_path(&field_type).unwrap().to_owned()
-        // ));
 
         for attr in field_attrs {
             // Check for #[input] and #[output] other fields are not relevant
@@ -543,10 +511,6 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
                             },
                         );
                     }
-                    // debug(format!(
-                    //     "Input field: {} with type: {}",
-                    //     field_name, generic_type
-                    // ));
                 }
             } else if attr.path().is_ident("output") {
                 // Field is correctly identified as output field
@@ -582,16 +546,10 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
                             },
                         );
                     }
-                    // debug(format!(
-                    //     "Output field: {} with type: {}",
-                    //     field_name, generic_type
-                    // ));
                 }
             }
         }
     }
-
-    // Extract constructors
 
     // Return result
     let flow_type = FlowType {
@@ -606,16 +564,7 @@ fn parse_type(itemtype: ItemStruct) -> FlowTypeWrapper {
     }
 }
 
-// fn extract_constructors(crate_without_constructors: (&String, &FlowCrate)) -> (String, FlowCrate) {
-//     let mut crate_with_constructors: FlowCrate = crate_without_constructors.1.to_owned();
-//     //crate_with_constructors.
-//     (
-//         crate_without_constructors.0.to_string(),
-//         crate_with_constructors,
-//     )
-// }
-
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     // Fetch Metadata from the cargo.toml
     let metadata = MetadataCommand::new()
         .exec()
@@ -635,16 +584,11 @@ fn main() {
                 package_path.to_str().unwrap().to_string()
             ));
             flow_package.crates = extract_flow_crates(crate_package.clone(), package_path);
-            // // Use second pass to extract constructors
-            // flow_package
-            //     .crates
-            //     .iter()
-            //     .map(|crate_| extract_constructors(crate_));
             let package_json = serde_json::to_string(&flow_package).unwrap();
-            debug(package_json.clone());
             let json_path = Path::new("./flow-packages/");
             let mut file = File::create(json_path.join(flow_package.name + ".json")).unwrap();
-            file.write(package_json.as_bytes());
+            let _res = file.write(package_json.as_bytes())?;
         }
     }
+    Ok(())
 }
