@@ -1,17 +1,14 @@
 use std::collections::{HashMap, LinkedList};
-use std::io::{self, ErrorKind};
-use std::num::NonZeroUsize;
+use std::fs::File;
+use std::io::{self, ErrorKind, Write};
 use std::{fs, path::Path};
-use syn::punctuated::Punctuated;
-use syn::token::Impl;
 use toml::{self, Value};
 
 use cargo_metadata::{MetadataCommand, Package};
 
 use syn::{
-    AngleBracketedGenericArguments, FnArg, GenericArgument, GenericParam, Ident, Item, ItemImpl,
-    ItemMod, ItemStruct, ItemType, PathArguments, PathSegment, PredicateType, Type, TypeParamBound,
-    WhereClause,
+    FnArg, GenericArgument, GenericParam, Ident, Item, ItemImpl, ItemMod, ItemStruct,
+    PathArguments, Type, TypeParamBound, WhereClause,
 };
 
 use flowrs_package::flow_package::package::{Argument, Module as FlowModule};
@@ -19,7 +16,6 @@ use flowrs_package::flow_package::package::{ArgumentConstruction, Type as FlowTy
 use flowrs_package::flow_package::package::{ArgumentPassing, Package as FlowPackage};
 use flowrs_package::flow_package::package::{Constructor, Crate as FlowCrate};
 use flowrs_package::flow_package::package::{Input, Output, TypeDescription, TypeParameter};
-//use flowrs_package::flow_package::package_manager::PackageManager as FlowPackageManager;
 
 const DEBUG_STR: &str = "cargo::warning= [DEBUG]:";
 
@@ -644,8 +640,11 @@ fn main() {
             //     .crates
             //     .iter()
             //     .map(|crate_| extract_constructors(crate_));
-            let package_json = serde_json::to_string(&flow_package);
-            debug(package_json.unwrap());
+            let package_json = serde_json::to_string(&flow_package).unwrap();
+            debug(package_json.clone());
+            let json_path = Path::new("./flow-packages/");
+            let mut file = File::create(json_path.join(flow_package.name + ".json")).unwrap();
+            file.write(package_json.as_bytes());
         }
     }
 }

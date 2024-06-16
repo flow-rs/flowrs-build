@@ -1,7 +1,7 @@
+use flowrs_package::flow_package::package_manager::PackageManager;
 use serde::{Deserialize, Serialize};
 
 use crate::flow_model::FlowModel;
-use crate::package_manager::PackageManager;
 
 use std::collections::{HashMap, VecDeque};
 use std::fs::{self, Metadata};
@@ -149,10 +149,7 @@ impl FlowProjectManager {
 
     fn format_timestamp(timestamp: SystemTime) -> String {
         match Local.timestamp_opt(
-            timestamp
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
+            timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs() as i64,
             0,
         ) {
             LocalResult::None => "Invalid Timestamp".to_string(),

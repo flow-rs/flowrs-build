@@ -1,6 +1,4 @@
 use crate::flow_project::{BuildType, FlowProject, FlowProjectManager};
-use crate::package::Package;
-use crate::package_manager::PackageManager;
 
 use std::sync::{Arc, Mutex};
 
@@ -10,6 +8,7 @@ use axum::{
     http::{Response, StatusCode},
     Json,
 };
+use flowrs_package::flow_package::{package::Package, package_manager::PackageManager};
 
 pub async fn get_all_packages(
     State(package_manager): State<Arc<Mutex<PackageManager>>>,
@@ -266,8 +265,6 @@ mod tests {
             project_json_file_name_default, rust_fmt_path_default, FlowProjectManagerConfig,
             Process,
         },
-        package::Package,
-        package_manager::PackageManager,
     };
     use tokio::time::{sleep, Duration};
 

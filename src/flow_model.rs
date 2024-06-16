@@ -1,5 +1,7 @@
-use crate::package::{Namespace, ObjectDescription};
-use crate::package_manager::PackageManager;
+use flowrs_package::flow_package::{
+    package::{Namespace, ObjectDescription},
+    package_manager::PackageManager,
+};
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::{Deserialize, Serialize};
@@ -318,7 +320,8 @@ impl CodeEmitter for StandardCodeEmitter {
 
 #[cfg(test)]
 mod tests {
-    use crate::package::Package;
+
+    use flowrs_package::flow_package::package::Package;
 
     use super::*;
     const PACKAGE_JSON: &str = r#"

@@ -8,6 +8,7 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use flowrs_package::flow_package::package_manager::PackageManager;
 use tower_http::cors::CorsLayer;
 
 use crate::{
@@ -16,7 +17,6 @@ use crate::{
         get_package_by_name, get_process_logs, last_compile_project, run_project, stop_process,
     },
     flow_project::FlowProjectManager,
-    package_manager::PackageManager,
 };
 
 use super::config::ServiceConfig;
