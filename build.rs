@@ -106,9 +106,10 @@ fn extract_flow_crates(cargo_package: Package, package_path: &Path) -> HashMap<S
         }
     }
 
+    let name = cargo_package.name.replace("-", "_");
     // Return result
     crates.insert(
-        cargo_package.name,
+        name,
         FlowCrate {
             types: sub_types,
             modules: sub_modules,

@@ -26,11 +26,11 @@ POST http://127.0.0.1:3002/api/projects/flow_project_01/run?build_type=wasm
 
 ###
 
-POST http://127.0.0.1:3002/api/processes/18940/stop
+POST http://127.0.0.1:3002/api/processes/31664/stop
 
 ###
 
-GET http://127.0.0.1:3002/api/processes/18940/logs
+GET http://127.0.0.1:3002/api/processes/31484/logs
 
 ###
 
@@ -38,64 +38,61 @@ POST http://127.0.0.1:3002/api/projects/ HTTP/1.1
 content-type: application/json
 
 {
-  "name": "flow_project_02",
+  "name": "flow_project_01",
   "version": "1.0.0",
   "packages": [
     {"name": "flowrs", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs", "branch":"feature-project7"},
-    {"name": "flowrs-std", "version": "1.0.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"feature-project1"}
+    {"name": "flowrs-std", "version": "0.2.0", "git":"https://github.com/flow-rs/flowrs-std", "branch":"mtMophima-dev"}
     ],
   "flow":{        
         "nodes": {
+            "add_node": {
+                "node_type": "flowrs_std::nodes::binops::add::AddNode",
+                "type_parameters": {"I1": "i32", "I2": "i32", "O": "i32"},
+                "constructor": "new"
+            },
             "debug_node": {
                 "node_type": "flowrs_std::nodes::debug::DebugNode",
                 "type_parameters": {"I": "i32"},
-                "constructor": "New"
-
+                "constructor": "new"
             },
-            "timer_config_node": {
-                "node_type": "flowrs_std::nodes::value::ValueNode",
-                "type_parameters": {"I": "flowrs_std::nodes::timer::TimerNodeConfig"},
-                "constructor": "New"
-
-            },
-            "timer_token_node": {
+            "value_node_one": {
                 "node_type": "flowrs_std::nodes::value::ValueNode",
                 "type_parameters": {"I": "i32"},
-                "constructor": "New"
-
+                "constructor": "new"
             },
-             "timer_node": {
-                "node_type": "flowrs_std::nodes::timer::TimerNode",
-                "type_parameters": {"T": "flowrs_std::nodes::timer::SelectedTimer", "U": "i32"},
-                "constructor": "New"
+            "value_node_two": {
+                "node_type": "flowrs_std::nodes::value::ValueNode",
+                "type_parameters": {"I": "i32"},
+                "constructor": "new"
             }
         },
         "connections": [
             {
-                "from_node": "timer_config_node",
+                "from_node": "value_node_one",
                 "from_output": "output",
-                "to_node": "timer_node",
-                "to_input": "config_input"
+                "to_node": "add_node",
+                "to_input": "input_1"
             },
             {
-                "from_node": "timer_token_node",
+                "from_node": "value_node_two",
                 "from_output": "output",
-                "to_node": "timer_node",
-                "to_input": "token_input"
+                "to_node": "add_node",
+                "to_input": "input_2"
             },
             {
-                "from_node": "timer_node",
-                "from_output": "token_output",
+                "from_node": "add_node",
+                "from_output": "output_1",
                 "to_node": "debug_node",
                 "to_input": "input"
             }
         ], 
         "data" : {
-            "timer_config_node": {
-                "value": {"duration": {"secs": 1, "nanos": 0}}
+            "value_node_one": {
+                "value": 2
             },
-             "timer_token_node": {
-                "value": 42
+            "value_node_two": {
+                "value": 3
             }
         }
     }
