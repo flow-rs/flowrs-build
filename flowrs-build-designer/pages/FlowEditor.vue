@@ -5,13 +5,17 @@ import JsonEditorVue from "~/components/JsonEditorVue.client.vue";
 import {useProjectsStore} from "~/store/projectStore";
 import {FlowProject} from "~/repository/modules/projects";
 import {useEventsStore} from "~/store/eventStore";
-import {FetchError} from "ofetch";
+import { FetchError } from "ofetch";
+import AITextField from "~/components/AITextField.vue";
+import { useOpenAI } from "~/generator/index.ts";
+
 
 // The flow editor shows the currently selected project. The user can edit the project in json format.
 
 const projectsStore = useProjectsStore();
 const selectedProject = computed(() => projectsStore.selectedProject);
 let json = ref();
+
 
 
 const eventsStore = useEventsStore();
@@ -22,6 +26,10 @@ const eventsStore = useEventsStore();
 eventsStore.$subscribe((mutation, state) => {
   if (state.isSaveButtonClicked) {
     handleSaveButtonClick();
+  }
+
+  if (state.isTextFieldClicked) {
+    handleTextFieldClick();
   }
 })
 
@@ -44,6 +52,20 @@ const handleSaveButtonClick = async () => {
     eventsStore.setAlert(true)
   });
 
+ }
+
+ /*
+* Using the generator and add its response to tje JSON Editor
+*/
+const handleTextFieldClick = async () => {
+  eventsStore.setIsTextFieldClicked(false);
+  let jsonPrompt = projectsStore.getPrompt();
+  let newJson = await useOpenAI(jsonPrompt);
+  let oldJson = JSON.stringify(json.value);
+  let index = oldJson.indexOf("\"flow\":");
+  let jsonWithoutFlow = oldJson.substring(0, index + 7);
+  json.value = JSON.parse(jsonWithoutFlow + JSON.stringify(newJson) + "}");
+  eventsStore.setLoadingPrompt(false);
 }
 
 /**
@@ -102,6 +124,7 @@ const saveProjectFromTextEditor = async () => {
 
 }
 
+
 onMounted(() => {
   json.value = selectedProject.value
 })
@@ -110,17 +133,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <AlertComponent
-  />
-  <v-container fluid>
-    <v-row>
-      <v-col class="scroll">
-        <client-only>
-          <JsonEditorVue v-model="json" mode='text'/>
-        </client-only>
-      </v-col>
-    </v-row>
-  </v-container>
+    <AlertComponent />
+    <v-container fluid>
+        <v-row>
+            <v-col class="scroll">
+                <client-only>
+                    <AITextField/>
+                    <JsonEditorVue v-model="json" mode='text' />
+                </client-only>
+            </v-col>
+        </v-row>
+    </v-container>
 </template>
 
 <style scoped lang="scss">

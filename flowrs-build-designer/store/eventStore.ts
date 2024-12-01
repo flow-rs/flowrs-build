@@ -7,6 +7,8 @@ export const useEventsStore = defineStore({
         showAlert: false,
         isLoadingSave: false,
         errorMessageAlert: "",
+        isTextFieldClicked: false,
+        loadingPrompt: false,
     }),
     actions: {
         setSaveButtonClicked(value:boolean) {
@@ -23,9 +25,14 @@ export const useEventsStore = defineStore({
 
         setErrorMessage(message: string) {
             this.errorMessageAlert = message
+        },
+
+        setIsTextFieldClicked(value: boolean) {
+            this.isTextFieldClicked = value
+        },
+        setLoadingPrompt(value: boolean) {
+            this.loadingPrompt = value
         }
-
-
 
     },
 })

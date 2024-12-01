@@ -26,3 +26,4 @@ lcov.info
 tmp_*
 .vscode/*
 flow-project-test
+/.vs

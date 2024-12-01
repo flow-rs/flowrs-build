@@ -4,10 +4,11 @@ corresponding REST-API.
 
 ## Getting started
 1. Clone the repository.
-2. Start both the backend service and the frontend server with docker using:
+2. Add your openAIApiKey
+3. Start both the backend service and the frontend server with docker using:
    ```docker compose up --build```. With docker compose you are starting also the analytics with grafana.
-3. navigate to localhost:3001 in your browser to access the frontend
-4. to test the backend, use the http requests listed in the rest.http file or use the browser ui
+4. navigate to localhost:3001 in your browser to access the frontend
+5. to test the backend, use the http requests listed in the rest.http file or use the browser ui
     - create a new project
     - compile the project
     - run the project

@@ -5,7 +5,6 @@ import type {ProcessIdentifier} from "~/repository/modules/processes";
 import type {FetchOptions} from "ofetch";
 
 // File contains API Module to work with projects and also the type definitons of a project.
-
 export type TimerConfigNode = {
     value: {
         duration: {

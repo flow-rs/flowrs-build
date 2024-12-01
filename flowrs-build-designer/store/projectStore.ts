@@ -31,7 +31,7 @@ export const useProjectsStore = defineStore({
             projectClickedInList: false,
             errorMessage: "",
             showDialog: false,
-
+            prompt: "",
         });
     },
     actions: {
@@ -403,7 +403,13 @@ export const useProjectsStore = defineStore({
             this.showDialog = active
         },
 
+        setPrompt(message: string) {
+            this.prompt = message
+        },
 
+        getPrompt(): string {
+            return this.prompt;
+        },
 
     }
 })
