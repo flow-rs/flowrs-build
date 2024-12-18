@@ -331,10 +331,22 @@ fn parse_module(module: ItemMod, path: &Path) -> FlowModuleWrapper {
         .expect(format!("Unable to parse {}.rs file content", module_name.clone()).as_str());
 
     // Parse module syntax structure
-    for item in module_tree.items {
+    'modloop: for item in module_tree.items {
         match item {
             Item::Mod(m) => {
                 debug(format!("PARSING SUBMODULE [{:?}]", m.clone()));
+                for attr in &m.clone().attrs {
+                    if let syn::Meta::List(meta_list) = &attr.meta {
+                        if meta_list.path.is_ident("cfg") {
+                            if meta_list.tokens.to_string() == "test" {
+                                debug(format!(
+                                    "Found #[cfg(test)] attribute! --> Skipping attribute"
+                                ));
+                                continue 'modloop;
+                            }
+                        }
+                    }
+                }
                 let sub_module_wrapper = parse_module(m, &path.join(module_name.clone()));
                 sub_modules.insert(sub_module_wrapper.name, sub_module_wrapper.flow_module);
             }
