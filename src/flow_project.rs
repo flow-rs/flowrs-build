@@ -354,6 +354,8 @@ impl FlowProjectManager {
         Command::new(runner_executable_path)
             .arg("--flow")
             .arg(option_path_to_executable.unwrap())
+            .arg("--role")
+            .arg("node-runtime")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()

@@ -1,0 +1,7 @@
+./.git
+./.github
+./.vscode
+./cargo
+./flowrs-build-designer
+./live-analytics-server
+./node-modules
