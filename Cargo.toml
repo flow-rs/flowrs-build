@@ -33,7 +33,7 @@ tracing-subscriber = "0.3.18"
 quote = "1.0"
 proc-macro2 = "1.0"
 syn = "2.0.61"
-flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "feature-project7"}
+flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "mtMophima-exec"}
 flowrs-package = {git = "https://github.com/flow-rs/flowrs-package", branch = "main"}
 
 #this is temporary
