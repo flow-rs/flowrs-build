@@ -85,7 +85,10 @@ fn return_dummy_flow() -> Result<AbstractFlow, Error> {
 
 // Logic for running as orchestrator
 async fn run_orchestrator(args: Arguments, abstract_flow: AbstractFlow) -> Result<(), Error> {
-    println!("Running as orchestrator with flow file: {}", args.flow);
+    println!(
+        "[Orchestrator] Running as orchestrator with flow file: {}",
+        args.flow
+    );
 
     // =======================================================================================
     // Step 1: Connect to node runtimes
@@ -175,7 +178,10 @@ async fn run_node_runtime(
     abstract_flow: AbstractFlow,
     orch_addr: SocketAddr,
 ) -> Result<(), Error> {
-    println!("Running as node runtime with flow file: {}", args.flow);
+    println!(
+        "[Node RT] Running as node runtime with flow file: {}",
+        args.flow
+    );
 
     // =======================================================================================
     // Step 1: Connect to orchestrator
