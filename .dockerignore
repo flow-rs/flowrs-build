@@ -5,3 +5,4 @@
 ./flowrs-build-designer
 ./live-analytics-server
 ./node-modules
+./target
