@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use tokio::net::lookup_host;
 
 use anyhow::Error;
 use clap::Parser;
@@ -8,11 +9,19 @@ use flowrs::comm::network_communicator::NetworkCommunicator;
 use flowrs::exec::execution::{Executor, StandardExecutor};
 use flowrs::flow::abstract_flow::AbstractFlow;
 
+use flowrs::comm::messages::Message;
 use flowrs::exec::execution_configuration::ExecutionConfig;
 use flowrs::exec::execution_configuration::NodeConfig;
 use std::collections::HashMap;
 use tokio::net::TcpListener;
+use tokio::net::TcpStream;
+use tokio::sync::oneshot;
+use tokio::task;
 use tokio::time::{sleep, Duration};
+
+// port constants
+const SETUP_PORT: u16 = 4999; // used to establish connections between node-runtimes and the orchestrator
+const RUNTIME_PORT: u16 = 5000; // used to communicate TO any node-runtime
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -36,6 +45,13 @@ struct Arguments {
 // }
 // unsafe impl Send for ExecutionContextHandlePtr {}
 
+async fn get_orchestrator_address() -> Result<SocketAddr, anyhow::Error> {
+    let mut addrs = lookup_host("orchestrator:5000").await?;
+    addrs
+        .next()
+        .ok_or_else(|| anyhow::Error::msg("No valid IP found for orchestrator"))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // Define the CLI application using clap
@@ -43,8 +59,15 @@ async fn main() -> Result<(), Error> {
 
     // create dummy values for now
     let abstract_flow = return_dummy_flow()?;
-    let orchestrator_addr =
-        SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 5000);
+    //let orchestrator_addr =
+    //SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 5000);
+    //let orchestrator_addr = "orchestrator:5000".parse().unwrap(); //find IP using docker
+    let orchestrator_addr = get_orchestrator_address().await?; // find the IP using tokio
+
+    println!(
+        "Orchestrator Address: {}",
+        orchestrator_addr.ip().to_string()
+    );
 
     // Branch logic based on the role argument
     match args.role.as_str() {
@@ -85,6 +108,9 @@ fn return_dummy_flow() -> Result<AbstractFlow, Error> {
 
 // Logic for running as orchestrator
 async fn run_orchestrator(args: Arguments, abstract_flow: AbstractFlow) -> Result<(), Error> {
+    // TODO: add number of runtimes to config and pass as parameter
+    let number_of_runtimes_expected = 2;
+
     println!(
         "[Orchestrator] Running as orchestrator with flow file: {}",
         args.flow
@@ -93,59 +119,163 @@ async fn run_orchestrator(args: Arguments, abstract_flow: AbstractFlow) -> Resul
     // =======================================================================================
     // Step 1: Connect to node runtimes
     // =======================================================================================
-    let listener = TcpListener::bind("0.0.0.0:5000").await?;
-    println!("[Orchestrator] Listening for node runtimes on port 5000...");
 
-    let mut connected_runtimes: HashMap<String, NetworkCommunicator> = HashMap::new();
-    let mut retries = 0;
-    let max_retries = 5;
+    // start listening for incoming runtime connections
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", SETUP_PORT).as_str()).await?;
+    println!(
+        "[Orchestrator] Listening for node runtimes on port {}...",
+        SETUP_PORT
+    );
 
-    while retries < max_retries {
-        // wait for node runtimes to connect
+    let connected_runtimes = std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::<
+        String,
+        (NetworkCommunicator, NetworkCommunicator, u16),
+    >::new()));
+    let mut next_port = RUNTIME_PORT + 1; // start port assignments from the first free port
+
+    while connected_runtimes.lock().await.len() < number_of_runtimes_expected {
         match listener.accept().await {
             Ok((stream, addr)) => {
-                println!("[Orchestrator] Node runtime connected from {}", addr);
+                let runtime_ip = addr.ip().to_string();
+                println!(
+                    "[Orchestrator] Node runtime connected from {}...",
+                    runtime_ip
+                );
 
-                // create new communicator
-                let mut communicator = NetworkCommunicator::new().await.expect("should construct");
-                // connect communicator to node runtime for sending
-                let connect_res =
-                    <NetworkCommunicator as Communicator<String>>::connect_send::<'_, '_>(
-                        &mut communicator,
-                        Some(addr.ip().to_string()),
-                        Some(addr.port()),
+                let mut assigned_port = next_port;
+                let mut port_should_increment = true;
+
+                let mut lock = connected_runtimes.lock().await;
+                if let Some((old_sender, old_receiver, old_port)) = lock.remove(&runtime_ip) {
+                    println!(
+                        "[Orchestrator] Detected reconnection from {}. Cleaning up old connections...",
+                        runtime_ip
+                    );
+                    drop(old_sender);
+                    drop(old_receiver);
+
+                    assigned_port = old_port;
+                    port_should_increment = false;
+                }
+
+                // **Oneshot channel to signal receiver readiness**
+                let (tx, rx) = oneshot::channel::<Result<NetworkCommunicator, Error>>();
+
+                // **Spawn Receiver First**
+                let connected_runtimes_clone = std::sync::Arc::clone(&connected_runtimes);
+                let receiver_runtime_ip = runtime_ip.clone();
+                let receiver_task = task::spawn(async move {
+                    let mut receiver = NetworkCommunicator::new().await.expect("should construct");
+
+                    match Communicator::<String>::connect_recv(
+                        &mut receiver,
+                        Some(receiver_runtime_ip.clone()),
+                        Some(assigned_port),
                     )
                     .await
-                    .expect(
-                        format!(
-                            "[Orchestrator] Failed to connect to runtime at {}:{}",
-                            addr.ip().to_string(),
-                            addr.port()
-                        )
-                        .as_str(),
-                    );
+                    {
+                        Ok(_) => {
+                            println!(
+                                "[Orchestrator] Receiver bound to {}:{}",
+                                receiver_runtime_ip, assigned_port
+                            );
+                            let _ = tx.send(Ok(receiver)); // Notify sender that receiver is ready
+                        }
+                        Err(e) => {
+                            println!(
+                                "[Orchestrator] Receiver binding failed for {}:{} - {}",
+                                receiver_runtime_ip, assigned_port, e
+                            );
+                            let _ = tx.send(Err(anyhow::Error::msg(e.to_string())));
+                        }
+                    }
+                });
 
-                connected_runtimes.insert(addr.to_string(), communicator);
-                retries = 0;
+                // **Create Sender**
+                let mut sender = NetworkCommunicator::new().await.expect("should construct");
+                let mut retries = 0;
+                while retries < 5 {
+                    match Communicator::<String>::connect_send(
+                        &mut sender,
+                        Some(runtime_ip.clone()),
+                        Some(RUNTIME_PORT),
+                    )
+                    .await
+                    {
+                        Ok(_) => {
+                            println!(
+                                "[Orchestrator] Sender connected to {}:{}",
+                                runtime_ip, RUNTIME_PORT
+                            );
+                            break;
+                        }
+                        Err(e) => {
+                            println!(
+                                "[Orchestrator] Sender connection attempt {}/5 failed: {}",
+                                retries + 1,
+                                e
+                            );
+                            retries += 1;
+                            sleep(Duration::from_secs(1)).await;
+                        }
+                    }
+                }
+
+                println!(
+                    "[Orchestrator] Assigning port {} to runtime {}...",
+                    assigned_port, runtime_ip
+                );
+
+                let setup_msg = Message::<String>::SetupCommunicationPort(assigned_port);
+                println!("[Orchestrator] Sending message: {:?}", setup_msg); // Log the message
+                if let Err(e) = sender.send(setup_msg).await {
+                    println!(
+                        "[Orchestrator] Failed to send port assignment message to {}: {}",
+                        runtime_ip, e
+                    );
+                    continue;
+                }
+
+                println!(
+                    "[Orchestrator] Sent SetupCommunicationPort message to {} for port {}",
+                    runtime_ip, assigned_port
+                );
+                sleep(Duration::from_millis(100)).await; // Give time for the message to be processed
+
+                // **Wait for Receiver to be Ready**
+                let receiver = match rx.await {
+                    Ok(Ok(r)) => r,
+                    Ok(Err(e)) => {
+                        println!("[Orchestrator] Receiver failed: {}", e);
+                        continue;
+                    }
+                    Err(_) => {
+                        println!("[Orchestrator] Receiver channel closed unexpectedly");
+                        continue;
+                    }
+                };
+
+                // **Store the communicator in the HashMap**
+                let mut lock = connected_runtimes_clone.lock().await;
+                lock.insert(runtime_ip.clone(), (sender, receiver, assigned_port));
+
+                if port_should_increment {
+                    next_port += 1
+                };
+
+                println!(
+                    "[Orchestrator] Successfully registered runtime {} with port {}. [{} Total from {} Expected]",
+                    runtime_ip, assigned_port,
+                    lock.len(),
+                    number_of_runtimes_expected,
+                );
             }
             Err(e) => {
-                println!(
-                    "[Orchestrator] No new connections. Retrying... ({}/{})",
-                    retries + 1,
-                    max_retries
-                );
-                retries += 1;
+                println!("[Orchestrator] Failed to accept connection: {}", e);
                 sleep(Duration::from_secs(1)).await;
             }
         }
     }
-
-    if connected_runtimes.is_empty() {
-        println!("[Orchestrator] No node runtimes connected. Shutting down.");
-        return Err(anyhow::Error::msg("No Nodes Connected"));
-    }
-
-    println!("[Orchestrator] Runtime connection successful.");
 
     // // Step 1: Load flow data
     // // Redesign of flowrs-build code generation necessary
@@ -168,7 +298,7 @@ async fn run_orchestrator(args: Arguments, abstract_flow: AbstractFlow) -> Resul
     //     .setup_and_connect(abstract_flow, execution_config)
     //     .await?;
     // // Step 5: Clean up
-
+    println!("[Orchestrator] All expected runtimes connected!");
     Ok(())
 }
 
@@ -178,69 +308,137 @@ async fn run_node_runtime(
     abstract_flow: AbstractFlow,
     orch_addr: SocketAddr,
 ) -> Result<(), Error> {
+    use flowrs::comm::messages::Message;
+
     println!(
         "[Node RT] Running as node runtime with flow file: {}",
         args.flow
     );
 
-    // =======================================================================================
-    // Step 1: Connect to orchestrator
-    // =======================================================================================
-    let mut orch_sender = NetworkCommunicator::new().await.expect("should construct");
-    let mut orch_receiver = NetworkCommunicator::new().await.expect("should construct");
-    let mut retries_sender = 0;
-    let mut retries_receiver = 0;
-    let max_retries = 5;
+    let orchestrator_ip = orch_addr.ip().to_string();
+    let assigned_port: u16;
 
-    while retries_sender < max_retries {
-        match <NetworkCommunicator as Communicator<String>>::connect_send::<'_, '_>(
-            &mut orch_sender,
+    // Create Oneshot channel to return receiver from task spawned in step 1
+    let (tx, rx) = oneshot::channel();
+
+    // =======================================================================================
+    // Step 1: Create a receiver communicator to receive on RUNTIME_PORT
+    // =======================================================================================
+    let recv_task = task::spawn(async move {
+        let mut orch_receiver = NetworkCommunicator::new().await.expect("should construct");
+
+        match <NetworkCommunicator as Communicator<String>>::connect_recv::<'_, '_>(
+            &mut orch_receiver,
             Some(orch_addr.ip().to_string()),
-            Some(orch_addr.port()),
+            Some(RUNTIME_PORT),
         )
         .await
         {
             Ok(_) => {
-                sleep(Duration::from_millis(100)).await; //short wait to ensure orchestrator is ready
-                while retries_receiver < max_retries {
-                    match <NetworkCommunicator as Communicator<String>>::connect_recv::<'_, '_>(
-                        &mut orch_receiver,
-                        Some(orch_addr.ip().to_string()),
-                        Some(orch_addr.port()),
-                    )
-                    .await
-                    {
-                        Ok(_) => {
-                            println!(
-                                "[Node RT] Connected to orchestrator at {}:{}",
-                                orch_addr.ip().to_string(),
-                                orch_addr.port()
-                            );
-                            break;
-                        }
-                        Err(_) => {
-                            println!(
-                    "[Node RT] Failed to connect receiver to orchestrator. Retrying... ({}/{})",
-                    retries_receiver + 1,
-                    max_retries
+                println!(
+                    "[Node RT] Receiver successfully established on port {}",
+                    RUNTIME_PORT
                 );
-                            retries_receiver += 1;
-                            sleep(Duration::from_secs(1)).await;
-                        }
-                    }
-                }
+                // Send receiver back so we can use it later
+                let _ = tx.send(orch_receiver);
+            }
+            Err(e) => {
+                println!(
+                    "[Node RT] Receiver failed to bind or accept connection: {}",
+                    e
+                );
+            }
+        }
+    });
+
+    // =======================================================================================
+    // Step 2: Connect to orchestrator on SETUP_PORT while receiver is listening
+    // =======================================================================================
+    let mut retries = 0;
+    let max_retries = 5;
+
+    while retries < max_retries {
+        match TcpStream::connect((orchestrator_ip.clone(), SETUP_PORT)).await {
+            Ok(_stream) => {
+                println!(
+                    "[Node RT] Successfully signaled presence to orchestrator at {}:{}",
+                    orchestrator_ip, SETUP_PORT
+                );
+                break;
             }
             Err(_) => {
                 println!(
-                    "[Node RT] Failed to connect sender to orchestrator. Retrying... ({}/{})",
-                    retries_sender + 1,
+                    "[Node RT] Failed to connect to orchestrator setup port. Retrying... ({}/{})",
+                    retries + 1,
                     max_retries
                 );
-                retries_sender += 1;
+                retries += 1;
                 sleep(Duration::from_secs(1)).await;
             }
         }
     }
+
+    if retries == max_retries {
+        println!("[Node RT] Could not signal presence to orchestrator. Exiting.");
+        return Err(anyhow::Error::msg(
+            "Failed to establish setup connection with orchestrator",
+        ));
+    }
+
+    // =======================================================================================
+    // Step 3: Wait for Receiver Task and Receive Assigned Port
+    // =======================================================================================
+    // Wait for the receiver task to complete and retrieve the communicator
+    println!("[Node RT] Waiting for assigned communication port from orchestrator...");
+    let mut orch_receiver = rx.await.expect("should receive");
+    let assigned_port_msg: Message<String> = orch_receiver.receive().await.expect("should receive");
+
+    if let Message::SetupCommunicationPort(port) = assigned_port_msg {
+        assigned_port = port;
+        println!(
+            "[Node RT] Received assigned port from orchestrator: {}",
+            assigned_port
+        );
+    } else {
+        return Err(anyhow::Error::msg(
+            "[Node RT] Unexpected message received instead of assigned port!",
+        ));
+    }
+
+    println!("[Node RT] Received message: {:?}", assigned_port_msg);
+
+    // =======================================================================================
+    // Step 4: Create a sender to orchestrator on the assigned port
+    // =======================================================================================
+    let mut orch_sender = NetworkCommunicator::new().await.expect("should construct");
+    match <NetworkCommunicator as Communicator<String>>::connect_send::<'_, '_>(
+        &mut orch_sender,
+        Some(orchestrator_ip.clone()),
+        Some(assigned_port),
+    )
+    .await
+    {
+        Ok(_) => {
+            println!(
+                "[Node RT] Sender established. Sending messages to orchestrator at {}:{}",
+                orchestrator_ip, assigned_port
+            );
+        }
+        Err(e) => {
+            return Err(anyhow::Error::msg(format!(
+                "[Node RT] Failed to establish sender: {}",
+                e
+            )));
+        }
+    }
+
+    println!(
+        "[Node RT] Successfully connected to orchestrator on {}:{} (send) and {}:{} (receive)",
+        orchestrator_ip, assigned_port, orchestrator_ip, RUNTIME_PORT
+    );
+
+    // Now that communication is set up, node runtime is ready for execution.
+    // TODO: Implement further logic for execution handling.
 
     // if communicator.stream.is_none() {
     //     println!("[Node RT] Could not establish connection to orchestrator. Exiting.");
