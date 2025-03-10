@@ -1,23 +1,22 @@
+use flowrs::sched::scheduling_config::SchedulingConfig;
 use std::net::SocketAddr;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::sync::Arc;
 use tokio::net::lookup_host;
 
 use anyhow::Error;
 use clap::Parser;
 use flowrs::comm::communication::Communicator;
 use flowrs::comm::network_communicator::NetworkCommunicator;
-use flowrs::exec::execution::{Executor, StandardExecutor};
 use flowrs::flow::abstract_flow::AbstractFlow;
 
 use flowrs::comm::messages::Message;
-use flowrs::exec::execution_configuration::ExecutionConfig;
-use flowrs::exec::execution_configuration::NodeConfig;
 use std::collections::HashMap;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
+use tokio::sync::Mutex;
 use tokio::task;
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, timeout, Duration};
 
 // port constants
 const SETUP_PORT: u16 = 4999; // used to establish connections between node-runtimes and the orchestrator
@@ -106,6 +105,206 @@ fn return_dummy_flow() -> Result<AbstractFlow, Error> {
     Ok(flow)
 }
 
+fn dummy_scheduling(abstract_flow: &AbstractFlow, num_runtimes: usize) -> SchedulingConfig {
+    let mut scheduling_config = SchedulingConfig::new();
+
+    // Simple round-robin assignment of nodes to runtimes
+    let mut runtime_id = 0;
+    for node_id in abstract_flow.get_nodes().map(|(id, _)| id) {
+        scheduling_config.assign_node(runtime_id, *node_id);
+        runtime_id = (runtime_id + 1) % num_runtimes;
+    }
+
+    scheduling_config
+}
+
+async fn handle_runtime_connection(
+    runtime_ip: String,
+    connected_runtimes: Arc<
+        Mutex<HashMap<String, (NetworkCommunicator, NetworkCommunicator, u16)>>,
+    >,
+    assigned_port: u16,
+) -> Result<(), Error> {
+    let mut port = assigned_port;
+    let mut lock = connected_runtimes.lock().await;
+    if lock.contains_key(&runtime_ip) {
+        println!(
+            "[Orchestrator] {} is already connected. Skipping reconnection.",
+            runtime_ip
+        );
+        return Ok(());
+    }
+    if let Some((old_sender, old_receiver, old_port)) = lock.remove(&runtime_ip) {
+        println!(
+            "[Orchestrator] Detected reconnection from {}. Cleaning up old connections...",
+            runtime_ip
+        );
+        drop(old_sender);
+        drop(old_receiver);
+        port = old_port;
+
+        // Ensure socket is released
+        sleep(Duration::from_millis(500)).await;
+    }
+    drop(lock); // Unlock mutex early to allow parallel connections
+
+    // **Oneshot channel to signal receiver readiness**
+    let (tx, rx) = oneshot::channel::<Result<NetworkCommunicator, Error>>();
+
+    // **Spawn Receiver First**
+    let receiver_runtime_ip = runtime_ip.clone();
+    task::spawn(async move {
+        let mut receiver = NetworkCommunicator::new().await.expect("should construct");
+
+        match Communicator::<String>::connect_recv(
+            &mut receiver,
+            Some(receiver_runtime_ip.clone()),
+            Some(port),
+        )
+        .await
+        {
+            Ok(_) => {
+                println!(
+                    "[Orchestrator] Receiver bound to {}:{}",
+                    receiver_runtime_ip, port
+                );
+
+                match <NetworkCommunicator as Communicator<String>>::receive::<'_, '_>(
+                    &mut receiver,
+                )
+                .await
+                {
+                    Ok(Message::AcknowledgeConnection) => {
+                        println!(
+                            "[Orchestrator] Acknowledgment received from runtime {} on port {}!",
+                            receiver_runtime_ip, port
+                        );
+                        let _ = tx.send(Ok(receiver));
+                    }
+                    Ok(msg) => {
+                        println!(
+                            "[Orchestrator] [WARNING] Unexpected message from runtime {}: {:?}",
+                            receiver_runtime_ip, msg
+                        );
+                        let _ = tx.send(Err(anyhow::Error::msg(
+                            "Unexpected message instead of acknowledgment",
+                        )));
+                    }
+                    Err(e) => {
+                        println!(
+                            "[Orchestrator] Failed to receive acknowledgment from {}: {}",
+                            receiver_runtime_ip, e
+                        );
+                        let _ = tx.send(Err(anyhow::Error::msg(e.to_string())));
+                    }
+                }
+            }
+            Err(e) => {
+                println!(
+                    "[Orchestrator] Receiver binding failed for {}:{} - {}",
+                    receiver_runtime_ip, port, e
+                );
+                let _ = tx.send(Err(anyhow::Error::msg(e.to_string())));
+            }
+        }
+    });
+
+    sleep(Duration::from_millis(100)).await; // Ensure receiver is ready
+
+    // **Create Sender**
+    let mut sender = NetworkCommunicator::new().await.expect("should construct");
+    let mut retries = 0;
+    while retries < 5 {
+        match Communicator::<String>::connect_send(
+            &mut sender,
+            Some(runtime_ip.clone()),
+            Some(RUNTIME_PORT),
+        )
+        .await
+        {
+            Ok(_) => {
+                println!(
+                    "[Orchestrator] Sender connected to {}:{}",
+                    runtime_ip, RUNTIME_PORT
+                );
+                break;
+            }
+            Err(e) => {
+                println!(
+                    "[Orchestrator] Sender connection attempt {}/5 failed: {}",
+                    retries + 1,
+                    e
+                );
+                retries += 1;
+                // Increase wait time between retries
+                let wait_time = retries * 1000; // 1s, 2s, 3s, etc.
+                sleep(Duration::from_millis(wait_time as u64)).await;
+            }
+        }
+    }
+
+    println!(
+        "[Orchestrator] Assigning port {} to runtime {}...",
+        port, runtime_ip
+    );
+
+    let setup_msg = Message::<String>::SetupCommunicationPort(assigned_port);
+    println!("[Orchestrator] Sending message: {:?}", setup_msg);
+    if let Err(e) = sender.send(setup_msg).await {
+        println!(
+            "[Orchestrator] Failed to send port assignment message to {}: {}",
+            runtime_ip, e
+        );
+        return Ok(());
+    }
+
+    println!(
+        "[Orchestrator] Sent SetupCommunicationPort message to {} for port {}",
+        runtime_ip, port
+    );
+    //sleep(Duration::from_millis(100)).await;
+
+    // Store temporary receiver entry to avoid missing receiver issue
+    {
+        let mut lock = connected_runtimes.lock().await;
+        lock.insert(
+            runtime_ip.clone(),
+            (
+                <NetworkCommunicator as Communicator<String>>::clone_send(&sender),
+                NetworkCommunicator::new().await.unwrap(),
+                port,
+            ),
+        );
+        drop(lock); // Unlock before waiting for acknowledgment
+    }
+
+    // Wait for Receiver to be Ready
+    let receiver = match rx.await {
+        Ok(Ok(r)) => r,
+        Ok(Err(e)) => {
+            println!("[Orchestrator] Receiver failed: {}", e);
+            return Ok(());
+        }
+        Err(_) => {
+            println!("[Orchestrator] Receiver channel closed unexpectedly");
+            return Ok(());
+        }
+    };
+
+    // Store the communicator in the HashMap
+    let mut lock = connected_runtimes.lock().await;
+    lock.insert(runtime_ip.clone(), (sender, receiver, port));
+
+    println!(
+        "[Orchestrator] Successfully registered runtime {} with port {}. [{} Total]",
+        runtime_ip,
+        port,
+        lock.len()
+    );
+
+    Ok(())
+}
+
 // Logic for running as orchestrator
 async fn run_orchestrator(args: Arguments, abstract_flow: AbstractFlow) -> Result<(), Error> {
     // TODO: add number of runtimes to config and pass as parameter
@@ -127,148 +326,65 @@ async fn run_orchestrator(args: Arguments, abstract_flow: AbstractFlow) -> Resul
         SETUP_PORT
     );
 
-    let connected_runtimes = std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::<
+    let connected_runtimes = Arc::new(Mutex::new(HashMap::<
         String,
         (NetworkCommunicator, NetworkCommunicator, u16),
     >::new()));
-    let mut next_port = RUNTIME_PORT + 1; // start port assignments from the first free port
+    let next_port = Arc::new(Mutex::new(RUNTIME_PORT + 1)); // start port assignments from the first free port
 
     while connected_runtimes.lock().await.len() < number_of_runtimes_expected {
         match listener.accept().await {
             Ok((stream, addr)) => {
                 let runtime_ip = addr.ip().to_string();
-                println!(
-                    "[Orchestrator] Node runtime connected from {}...",
-                    runtime_ip
-                );
 
-                let mut assigned_port = next_port;
-                let mut port_should_increment = true;
+                // Check if this runtime is already known
+                let is_known_runtime = connected_runtimes.lock().await.contains_key(&runtime_ip);
+                let connected_count = connected_runtimes.lock().await.len();
 
-                let mut lock = connected_runtimes.lock().await;
-                if let Some((old_sender, old_receiver, old_port)) = lock.remove(&runtime_ip) {
+                // If we have all expected runtimes AND it's NOT a reconnection, ignore the connection
+                if connected_count >= number_of_runtimes_expected && !is_known_runtime {
                     println!(
-                        "[Orchestrator] Detected reconnection from {}. Cleaning up old connections...",
-                        runtime_ip
-                    );
-                    drop(old_sender);
-                    drop(old_receiver);
-
-                    assigned_port = old_port;
-                    port_should_increment = false;
+                    "[Orchestrator] Ignoring new connection from {}. Already at max runtimes ({}/{})",
+                    runtime_ip, connected_count, number_of_runtimes_expected
+                );
+                    continue; // Ignore this connection
                 }
 
-                // **Oneshot channel to signal receiver readiness**
-                let (tx, rx) = oneshot::channel::<Result<NetworkCommunicator, Error>>();
+                println!(
+                    "[Orchestrator] Node runtime connected from {}...",
+                    runtime_ip.clone()
+                );
 
-                // **Spawn Receiver First**
-                let connected_runtimes_clone = std::sync::Arc::clone(&connected_runtimes);
-                let receiver_runtime_ip = runtime_ip.clone();
-                let receiver_task = task::spawn(async move {
-                    let mut receiver = NetworkCommunicator::new().await.expect("should construct");
+                let mut port_lock = next_port.lock().await;
+                let mut assigned_port = *port_lock;
+                *port_lock += 1;
+                drop(port_lock);
+                //let mut port_should_increment = true;
 
-                    match Communicator::<String>::connect_recv(
-                        &mut receiver,
-                        Some(receiver_runtime_ip.clone()),
-                        Some(assigned_port),
+                // Clone Arc so each task gets independent access
+                let connected_runtimes_clone = Arc::clone(&connected_runtimes);
+                let handle_task = task::spawn(async move {
+                    if let Err(e) = handle_runtime_connection(
+                        runtime_ip.clone(),
+                        connected_runtimes_clone,
+                        assigned_port,
                     )
                     .await
                     {
-                        Ok(_) => {
-                            println!(
-                                "[Orchestrator] Receiver bound to {}:{}",
-                                receiver_runtime_ip, assigned_port
-                            );
-                            let _ = tx.send(Ok(receiver)); // Notify sender that receiver is ready
-                        }
-                        Err(e) => {
-                            println!(
-                                "[Orchestrator] Receiver binding failed for {}:{} - {}",
-                                receiver_runtime_ip, assigned_port, e
-                            );
-                            let _ = tx.send(Err(anyhow::Error::msg(e.to_string())));
-                        }
+                        println!(
+                            "[Orchestrator] Error handling runtime {}: {}",
+                            runtime_ip, e
+                        );
                     }
                 });
 
-                // **Create Sender**
-                let mut sender = NetworkCommunicator::new().await.expect("should construct");
-                let mut retries = 0;
-                while retries < 5 {
-                    match Communicator::<String>::connect_send(
-                        &mut sender,
-                        Some(runtime_ip.clone()),
-                        Some(RUNTIME_PORT),
-                    )
-                    .await
-                    {
-                        Ok(_) => {
-                            println!(
-                                "[Orchestrator] Sender connected to {}:{}",
-                                runtime_ip, RUNTIME_PORT
-                            );
-                            break;
-                        }
-                        Err(e) => {
-                            println!(
-                                "[Orchestrator] Sender connection attempt {}/5 failed: {}",
-                                retries + 1,
-                                e
-                            );
-                            retries += 1;
-                            sleep(Duration::from_secs(1)).await;
-                        }
-                    }
+                // ✅ Wait for the task to update `connected_runtimes`
+                let _ = handle_task.await;
+
+                // ✅ Re-check if all expected runtimes are connected
+                if connected_runtimes.lock().await.len() >= number_of_runtimes_expected {
+                    break;
                 }
-
-                println!(
-                    "[Orchestrator] Assigning port {} to runtime {}...",
-                    assigned_port, runtime_ip
-                );
-
-                let setup_msg = Message::<String>::SetupCommunicationPort(assigned_port);
-                println!("[Orchestrator] Sending message: {:?}", setup_msg); // Log the message
-                if let Err(e) = sender.send(setup_msg).await {
-                    println!(
-                        "[Orchestrator] Failed to send port assignment message to {}: {}",
-                        runtime_ip, e
-                    );
-                    continue;
-                }
-
-                println!(
-                    "[Orchestrator] Sent SetupCommunicationPort message to {} for port {}",
-                    runtime_ip, assigned_port
-                );
-                sleep(Duration::from_millis(100)).await; // Give time for the message to be processed
-
-                // **Wait for Receiver to be Ready**
-                let receiver = match rx.await {
-                    Ok(Ok(r)) => r,
-                    Ok(Err(e)) => {
-                        println!("[Orchestrator] Receiver failed: {}", e);
-                        continue;
-                    }
-                    Err(_) => {
-                        println!("[Orchestrator] Receiver channel closed unexpectedly");
-                        continue;
-                    }
-                };
-
-                // **Store the communicator in the HashMap**
-                let mut lock = connected_runtimes_clone.lock().await;
-                lock.insert(runtime_ip.clone(), (sender, receiver, assigned_port));
-
-                if port_should_increment {
-                    next_port += 1
-                };
-
-                println!(
-                    "[Orchestrator] Successfully registered runtime {} with port {}. [{} Total from {} Expected]",
-                    runtime_ip, assigned_port,
-                    lock.len(),
-                    number_of_runtimes_expected,
-                );
             }
             Err(e) => {
                 println!("[Orchestrator] Failed to accept connection: {}", e);
@@ -276,29 +392,11 @@ async fn run_orchestrator(args: Arguments, abstract_flow: AbstractFlow) -> Resul
             }
         }
     }
-
-    // // Step 1: Load flow data
-    // // Redesign of flowrs-build code generation necessary
-    // // for now asume that flow data is given with the new flow data structure
-    // //let abstract_flow = return_dummy_flow()?;
-    // // Step 2: Load Environment Configuration
-    // // Step 3: Run Scheduler -> provides execution_config
-
-    // //      create DUMMY execution config
-    // let mut execution_config = ExecutionConfig::new();
-    // // set all node configs to local because it is not yet implemented
-    // execution_config.node_configs = abstract_flow
-    //     .get_nodes()
-    //     .map(|(node_id, _node)| (*node_id, NodeConfig::LocalNodeConfig))
-    //     .collect();
-
-    // // Step 4: Run Executor
-    // let mut executor = StandardExecutor::new();
-    // executor
-    //     .setup_and_connect(abstract_flow, execution_config)
-    //     .await?;
-    // // Step 5: Clean up
     println!("[Orchestrator] All expected runtimes connected!");
+    // Keep the orchestrator running indefinitely
+    loop {
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+    }
     Ok(())
 }
 
@@ -316,15 +414,16 @@ async fn run_node_runtime(
     );
 
     let orchestrator_ip = orch_addr.ip().to_string();
-    let assigned_port: u16;
+    let mut assigned_port: u16 = 0;
 
-    // Create Oneshot channel to return receiver from task spawned in step 1
-    let (tx, rx) = oneshot::channel();
+    // Shared receiver reference to persist across retries
+    let receiver_shared = Arc::new(Mutex::new(None));
+    let receiver_shared_clone = Arc::clone(&receiver_shared);
 
     // =======================================================================================
     // Step 1: Create a receiver communicator to receive on RUNTIME_PORT
     // =======================================================================================
-    let recv_task = task::spawn(async move {
+    let _recv_task = task::spawn(async move {
         let mut orch_receiver = NetworkCommunicator::new().await.expect("should construct");
 
         match <NetworkCommunicator as Communicator<String>>::connect_recv::<'_, '_>(
@@ -339,8 +438,9 @@ async fn run_node_runtime(
                     "[Node RT] Receiver successfully established on port {}",
                     RUNTIME_PORT
                 );
-                // Send receiver back so we can use it later
-                let _ = tx.send(orch_receiver);
+                // Store the receiver in the shared reference
+                let mut receiver_guard = receiver_shared_clone.lock().await;
+                *receiver_guard = Some(orch_receiver);
             }
             Err(e) => {
                 println!(
@@ -355,57 +455,97 @@ async fn run_node_runtime(
     // Step 2: Connect to orchestrator on SETUP_PORT while receiver is listening
     // =======================================================================================
     let mut retries = 0;
-    let max_retries = 5;
+    let max_retries = 10;
 
-    while retries < max_retries {
-        match TcpStream::connect((orchestrator_ip.clone(), SETUP_PORT)).await {
-            Ok(_stream) => {
-                println!(
-                    "[Node RT] Successfully signaled presence to orchestrator at {}:{}",
-                    orchestrator_ip, SETUP_PORT
-                );
-                break;
-            }
-            Err(_) => {
-                println!(
+    // looping for retries if a timeout occurs
+    'receive_loop: while retries < max_retries {
+        retries += 1;
+        'send_loop: while retries < max_retries {
+            match TcpStream::connect((orchestrator_ip.clone(), SETUP_PORT)).await {
+                Ok(_stream) => {
+                    println!(
+                        "[Node RT] Successfully signaled presence to orchestrator at {}:{}",
+                        orchestrator_ip, SETUP_PORT
+                    );
+                    break 'send_loop;
+                }
+                Err(_) => {
+                    println!(
                     "[Node RT] Failed to connect to orchestrator setup port. Retrying... ({}/{})",
-                    retries + 1,
+                    retries,
                     max_retries
                 );
-                retries += 1;
-                sleep(Duration::from_secs(1)).await;
+                    sleep(Duration::from_secs(1)).await;
+                    retries += 1;
+                }
             }
         }
-    }
 
-    if retries == max_retries {
-        println!("[Node RT] Could not signal presence to orchestrator. Exiting.");
-        return Err(anyhow::Error::msg(
-            "Failed to establish setup connection with orchestrator",
+        if retries == max_retries {
+            println!("[Node RT] Could not signal presence to orchestrator. Exiting.");
+            return Err(anyhow::Error::msg(
+                "Failed to establish setup connection with orchestrator",
+            ));
+        }
+
+        // =======================================================================================
+        // Step 3: Wait for Receiver Task and Receive Assigned Port
+        // =======================================================================================
+        sleep(Duration::from_millis(100)).await;
+        let recv_timeout = Duration::from_secs(2);
+
+        // Wait for the receiver task to complete and retrieve the communicator
+        println!("[Node RT] Waiting for assigned communication port from orchestrator...");
+
+        let mut receiver_guard = receiver_shared.lock().await;
+        match timeout(recv_timeout, async {
+            loop {
+                if let Some(receiver) = &mut *receiver_guard {
+                    return Communicator::<String>::receive(receiver).await;
+                }
+                sleep(Duration::from_millis(500)).await; // Wait before checking again
+            }
+        })
+        .await
+        {
+            Ok(Ok(Message::SetupCommunicationPort(port))) => {
+                assigned_port = port;
+                println!("[Node RT] Received assigned port: {}", assigned_port);
+                break 'receive_loop;
+            }
+            Ok(Ok(_)) => {
+                println!("[Node RT] Unexpected message received. Retrying...");
+            }
+            Ok(Err(e)) => {
+                println!("[Node RT] Error receiving message: {}. Retrying...", e);
+            }
+            Err(_) => {
+                println!("[Node RT] Timed out waiting for message. Retrying...");
+            }
+        }
+
+        if retries >= max_retries {
+            return Err(anyhow::Error::msg(
+            "[Node RT] [FATAL] Failed to establish connection with orchestrator after multiple attempts.",
         ));
+        }
+        sleep(Duration::from_secs(3)).await;
     }
+    // let mut orch_receiver = rx.await.expect("should receive");
+    // let assigned_port_msg: Message<String> =
+    //     orch_receiver.receive().await.expect("should receive");
 
-    // =======================================================================================
-    // Step 3: Wait for Receiver Task and Receive Assigned Port
-    // =======================================================================================
-    // Wait for the receiver task to complete and retrieve the communicator
-    println!("[Node RT] Waiting for assigned communication port from orchestrator...");
-    let mut orch_receiver = rx.await.expect("should receive");
-    let assigned_port_msg: Message<String> = orch_receiver.receive().await.expect("should receive");
-
-    if let Message::SetupCommunicationPort(port) = assigned_port_msg {
-        assigned_port = port;
-        println!(
-            "[Node RT] Received assigned port from orchestrator: {}",
-            assigned_port
-        );
-    } else {
-        return Err(anyhow::Error::msg(
-            "[Node RT] Unexpected message received instead of assigned port!",
-        ));
-    }
-
-    println!("[Node RT] Received message: {:?}", assigned_port_msg);
+    // if let Message::SetupCommunicationPort(port) = assigned_port_msg {
+    //     assigned_port = port;
+    //     println!(
+    //         "[Node RT] Received assigned port from orchestrator: {}",
+    //         assigned_port
+    //     );
+    // } else {
+    //     return Err(anyhow::Error::msg(
+    //         "[Node RT] Unexpected message received instead of assigned port!",
+    //     ));
+    // }
 
     // =======================================================================================
     // Step 4: Create a sender to orchestrator on the assigned port
@@ -431,11 +571,35 @@ async fn run_node_runtime(
             )));
         }
     }
+    // =======================================================================================
+    // Step 5: Send an acknowledging message back to the orchestrator
+    // =======================================================================================
+    let ack_message = Message::<String>::AcknowledgeConnection;
+
+    println!(
+        "[Node RT] Sending acknowledgment message to orchestrator on port {}...",
+        assigned_port
+    );
+
+    if let Err(e) = orch_sender.send(ack_message).await {
+        println!(
+            "[Node RT] Failed to send acknowledgment message to orchestrator: {}",
+            e
+        );
+        return Err(anyhow::Error::msg(
+            "Failed to send acknowledgment message to orchestrator",
+        ));
+    }
 
     println!(
         "[Node RT] Successfully connected to orchestrator on {}:{} (send) and {}:{} (receive)",
         orchestrator_ip, assigned_port, orchestrator_ip, RUNTIME_PORT
     );
+
+    // Keep the runtime running indefinitely
+    loop {
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+    }
 
     // Now that communication is set up, node runtime is ready for execution.
     // TODO: Implement further logic for execution handling.
