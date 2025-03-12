@@ -1,3 +1,7 @@
+use flowrs::comm::messages::Message;
+use flowrs::exec::execution_configuration::ExecutionConfig;
+use flowrs::sched::scheduling_config;
+use flowrs::sched::scheduling_config::RuntimeId;
 use flowrs::sched::scheduling_config::SchedulingConfig;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -8,8 +12,8 @@ use clap::Parser;
 use flowrs::comm::communication::Communicator;
 use flowrs::comm::network_communicator::NetworkCommunicator;
 use flowrs::flow::abstract_flow::AbstractFlow;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use flowrs::comm::messages::Message;
 use std::collections::HashMap;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
@@ -36,6 +40,10 @@ struct Arguments {
     /// Role of the runtime (orchestrator or node-runtime).
     #[arg(short, long)]
     role: String,
+
+    /// Runtime ID (only required for node runtimes)
+    #[arg(long)]
+    runtime_id: Option<usize>,
 }
 
 // #[derive(Clone)]
@@ -56,25 +64,35 @@ async fn main() -> Result<(), Error> {
     // Define the CLI application using clap
     let args = Arguments::parse();
 
-    // create dummy values for now
+    // Step 1: Create the flow definition
     let abstract_flow = return_dummy_flow()?;
-    //let orchestrator_addr =
-    //SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 5000);
-    //let orchestrator_addr = "orchestrator:5000".parse().unwrap(); //find IP using docker
-    let orchestrator_addr = get_orchestrator_address().await?; // find the IP using tokio
+
+    // Step 2: Generate the scheduling configuration (Global)
+    let num_runtimes = 2; // Hardcoded for now, later can be dynamically set
+    let scheduling_config = dummy_scheduling(&abstract_flow, num_runtimes);
+
+    // Step 3: Get the orchestrator's address
+    let orchestrator_addr = get_orchestrator_address().await?;
 
     println!(
         "Orchestrator Address: {}",
         orchestrator_addr.ip().to_string()
     );
 
-    // Branch logic based on the role argument
+    // Step 4: Determine role and start the appropriate component
     match args.role.as_str() {
         "orchestrator" => {
-            run_orchestrator(args, abstract_flow).await?;
+            run_orchestrator(args, abstract_flow, scheduling_config).await?;
         }
         "node-runtime" => {
-            run_node_runtime(args, abstract_flow, orchestrator_addr).await?;
+            // Extract runtime ID from CLI arguments (needs to be added)
+            let runtime_id: RuntimeId = args.runtime_id.expect("Missing runtime ID");
+
+            // Generate execution config from the global scheduling config
+            let execution_config =
+                ExecutionConfig::from_scheduling_config(&scheduling_config, runtime_id);
+
+            run_node_runtime(args, abstract_flow, orchestrator_addr, execution_config).await?;
         }
         _ => {
             eprintln!("Invalid role specified. Use 'orchestrator' or 'node-runtime'.");
@@ -151,6 +169,9 @@ async fn handle_runtime_connection(
     // **Oneshot channel to signal receiver readiness**
     let (tx, rx) = oneshot::channel::<Result<NetworkCommunicator, Error>>();
 
+    // =======================================================================================
+    // Step 2: Spawn receiver task
+    // =======================================================================================
     // **Spawn Receiver First**
     let receiver_runtime_ip = runtime_ip.clone();
     task::spawn(async move {
@@ -211,6 +232,9 @@ async fn handle_runtime_connection(
 
     sleep(Duration::from_millis(100)).await; // Ensure receiver is ready
 
+    // =======================================================================================
+    // Step 3: Create Sender
+    // =======================================================================================
     // **Create Sender**
     let mut sender = NetworkCommunicator::new().await.expect("should construct");
     let mut retries = 0;
@@ -242,7 +266,9 @@ async fn handle_runtime_connection(
             }
         }
     }
-
+    // =======================================================================================
+    // Step 4: Assign (receiving) Port to Runtime
+    // =======================================================================================
     println!(
         "[Orchestrator] Assigning port {} to runtime {}...",
         port, runtime_ip
@@ -291,6 +317,9 @@ async fn handle_runtime_connection(
         }
     };
 
+    // =======================================================================================
+    // Step 5: Store Sender and Receiver
+    // =======================================================================================
     // Store the communicator in the HashMap
     let mut lock = connected_runtimes.lock().await;
     lock.insert(runtime_ip.clone(), (sender, receiver, port));
@@ -306,10 +335,11 @@ async fn handle_runtime_connection(
 }
 
 // Logic for running as orchestrator
-async fn run_orchestrator(args: Arguments, abstract_flow: AbstractFlow) -> Result<(), Error> {
-    // TODO: add number of runtimes to config and pass as parameter
-    let number_of_runtimes_expected = 2;
-
+async fn run_orchestrator(
+    args: Arguments,
+    abstract_flow: AbstractFlow,
+    scheduling_config: SchedulingConfig,
+) -> Result<(), Error> {
     println!(
         "[Orchestrator] Running as orchestrator with flow file: {}",
         args.flow
@@ -318,7 +348,7 @@ async fn run_orchestrator(args: Arguments, abstract_flow: AbstractFlow) -> Resul
     // =======================================================================================
     // Step 1: Connect to node runtimes
     // =======================================================================================
-
+    let number_of_runtimes_expected = scheduling_config.runtime_nodes.len();
     // start listening for incoming runtime connections
     let listener = TcpListener::bind(format!("0.0.0.0:{}", SETUP_PORT).as_str()).await?;
     println!(
@@ -326,64 +356,102 @@ async fn run_orchestrator(args: Arguments, abstract_flow: AbstractFlow) -> Resul
         SETUP_PORT
     );
 
+    // Store discovered runtimes (RuntimeId -> IP)
+    let mut runtime_map: HashMap<RuntimeId, String> = HashMap::new();
+    // Store connection to runtimes (IP -> (Sender, Receiver, sending_port)
     let connected_runtimes = Arc::new(Mutex::new(HashMap::<
         String,
         (NetworkCommunicator, NetworkCommunicator, u16),
     >::new()));
     let next_port = Arc::new(Mutex::new(RUNTIME_PORT + 1)); // start port assignments from the first free port
 
+    // loop until number of runtimes matches
     while connected_runtimes.lock().await.len() < number_of_runtimes_expected {
         match listener.accept().await {
-            Ok((stream, addr)) => {
+            Ok((mut stream, addr)) => {
                 let runtime_ip = addr.ip().to_string();
 
-                // Check if this runtime is already known
-                let is_known_runtime = connected_runtimes.lock().await.contains_key(&runtime_ip);
-                let connected_count = connected_runtimes.lock().await.len();
+                // Extract runtime ID from the stream
+                let mut buffer = [0; 32]; // Adjust buffer size if needed
+                if let Ok(size) = stream.read(&mut buffer).await {
+                    let received_msg = String::from_utf8_lossy(&buffer[..size]).to_string();
+                    if let Some(runtime_id_str) = received_msg.strip_prefix("RUNTIME_ID:") {
+                        if let Ok(runtime_id) = runtime_id_str.trim().parse::<RuntimeId>() {
+                            println!(
+                                "[Orchestrator] Node runtime connected from {} (Runtime ID: {})...",
+                                runtime_ip, runtime_id
+                            );
 
-                // If we have all expected runtimes AND it's NOT a reconnection, ignore the connection
-                if connected_count >= number_of_runtimes_expected && !is_known_runtime {
-                    println!(
-                    "[Orchestrator] Ignoring new connection from {}. Already at max runtimes ({}/{})",
-                    runtime_ip, connected_count, number_of_runtimes_expected
-                );
-                    continue; // Ignore this connection
-                }
+                            // Store the mapping (Runtime ID -> IP)
+                            runtime_map.insert(runtime_id, runtime_ip.clone());
 
-                println!(
-                    "[Orchestrator] Node runtime connected from {}...",
-                    runtime_ip.clone()
-                );
+                            // Check if this runtime is already known
+                            let is_known_runtime =
+                                connected_runtimes.lock().await.contains_key(&runtime_ip);
+                            let connected_count = connected_runtimes.lock().await.len();
 
-                let mut port_lock = next_port.lock().await;
-                let mut assigned_port = *port_lock;
-                *port_lock += 1;
-                drop(port_lock);
-                //let mut port_should_increment = true;
+                            // If we have all expected runtimes AND it's NOT a reconnection, ignore the connection
+                            if connected_count >= number_of_runtimes_expected && !is_known_runtime {
+                                println!(
+                                "[Orchestrator] Ignoring new connection from {}. Already at max runtimes ({}/{})",
+                                runtime_ip, connected_count, number_of_runtimes_expected
+                            );
+                                continue; // Ignore this connection
+                            }
 
-                // Clone Arc so each task gets independent access
-                let connected_runtimes_clone = Arc::clone(&connected_runtimes);
-                let handle_task = task::spawn(async move {
-                    if let Err(e) = handle_runtime_connection(
-                        runtime_ip.clone(),
-                        connected_runtimes_clone,
-                        assigned_port,
-                    )
-                    .await
-                    {
+                            println!(
+                                "[Orchestrator] Node runtime connected from {} (Runtime ID: {})...",
+                                runtime_ip, runtime_id
+                            );
+
+                            let mut port_lock = next_port.lock().await;
+                            let mut assigned_port = *port_lock;
+                            *port_lock += 1;
+                            drop(port_lock);
+                            //let mut port_should_increment = true;
+
+                            // Clone Arc so each task gets independent access
+                            let connected_runtimes_clone = Arc::clone(&connected_runtimes);
+                            let handle_task = task::spawn(async move {
+                                if let Err(e) = handle_runtime_connection(
+                                    runtime_ip.clone(),
+                                    connected_runtimes_clone,
+                                    assigned_port,
+                                )
+                                .await
+                                {
+                                    println!(
+                                        "[Orchestrator] Error handling runtime {}: {}",
+                                        runtime_ip, e
+                                    );
+                                }
+                            });
+
+                            // Wait for the task to update `connected_runtimes`
+                            let _ = handle_task.await;
+
+                            // Re-check if all expected runtimes are connected
+                            if connected_runtimes.lock().await.len() >= number_of_runtimes_expected
+                            {
+                                break;
+                            }
+                        } else {
+                            println!(
+                                "[Orchestrator] ERROR: Invalid Runtime ID received from {}. Ignoring...",
+                                runtime_ip
+                            );
+                        }
+                    } else {
                         println!(
-                            "[Orchestrator] Error handling runtime {}: {}",
-                            runtime_ip, e
+                            "[Orchestrator] ERROR: Malformed message from {}. Ignoring...",
+                            runtime_ip
                         );
                     }
-                });
-
-                // ✅ Wait for the task to update `connected_runtimes`
-                let _ = handle_task.await;
-
-                // ✅ Re-check if all expected runtimes are connected
-                if connected_runtimes.lock().await.len() >= number_of_runtimes_expected {
-                    break;
+                } else {
+                    println!(
+                        "[Orchestrator] ERROR: Failed to read runtime ID from {}",
+                        runtime_ip
+                    );
                 }
             }
             Err(e) => {
@@ -393,9 +461,59 @@ async fn run_orchestrator(args: Arguments, abstract_flow: AbstractFlow) -> Resul
         }
     }
     println!("[Orchestrator] All expected runtimes connected!");
+
+    // =======================================================================================
+    // Step 6: Command Runtimes to Initialize Local Nodes
+    // =======================================================================================
+
+    println!("[Orchestrator] Sending node initialization requests sequentially...");
+
+    for (runtime_ip, (sender, receiver, port)) in connected_runtimes.lock().await.iter_mut() {
+        println!(
+            "[DEBUG] Sending InitializeLocalNodes to {} on port {}",
+            runtime_ip, port
+        );
+
+        // Send the initialization message
+        let message = Message::<String>::InitializeLocalNodes;
+        if let Err(e) = sender.send(message).await {
+            println!(
+                "[Orchestrator] ERROR: Failed to send InitializeLocalNodes to {}: {}",
+                runtime_ip, e
+            );
+            continue; // Skip to next runtime
+        }
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Wait for acknowledgment before moving to the next runtime
+        loop {
+            match Communicator::<String>::receive(receiver).await {
+                Ok(Message::AcknowledgeNodeInitialization) => {
+                    println!(
+                        "[Orchestrator] Received AcknowledgeNodeInitialization from {}",
+                        runtime_ip
+                    );
+                    break; // Proceed to next runtime
+                }
+                Ok(msg) => {
+                    println!(
+                        "[Orchestrator] WARNING: Unexpected message from {}: {:?}",
+                        runtime_ip, msg
+                    );
+                }
+                Err(_) => {
+                    println!(
+                        "[Orchestrator] ERROR: Failed to receive acknowledgment from {}",
+                        runtime_ip
+                    );
+                }
+            }
+        }
+    }
+    println!("[Orchestrator] All runtimes have initialized their local nodes!");
     // Keep the orchestrator running indefinitely
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+        sleep(Duration::from_secs(60)).await;
     }
     Ok(())
 }
@@ -405,9 +523,8 @@ async fn run_node_runtime(
     args: Arguments,
     abstract_flow: AbstractFlow,
     orch_addr: SocketAddr,
+    execution_config: ExecutionConfig,
 ) -> Result<(), Error> {
-    use flowrs::comm::messages::Message;
-
     println!(
         "[Node RT] Running as node runtime with flow file: {}",
         args.flow
@@ -415,6 +532,7 @@ async fn run_node_runtime(
 
     let orchestrator_ip = orch_addr.ip().to_string();
     let mut assigned_port: u16 = 0;
+    let runtime_id = execution_config.runtime_id;
 
     // Shared receiver reference to persist across retries
     let receiver_shared = Arc::new(Mutex::new(None));
@@ -462,11 +580,22 @@ async fn run_node_runtime(
         retries += 1;
         'send_loop: while retries < max_retries {
             match TcpStream::connect((orchestrator_ip.clone(), SETUP_PORT)).await {
-                Ok(_stream) => {
+                Ok(mut stream) => {
                     println!(
                         "[Node RT] Successfully signaled presence to orchestrator at {}:{}",
                         orchestrator_ip, SETUP_PORT
                     );
+                    // Serialize and send the runtime ID
+                    let id_msg = format!("RUNTIME_ID:{}", runtime_id);
+                    if let Err(e) = stream.write_all(id_msg.as_bytes()).await {
+                        println!(
+                            "[Node RT] ERROR: Failed to send Runtime ID to Orchestrator! {}",
+                            e
+                        );
+                        return Err(Error::msg("Failed to send Runtime ID"));
+                    }
+
+                    println!("[Node RT] Successfully sent Runtime ID to Orchestrator");
                     break 'send_loop;
                 }
                 Err(_) => {
@@ -595,6 +724,59 @@ async fn run_node_runtime(
         "[Node RT] Successfully connected to orchestrator on {}:{} (send) and {}:{} (receive)",
         orchestrator_ip, assigned_port, orchestrator_ip, RUNTIME_PORT
     );
+
+    // =======================================================================================
+    // Step 6: Node Initialization
+    // =======================================================================================
+    let mut receiver_guard = receiver_shared.lock().await;
+
+    if let Some(receiver) = &mut *receiver_guard {
+        println!(
+            "[Node RT] Waiting for InitializeLocalNodes on port {}",
+            assigned_port
+        );
+
+        loop {
+            match Communicator::<String>::receive(receiver).await {
+                Ok(Message::InitializeLocalNodes) => {
+                    println!("[Node RT] Received InitializeLocalNodes request...");
+
+                    // Perform initialization (Dummy for now)
+                    println!("[Node RT] Initializing local nodes...");
+                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+                    println!("[Node RT] Successfully initialized local nodes.");
+
+                    // Send acknowledgment back to the orchestrator
+                    let ack_message = Message::<String>::AcknowledgeNodeInitialization;
+                    if let Err(e) = orch_sender.send(ack_message).await {
+                        println!(
+                            "[Node RT] ERROR: Failed to send AcknowledgeNodeInitialization: {}",
+                            e
+                        );
+                    } else {
+                        println!("[Node RT] Sent AcknowledgeNodeInitialization.");
+                    }
+                    break; // Exit loop after successful initialization
+                }
+                Ok(msg) => {
+                    println!(
+                        "[Node RT] WARNING: Unexpected message from orchestrator: {:?}",
+                        msg
+                    );
+                }
+                Err(e) => {
+                    println!(
+                        "[Node RT] ERROR: Failed to receive message from orchestrator: {}",
+                        e
+                    );
+                }
+            }
+        }
+    } else {
+        println!("[Node RT] ERROR: Receiver was not initialized properly.");
+        return Err(anyhow::Error::msg("Receiver not available"));
+    }
 
     // Keep the runtime running indefinitely
     loop {
