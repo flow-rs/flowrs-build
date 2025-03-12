@@ -1,5 +1,7 @@
 use flowrs::comm::messages::Message;
+use flowrs::exec::execution::StandardExecutor;
 use flowrs::exec::execution_configuration::ExecutionConfig;
+use flowrs::node::Node;
 use flowrs::sched::scheduling_config;
 use flowrs::sched::scheduling_config::RuntimeId;
 use flowrs::sched::scheduling_config::SchedulingConfig;
@@ -21,10 +23,6 @@ use tokio::sync::oneshot;
 use tokio::sync::Mutex;
 use tokio::task;
 use tokio::time::{sleep, timeout, Duration};
-
-// port constants
-const SETUP_PORT: u16 = 4999; // used to establish connections between node-runtimes and the orchestrator
-const RUNTIME_PORT: u16 = 5000; // used to communicate TO any node-runtime
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -126,11 +124,11 @@ fn return_dummy_flow() -> Result<AbstractFlow, Error> {
 fn dummy_scheduling(abstract_flow: &AbstractFlow, num_runtimes: usize) -> SchedulingConfig {
     let mut scheduling_config = SchedulingConfig::new();
 
-    // Simple round-robin assignment of nodes to runtimes
-    let mut runtime_id = 0;
+    let mut runtime_id = 1;
+
     for node_id in abstract_flow.get_nodes().map(|(id, _)| id) {
         scheduling_config.assign_node(runtime_id, *node_id);
-        runtime_id = (runtime_id + 1) % num_runtimes;
+        runtime_id = ((runtime_id) % num_runtimes) + 1;
     }
 
     scheduling_config
@@ -521,7 +519,7 @@ async fn run_orchestrator(
 /// Logic for running as a node runtime
 async fn run_node_runtime(
     args: Arguments,
-    abstract_flow: AbstractFlow,
+    mut abstract_flow: AbstractFlow,
     orch_addr: SocketAddr,
     execution_config: ExecutionConfig,
 ) -> Result<(), Error> {
@@ -728,6 +726,7 @@ async fn run_node_runtime(
     // =======================================================================================
     // Step 6: Node Initialization
     // =======================================================================================
+    let mut executor = StandardExecutor::new();
     let mut receiver_guard = receiver_shared.lock().await;
 
     if let Some(receiver) = &mut *receiver_guard {
@@ -741,13 +740,29 @@ async fn run_node_runtime(
                 Ok(Message::InitializeLocalNodes) => {
                     println!("[Node RT] Received InitializeLocalNodes request...");
 
-                    // Perform initialization (Dummy for now)
-                    println!("[Node RT] Initializing local nodes...");
-                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                    // ✅ Perform actual node initialization
+                    if let Err(e) = executor
+                        .initialize_nodes(&mut abstract_flow, &execution_config)
+                        .await
+                    {
+                        println!("[Node RT] ERROR: Failed to initialize nodes: {}", e);
+                        return Err(anyhow::Error::msg("Node initialization failed"));
+                    }
 
                     println!("[Node RT] Successfully initialized local nodes.");
 
-                    // Send acknowledgment back to the orchestrator
+                    // ✅ Call `on_ready()` for all nodes after initialization
+                    for node in executor.execution_nodes.values() {
+                        let mut node_guard = node.lock().await;
+                        if let Err(e) = node_guard.on_ready() {
+                            println!("[Node RT] ERROR: Node failed to enter ready state: {}", e);
+                            return Err(anyhow::Error::msg("Node ready state failed"));
+                        }
+                    }
+
+                    println!("[Node RT] All nodes are ready!");
+
+                    // ✅ Send acknowledgment back to the orchestrator
                     let ack_message = Message::<String>::AcknowledgeNodeInitialization;
                     if let Err(e) = orch_sender.send(ack_message).await {
                         println!(
