@@ -2,27 +2,109 @@ use anyhow::Error;
 use clap::Parser;
 use flowrs::comm::communication::Communicator;
 use flowrs::comm::communication::NodeCommunicator;
+use flowrs::connection::Input;
+use flowrs::connection::Output;
 use flowrs::exec::execution_configuration::ExecutionConfig;
 use flowrs::flow::abstract_flow::AbstractFlow;
 use flowrs::flow::flow_types::NodeIOIndex;
 use flowrs::flow::flow_types::NodeId;
-use flowrs::nodes::node_io::NodeIO;
-use flowrs::nodes::node_io::SettableCommunicator;
 use flowrs::nodes::node_io::SetupIO;
-use flowrs::nodes::node_io::SplittableCommunicator;
-use flowrs::nodes::node_io::TupleIO;
-use flowrs::nodes::node_io::TypedInput;
-use flowrs::nodes::node_io::TypedOutput;
 use flowrs::sched::scheduling_config::RuntimeId;
 use flowrs::sched::scheduling_config::SchedulingConfig;
 use flowrs::types::type_registry::TYPE_REGISTRY;
 use flowrs_build::runtime::node_runtime::NodeRuntime;
 use flowrs_build::runtime::orchestrator::Orchestrator;
 use flowrs_build::runtime::runtime_args::Arguments;
-use std::any::Any;
+use std::any::TypeId;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::lookup_host;
+
+// #[macro_export]
+// macro_rules! generate_local_connection {
+//     ($type:ty) => {
+//         fn connect_nodes(
+//             sender_id: NodeId,
+//             receiver_id: NodeId,
+//             sender_out_idx: NodeIOIndex,
+//             recv_in_idx: NodeIOIndex,
+//             sender_io: &mut dyn SetupIO,
+//             receiver_io: &mut dyn SetupIO,
+//         ) {
+
+//             println!(
+//             "[DEBUG] Registering connection function for type ID: {:?} (type: {})",
+//             TypeId::of::<$type>(),
+//              stringify!($type)
+//             );
+
+//             // Attempt to downcast sender_io to dyn SetupIO
+//             // let sender_io = match sender_io.downcast_mut::<&mut dyn SetupIO>() {
+//             //     Some(io) => io,
+//             //     None => {
+//             //         panic!("[connect_nodes] Sender IO type mismatch with SenderIO");
+//             //     }
+//             // };
+
+//             // // Attempt to downcast receiver_io to dyn SetupIO
+//             // let receiver_io = match receiver_io.downcast_mut::<&mut dyn SetupIO>() {
+//             //     Some(io) => io,
+//             //     None => {
+//             //         panic!("[connect_nodes] Receiver IO type mismatch with SenderIO");
+//             //     }
+//             // };
+
+//             if let Some(sender_output_any) = sender_io.get_output_communicator(sender_out_idx) {
+//                 // Downcast to the expected Output<T>
+//                 if let Some(sender_output) = sender_output_any.downcast_mut::<Output<$type>>() {
+//                     // Get the input communicator from the receiver
+//                     if let Some(receiver_input_any) = receiver_io.get_input_communicator(recv_in_idx) {
+//                         // Downcast to the expected Input<T>
+//                         if let Some(receiver_input) = receiver_input_any.downcast_mut::<Input<$type>>() {
+//                             // Split the communicator into send and receive halves
+//                             if let Some(existing_comm) = sender_output.get_communicator_mut() {
+//                                 let send_half = existing_comm.clone_send();
+//                                 let recv_half = existing_comm.move_recv().expect("Failed to move receiver");
+
+//                                 // Set the halves on the respective nodes, wrapped in NodeCommunicator
+//                                 sender_output.set_communicator(NodeCommunicator::ThreadComm(send_half));
+//                                 receiver_input.set_communicator(NodeCommunicator::ThreadComm(recv_half));
+
+//                                 println!(
+//                                     "[connect_nodes] Successfully connected nodes {} -> {} with type {}",
+//                                     sender_id,
+//                                     receiver_id,
+//                                     stringify!($type)
+//                                 );
+//                             } else {
+//                                 panic!("[connect_nodes] No communicator to split!");
+//                             }
+//                         } else {
+//                             panic!("[connect_nodes] Receiver IO type mismatch");
+//                         }
+//                     } else {
+//                         panic!("[connect_nodes] Failed to get input communicator");
+//                     }
+//                 } else {
+//                     panic!("[connect_nodes] Sender IO type mismatch");
+//                 }
+//             } else {
+//                 panic!("[connect_nodes] Failed to get output communicator");
+//             }
+//         }
+
+//         // Register the connection function
+//         TYPE_REGISTRY
+//             .lock()
+//             .unwrap()
+//             .register::<$type>(connect_nodes);
+
+//         println!(
+//             "[generate_local_connection] Registered connection function for type: {}",
+//             stringify!($type)
+//         );
+//     };
+// }
 
 #[macro_export]
 macro_rules! generate_local_connection {
@@ -32,36 +114,56 @@ macro_rules! generate_local_connection {
             receiver_id: NodeId,
             sender_out_idx: NodeIOIndex,
             recv_in_idx: NodeIOIndex,
-            sender_io: &mut dyn Any,
-            receiver_io: &mut dyn Any,
+            sender_io: &mut dyn SetupIO,
+            receiver_io: &mut dyn SetupIO,
         ) {
-            if let Some(sender_output) = sender_io.downcast_mut::<TypedOutput<$type>>() {
-                if let Some(receiver_input) = receiver_io.downcast_mut::<TypedInput<$type>>() {
-                    // Pass the sender_out_idx to the split function
-                    let (send_half, recv_half) = sender_output.split(sender_out_idx);
-                    receiver_input.set_any_communicator(Box::new(recv_half));
-                    sender_output.set_any_communicator(Box::new(send_half));
+            println!(
+                "[DEBUG] Registering connection function for type ID: {:?} (type: {})",
+                TypeId::of::<$type>(),
+                stringify!($type)
+            );
 
-                    println!(
-                        "[generate_local_connection] Successfully connected nodes {} -> {} with type {}",
-                        sender_id, receiver_id, stringify!($type)
-                    );
+            if let Some(sender_output_any) = sender_io.get_output_communicator(sender_out_idx) {
+                if let Some(sender_output) = sender_output_any.downcast_mut::<Output<$type>>() {
+                    if let Some(receiver_input_any) = receiver_io.get_input_communicator(recv_in_idx) {
+                        if let Some(receiver_input) = receiver_input_any.downcast_mut::<Input<$type>>() {
+                            if let Some(existing_comm) = sender_output.get_communicator_mut() {
+                                let send_half = existing_comm.clone_send();
+                                let recv_half = existing_comm.move_recv().expect("Failed to move receiver");
+
+                                sender_output.set_communicator(NodeCommunicator::ThreadComm(send_half));
+                                receiver_input.set_communicator(NodeCommunicator::ThreadComm(recv_half));
+
+                                println!(
+                                    "[connect_nodes] Successfully connected nodes {} -> {} with type {}",
+                                    sender_id,
+                                    receiver_id,
+                                    stringify!($type)
+                                );
+                            } else {
+                                panic!("[connect_nodes] No communicator to split!");
+                            }
+                        } else {
+                            panic!("[connect_nodes] Receiver IO type mismatch");
+                        }
+                    } else {
+                        panic!("[connect_nodes] Failed to get input communicator");
+                    }
                 } else {
-                    panic!("[generate_local_connection] Receiver IO type mismatch");
+                    panic!("[connect_nodes] Sender IO type mismatch");
                 }
             } else {
-                panic!("[generate_local_connection] Sender IO type mismatch");
+                panic!("[connect_nodes] Failed to get output communicator");
             }
         }
 
-        // Register the connection function
-        TYPE_REGISTRY
-            .lock()
-            .unwrap()
-            .register::<$type>(connect_nodes);
+        // Register both local and dynamic factory/setup functions
+        let mut registry = TYPE_REGISTRY.lock().await;
+        registry.register::<$type>(connect_nodes);                    // local connection
+        registry.register_communicator::<$type>(stringify!($type));  // P2P factory + IO setup
 
         println!(
-            "[generate_local_connection] Registered connection function for type: {}",
+            "[generate_local_connection] Fully registered type: {}",
             stringify!($type)
         );
     };
@@ -937,136 +1039,353 @@ fn dummy_scheduling(abstract_flow: &AbstractFlow, num_runtimes: u128) -> Schedul
 //     Ok(())
 // }
 
+// #[cfg(test)]
+// mod tests {
+//     use super::*; // Import functions from `runner_main.rs`
+//     use anyhow::Error;
+//     use flowrs::flow::abstract_flow::AbstractFlow;
+//     use flowrs::sched::scheduling_config::RuntimeId;
+//     use flowrs_build::runtime::node_runtime::NodeRuntime;
+//     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+//     #[tokio::test]
+//     async fn test_main_flow_setup() -> Result<(), Error> {
+//         //register_base_type::<u32>().await;
+//         // Step 1: Generate a dummy flow
+//         let abstract_flow = return_dummy_flow()
+//             .await
+//             .expect("Failed to create dummy flow");
+
+//         // Ensure the flow has the expected number of nodes
+//         assert_eq!(
+//             abstract_flow.num_nodes(),
+//             3,
+//             "Expected 3 nodes in AbstractFlow"
+//         );
+
+//         // Step 2: Validate the connections exist
+//         let connections: Vec<_> = abstract_flow.get_connections().cloned().collect();
+//         assert_eq!(
+//             connections.len(),
+//             2,
+//             "Expected 2 connections in AbstractFlow"
+//         );
+
+//         // Step 3: Define a mock Orchestrator address
+//         let orchestrator_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 5000);
+
+//         // Step 4: Define a Runtime ID
+//         let runtime_id: RuntimeId = 1; // Ensure type matches
+
+//         // Step 5: Create a NodeRuntime instance
+//         let mut node_runtime = NodeRuntime::new(
+//             orchestrator_addr.ip().to_string(),
+//             runtime_id,
+//             abstract_flow,
+//         )
+//         .await
+//         .expect("Failed to create NodeRuntime");
+
+//         // // Step 6: Ensure the runtime is initialized properly
+//         // assert!(
+//         //     node_runtime.runtime_id == runtime_id,
+//         //     "Runtime ID does not match"
+//         // );
+//         // assert!(
+//         //     node_runtime.assigned_port.is_none(),
+//         //     "Assigned port should be None initially"
+//         // );
+//         Ok(())
+//     }
+
+//     #[tokio::test]
+//     async fn test_local_node_execution() {
+//         use flowrs::exec::execution::StandardExecutor;
+//         use flowrs::exec::execution_configuration::ExecutionConfig;
+//         use flowrs::flow::abstract_flow::AbstractFlow;
+//         use flowrs::flow::flow_types::NodeId;
+//         use flowrs::sched::scheduling_config::RuntimeId;
+//         use flowrs::sched::scheduling_config::SchedulingConfig;
+//         use flowrs_std::add::AddNode;
+//         use flowrs_std::value::ValueNode;
+//         use std::collections::HashMap;
+//         use std::sync::Arc;
+//         use tokio::sync::Mutex;
+//         use tokio::time::Duration;
+
+//         // Step 1: Create a dummy flow
+//         println!("[TEST] Creating dummy flow...");
+//         let number_node_1: ValueNode<u32> = ValueNode::<u32>::new(3);
+//         let number_node_2: ValueNode<u32> = ValueNode::<u32>::new(2);
+//         let add_node = AddNode::<u32, u32, u32>::new();
+
+//         let mut flow = AbstractFlow::new_empty();
+//         flow.add_node_with_id(Box::new(number_node_1), 1);
+//         flow.add_node_with_id(Box::new(number_node_2), 2);
+//         flow.add_node_with_id(Box::new(add_node), 3);
+
+//         // Step 2: Connect the nodes
+//         println!("[TEST] Connecting nodes...");
+//         flow.connect_nodes::<u32>(1, 3, 0, 0)
+//             .expect("Failed to connect nodes");
+//         flow.connect_nodes::<u32>(2, 3, 0, 1)
+//             .expect("Failed to connect nodes");
+
+//         // Step 3: Create a SchedulingConfig (All Nodes Assigned to Runtime 1)
+//         let local_runtime_id: RuntimeId = 1;
+
+//         let mut scheduling_config = SchedulingConfig::new();
+//         scheduling_config.assign_node(local_runtime_id, 1);
+//         scheduling_config.assign_node(local_runtime_id, 2);
+//         scheduling_config.assign_node(local_runtime_id, 3);
+
+//         // Step 4: Create Execution Configuration
+//         let execution_config =
+//             ExecutionConfig::from_scheduling_config(&scheduling_config, local_runtime_id);
+//         println!("[Orchestrator] ExecutionConfig: {:?}", execution_config);
+
+//         // Step 5: Initialize `StandardExecutor`
+//         let executor = Arc::new(Mutex::new(StandardExecutor::new()));
+
+//         // Step 6: Initialize nodes
+//         println!("[TEST] Initializing nodes...");
+//         let mut executor_guard = executor.lock().await;
+//         executor_guard
+//             .initialize_nodes(&mut flow, &execution_config)
+//             .await
+//             .expect("Node initialization failed");
+
+//         // Step 7: Ensure nodes are ready
+//         println!("[TEST] Ensuring nodes are ready...");
+//         executor_guard
+//             .ready_nodes()
+//             .await
+//             .expect("Failed to transition nodes to ready state");
+
+//         // Step 8: Start Execution
+//         println!("[TEST] Starting execution...");
+//         executor_guard.start_execution().await;
+
+//         // Step 9: Sleep to allow execution
+//         tokio::time::sleep(Duration::from_secs(1)).await;
+
+//         println!("[TEST] Execution completed.");
+//     }
+// }
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use flowrs::comm::communication::NodeCommunicator;
+//     use flowrs::connection::{Input, Output};
+//     use flowrs::flow::flow_types::NodeIOIndex;
+//     use flowrs::node::Node;
+//     use flowrs_std::add::AddNode;
+//     use flowrs_std::value::ValueNode;
+//     use std::any::Any;
+//     use std::collections::HashMap;
+//     use std::fmt::Debug;
+//     use std::str::FromStr;
+//     use std::sync::Arc;
+
+//     fn connect_nodes<T>(
+//         sender_id: u128,
+//         receiver_id: u128,
+//         sender_out_idx: NodeIOIndex,
+//         recv_in_idx: NodeIOIndex,
+//         sender_io: &mut dyn SetupIO,
+//         receiver_io: &mut dyn SetupIO,
+//     ) where
+//         T: 'static + Send + Sync + Debug + Clone + FromStr,
+//     {
+//         // Get the output communicator from the sender
+//         if let Some(sender_output_any) = sender_io.get_output_communicator(sender_out_idx) {
+//             // Downcast to the expected Output<T> (not TypedOutput<T>)
+//             if let Some(sender_output) = sender_output_any.downcast_mut::<Output<T>>() {
+//                 // Get the input communicator from the receiver
+//                 if let Some(receiver_input_any) = receiver_io.get_input_communicator(recv_in_idx) {
+//                     // Downcast to the expected Input<T> (not TypedInput<T>)
+//                     if let Some(receiver_input) = receiver_input_any.downcast_mut::<Input<T>>() {
+//                         // Split the communicator into send and receive halves
+//                         if let Some(existing_comm) = sender_output.get_communicator_mut() {
+//                             let send_half = existing_comm.clone_send();
+//                             let recv_half =
+//                                 existing_comm.move_recv().expect("Failed to move receiver");
+
+//                             // Set the halves on the respective nodes, wrapped in NodeCommunicator
+//                             sender_output.set_communicator(NodeCommunicator::ThreadComm(send_half));
+//                             receiver_input
+//                                 .set_communicator(NodeCommunicator::ThreadComm(recv_half));
+
+//                             println!(
+//                             "[connect_nodes] Successfully connected nodes {} -> {} with type {}",
+//                             sender_id,
+//                             receiver_id,
+//                             stringify!(T)
+//                         );
+//                         } else {
+//                             panic!("[connect_nodes] No communicator to split!");
+//                         }
+//                     } else {
+//                         panic!("[connect_nodes] Receiver IO type mismatch");
+//                     }
+//                 } else {
+//                     panic!("[connect_nodes] Failed to get input communicator");
+//                 }
+//             } else {
+//                 panic!("[connect_nodes] Sender IO type mismatch");
+//             }
+//         } else {
+//             panic!("[connect_nodes] Failed to get output communicator");
+//         }
+//     }
+
+//     #[test]
+//     fn test_connect_nodes_with_actual_nodes() {
+//         // Create nodes as in return_dummy_flow()
+//         let mut value_node = ValueNode::<u32>::new(2);
+//         let mut add_node = AddNode::<u32, u32, u32>::new();
+
+//         // Get the IO from the nodes
+//         let sender_io = value_node.get_io_mut();
+//         let receiver_io = add_node.get_io_mut();
+
+//         // Connect the nodes
+//         connect_nodes::<u32>(1, 3, 0, 0, sender_io, receiver_io);
+
+//         println!("[test_connect_nodes_with_actual_nodes] Test completed successfully.");
+//     }
+
+//     #[tokio::test]
+//     async fn test_connect_nodes_with_actual_nodes2() {
+//         // Generate the flow using return_dummy_flow
+//         let mut flow = return_dummy_flow().await.unwrap();
+
+//         // Retrieve the nodes from the flow by their IDs
+//         let sender_id = 1;
+//         let receiver_id = 3;
+
+//         // Drain nodes to get mutable references
+//         let mut nodes = flow.move_nodes().collect::<HashMap<_, _>>();
+
+//         // Temporarily take ownership of the sender and receiver nodes
+//         let mut sender_node = nodes.remove(&sender_id).expect("Sender node not found");
+//         let mut receiver_node = nodes.remove(&receiver_id).expect("Receiver node not found");
+
+//         // Extract the mutable IO from both nodes
+//         let sender_io = sender_node.get_io_mut();
+//         let receiver_io = receiver_node.get_io_mut();
+
+//         // Retrieve the actual connection function from the TYPE_REGISTRY
+//         let type_id = std::any::TypeId::of::<u32>();
+//         let registry = TYPE_REGISTRY.lock().unwrap();
+
+//         if let Some(connect_fn) = registry.get(type_id) {
+//             println!(
+//                 "[test_connect_nodes_with_actual_flow] Found connection function in registry."
+//             );
+
+//             // Call the connect function from the registry
+//             connect_fn(
+//                 sender_id,
+//                 receiver_id,
+//                 0,
+//                 0,
+//                 sender_io.as_any_mut(),
+//                 receiver_io.as_any_mut(),
+//             );
+
+//             println!("[test_connect_nodes_with_actual_flow] Test completed successfully.");
+//         } else {
+//             panic!(
+//                 "[test_connect_nodes_with_actual_flow] Connection function not found in registry."
+//             );
+//         }
+
+//         // Insert the nodes back into the map
+//         nodes.insert(sender_id, sender_node);
+//         nodes.insert(receiver_id, receiver_node);
+
+//         // Update the flow with the modified nodes
+//         flow.set_nodes(nodes);
+//     }
+// }
+
 #[cfg(test)]
 mod tests {
-    use super::*; // Import functions from `runner_main.rs`
-    use anyhow::Error;
-    use flowrs::flow::abstract_flow::AbstractFlow;
-    use flowrs::sched::scheduling_config::RuntimeId;
-    use flowrs_build::runtime::node_runtime::NodeRuntime;
-    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use super::*;
+    use flowrs::comm::communication::NodeCommunicator;
+    use flowrs::comm::thread_communicator::ThreadCommunicator;
+    use flowrs::connection::Edge;
+    use flowrs::exec::execution_mode::ExecutionMode;
+    use flowrs::flow::flow_types::NodeIOIndex;
+    use flowrs::node::{ExecutionNode, Node};
+    use flowrs::types::type_registry::TYPE_REGISTRY;
+    use std::any::{Any, TypeId};
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
 
     #[tokio::test]
-    async fn test_main_flow_setup() -> Result<(), Error> {
-        //register_base_type::<u32>().await;
-        // Step 1: Generate a dummy flow
-        let abstract_flow = return_dummy_flow()
-            .await
-            .expect("Failed to create dummy flow");
+    async fn test_connect_nodes_with_execution_nodes() {
+        // 1. Create the flow using the return_dummy_flow function
+        let mut abstract_flow = return_dummy_flow().await.expect("Failed to create flow");
 
-        // Ensure the flow has the expected number of nodes
-        assert_eq!(
-            abstract_flow.num_nodes(),
-            3,
-            "Expected 3 nodes in AbstractFlow"
+        // 2. Extract the nodes from the flow
+        let mut nodes = abstract_flow.move_nodes().collect::<HashMap<_, _>>();
+
+        // 3. Initialize the extracted nodes as ExecutionNodes
+        let mut execution_nodes: HashMap<u128, Arc<Mutex<ExecutionNode>>> = HashMap::new();
+
+        for (node_id, node) in nodes.drain() {
+            let communicator =
+                ThreadCommunicator::<String>::new().expect("Failed to create communicator");
+            let edge = Edge::new(NodeCommunicator::ThreadComm(communicator));
+            let execution_node = ExecutionNode::new(node, ExecutionMode::Continuous, edge);
+            execution_nodes.insert(node_id, Arc::new(Mutex::new(execution_node)));
+        }
+
+        // 4. Get the sender and receiver nodes from the execution nodes
+        let sender_id = 1;
+        let receiver_id = 3;
+        let sender_node = execution_nodes
+            .get(&sender_id)
+            .expect("Sender node not found")
+            .clone();
+        let receiver_node = execution_nodes
+            .get(&receiver_id)
+            .expect("Receiver node not found")
+            .clone();
+
+        // 5. Lock the nodes and access their inner nodes
+        let mut sender_guard = sender_node.lock().await;
+        let mut receiver_guard = receiver_node.lock().await;
+
+        // // Extract the inner nodes from the ExecutionNode
+        // let sender_inner_node = &mut sender_guard.node;
+        // let receiver_inner_node = &mut receiver_guard.node;
+
+        // Access the IO from the inner node directly
+        let sender_io = sender_guard.get_io_mut();
+        let receiver_io = receiver_guard.get_io_mut();
+
+        // 6. Get the connection function from the registry using the correct type ID
+        let connection = abstract_flow
+            .get_connections()
+            .next()
+            .expect("No connections found in abstract flow");
+        let type_id = abstract_flow
+            .get_connection_type(&connection)
+            .expect("Connection type not found");
+
+        let registry = TYPE_REGISTRY.lock().unwrap();
+        let connect_fn = registry.get(type_id).expect(
+            "[test_connect_nodes_with_execution_nodes] Connection function not found in registry.",
         );
 
-        // Step 2: Validate the connections exist
-        let connections: Vec<_> = abstract_flow.get_connections().cloned().collect();
-        assert_eq!(
-            connections.len(),
-            2,
-            "Expected 2 connections in AbstractFlow"
-        );
+        // 7. Call the connection function to connect the nodes
+        connect_fn(sender_id, receiver_id, 0, 0, sender_io, receiver_io);
 
-        // Step 3: Define a mock Orchestrator address
-        let orchestrator_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 5000);
-
-        // Step 4: Define a Runtime ID
-        let runtime_id: RuntimeId = 1; // Ensure type matches
-
-        // Step 5: Create a NodeRuntime instance
-        let mut node_runtime = NodeRuntime::new(
-            orchestrator_addr.ip().to_string(),
-            runtime_id,
-            abstract_flow,
-        )
-        .await
-        .expect("Failed to create NodeRuntime");
-
-        // // Step 6: Ensure the runtime is initialized properly
-        // assert!(
-        //     node_runtime.runtime_id == runtime_id,
-        //     "Runtime ID does not match"
-        // );
-        // assert!(
-        //     node_runtime.assigned_port.is_none(),
-        //     "Assigned port should be None initially"
-        // );
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_local_node_execution() {
-        use flowrs::exec::execution::StandardExecutor;
-        use flowrs::exec::execution_configuration::ExecutionConfig;
-        use flowrs::flow::abstract_flow::AbstractFlow;
-        use flowrs::flow::flow_types::NodeId;
-        use flowrs::sched::scheduling_config::RuntimeId;
-        use flowrs::sched::scheduling_config::SchedulingConfig;
-        use flowrs_std::add::AddNode;
-        use flowrs_std::value::ValueNode;
-        use std::collections::HashMap;
-        use std::sync::Arc;
-        use tokio::sync::Mutex;
-        use tokio::time::Duration;
-
-        // Step 1: Create a dummy flow
-        println!("[TEST] Creating dummy flow...");
-        let number_node_1: ValueNode<u32> = ValueNode::<u32>::new(3);
-        let number_node_2: ValueNode<u32> = ValueNode::<u32>::new(2);
-        let add_node = AddNode::<u32, u32, u32>::new();
-
-        let mut flow = AbstractFlow::new_empty();
-        flow.add_node_with_id(Box::new(number_node_1), 1);
-        flow.add_node_with_id(Box::new(number_node_2), 2);
-        flow.add_node_with_id(Box::new(add_node), 3);
-
-        // Step 2: Connect the nodes
-        println!("[TEST] Connecting nodes...");
-        flow.connect_nodes::<u32>(1, 3, 0, 0)
-            .expect("Failed to connect nodes");
-        flow.connect_nodes::<u32>(2, 3, 0, 1)
-            .expect("Failed to connect nodes");
-
-        // Step 3: Create a SchedulingConfig (All Nodes Assigned to Runtime 1)
-        let local_runtime_id: RuntimeId = 1;
-
-        let mut scheduling_config = SchedulingConfig::new();
-        scheduling_config.assign_node(local_runtime_id, 1);
-        scheduling_config.assign_node(local_runtime_id, 2);
-        scheduling_config.assign_node(local_runtime_id, 3);
-
-        // Step 4: Create Execution Configuration
-        let execution_config =
-            ExecutionConfig::from_scheduling_config(&scheduling_config, local_runtime_id);
-        println!("[Orchestrator] ExecutionConfig: {:?}", execution_config);
-
-        // Step 5: Initialize `StandardExecutor`
-        let executor = Arc::new(Mutex::new(StandardExecutor::new()));
-
-        // Step 6: Initialize nodes
-        println!("[TEST] Initializing nodes...");
-        let mut executor_guard = executor.lock().await;
-        executor_guard
-            .initialize_nodes(&mut flow, &execution_config)
-            .await
-            .expect("Node initialization failed");
-
-        // Step 7: Ensure nodes are ready
-        println!("[TEST] Ensuring nodes are ready...");
-        executor_guard
-            .ready_nodes()
-            .await
-            .expect("Failed to transition nodes to ready state");
-
-        // Step 8: Start Execution
-        println!("[TEST] Starting execution...");
-        executor_guard.start_execution().await;
-
-        // Step 9: Sleep to allow execution
-        tokio::time::sleep(Duration::from_secs(1)).await;
-
-        println!("[TEST] Execution completed.");
+        println!("[test_connect_nodes_with_execution_nodes] Successfully connected nodes.");
     }
 }
