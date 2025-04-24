@@ -16,14 +16,15 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncReadExt;
-use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
-use tokio::net::TcpStream;
-use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{oneshot, Mutex, Notify};
 use tokio::time::{sleep, Instant};
 use tokio::{spawn, task};
+
+// (sender_id, receiver_id, out_idx, in_idx) from Message::AcknowledgeConnectionSetup
+type AckKey = (NodeId, NodeId, NodeIOIndex, NodeIOIndex);
+
 pub struct Orchestrator {
     //_listener: TcpListener,
     connected_runtimes: Arc<
@@ -46,6 +47,10 @@ pub struct Orchestrator {
     orch_channel_tx: Sender<(RuntimeId, Message<String>)>,
     orch_channel_rx: Arc<Mutex<Receiver<(RuntimeId, Message<String>)>>>,
     pending_connections: Arc<Mutex<HashMap<NodeId, (NodeId, NodeIOIndex, NodeIOIndex)>>>,
+    received_acks: Arc<Mutex<HashSet<AckKey>>>,
+    received_node_inits: Arc<Mutex<HashSet<u128>>>,
+    ack_notify: Arc<Notify>,
+    init_notify: Arc<Notify>,
 }
 
 impl Orchestrator {
@@ -64,11 +69,10 @@ impl Orchestrator {
         let pending_connections = Arc::new(Mutex::new(HashMap::new()));
         let orch_rx_arc = Arc::new(Mutex::new(orch_channel_rx));
         let next_port = Arc::new(Mutex::new(RUNTIME_PORT + 1));
-
-        println!(
-            "[Orchestrator] Listening for node runtimes on port {}...",
-            SETUP_PORT
-        );
+        let received_acks = Arc::new(Mutex::new(HashSet::new()));
+        let ack_notify = Arc::new(Notify::new());
+        let received_node_inits = Arc::new(Mutex::new(HashSet::new()));
+        let init_notify = Arc::new(Notify::new());
 
         Ok(Self {
             //_listener,
@@ -80,6 +84,10 @@ impl Orchestrator {
             orch_channel_tx,
             orch_channel_rx: orch_rx_arc,
             pending_connections,
+            received_acks,
+            ack_notify,
+            received_node_inits,
+            init_notify,
         })
     }
 
@@ -105,31 +113,41 @@ impl Orchestrator {
 
         println!("[Orchestrator] All expected runtimes connected!");
 
-        // === Step 2: Initialize all local nodes across runtimes ===
+        // === Step 2: Start centralized message loop ===
+        let message_receiver = self.orch_channel_rx.clone();
+        let orchestrator_for_messages = Arc::clone(&self);
+        tokio::spawn(async move {
+            orchestrator_for_messages
+                .message_loop(message_receiver)
+                .await;
+        });
+
+        // === Step 3: Initialize all local nodes across runtimes ===
         self.initialize_remote_nodes().await?;
 
-        // === Step 3: Wait for AcknowledgeNodeInitialization from each runtime ===
+        // === Step 4: Wait for AcknowledgeNodeInitialization from each runtime ===
         self.wait_for_node_initialization().await?;
 
         println!("[Orchestrator] All runtimes have initialized their local nodes!");
 
-        // === Step 4: Initiate peer-to-peer node connections ===
+        // === Step 5: Initiate peer-to-peer node connections ===
         println!("[Orchestrator] Initiating P2P connections...");
         self.clone().setup_p2p_connections().await?;
 
-        // === Step 5: Wait for AcknowledgeConnectionSetup messages ===
+        // === Step 6: Wait for AcknowledgeConnectionSetup messages ===
         println!("[Orchestrator] Waiting for P2P-Connection Acknowledge from all runtimes...");
         self.wait_for_connection_acknowledgments().await?;
 
         println!("[Orchestrator] All P2P connections processed.");
 
-        // === Step 6: Start distributed execution ===
+        // === Step 7: Start distributed execution ===
         println!("[Orchestrator] P2P connections established successfully.");
         println!("[Orchestrator] Starting execution...");
         self.send_start_execution()
             .await
             .map_err(|e| anyhow::Error::msg(format!("Failed to start execution {}", e)))?;
-        // Keep the orchestrator running indefinitely
+
+        // === Step 8: Keep the orchestrator alive indefinitely ===
         loop {
             sleep(Duration::from_secs(60)).await;
         }
@@ -614,6 +632,7 @@ impl Orchestrator {
                     }
                     Ok(None) => {
                         // No message available — yield to other tasks briefly
+                        println!("[Orchestrator] [recv-loop] No new message found");
                         tokio::time::sleep(Duration::from_millis(50)).await;
                     }
                     Err(e) => {
@@ -624,6 +643,7 @@ impl Orchestrator {
                         break;
                     }
                 }
+                tokio::task::yield_now().await;
             }
         });
     }
@@ -645,165 +665,92 @@ impl Orchestrator {
             expected_runtimes
         );
 
-        let mut received_acks = 0;
+        let timeout = Duration::from_secs(30);
+        let deadline = Instant::now() + timeout;
 
-        while received_acks < expected_runtimes {
-            let mut rx = self.orch_channel_rx.lock().await;
-
-            match rx.try_recv() {
-                Ok((_runtime_id, Message::AcknowledgeNodeInitialization)) => {
-                    received_acks += 1;
-                    println!(
-                        "[Orchestrator] Received AcknowledgeNodeInitialization ({}/{})",
-                        received_acks, expected_runtimes
-                    );
-                }
-                Ok(msg) => {
-                    println!(
-                        "[Orchestrator] Unexpected message while waiting for node init: {:?}",
-                        msg
-                    );
-                }
-                Err(TryRecvError::Empty) => {
-                    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-                }
-                Err(TryRecvError::Disconnected) => {
-                    return Err(anyhow::anyhow!(
-                        "orch_channel_rx disconnected while waiting for node initialization"
-                    ));
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    // async fn start_p2p_node_connections(&self) -> Result<(), Error> {
-    //     let flow = &self.abstract_flow;
-    //     let _expected_connections = flow.get_connection_amount();
-    //     println!("[Orchestrator] Starting P2P node connections...");
-
-    //     for conn in flow.get_connections() {
-    //         println!(
-    //         "[DEBUG] Checking connection: sender_id={} (runtime={:?}), receiver_id={} (runtime={:?})",
-    //         conn.sender_id,
-    //         self.execution_config.node_configs.get(&conn.sender_id),
-    //         conn.receiver_id,
-    //         self.execution_config.node_configs.get(&conn.receiver_id)
-    //     );
-
-    //         let sender_runtime = self.execution_config.node_configs.get(&conn.sender_id);
-    //         let receiver_runtime = self.execution_config.node_configs.get(&conn.receiver_id);
-
-    //         match (sender_runtime, receiver_runtime) {
-    //             (
-    //                 Some(NodeConfig::RemoteNodeConfig(runtime_id)),
-    //                 Some(NodeConfig::RemoteNodeConfig(_)),
-    //             ) => {
-    //                 let ip_str = self.get_runtime_ip(*runtime_id).await;
-    //                 let connected = self.connected_runtimes.lock().await;
-    //                 if let Some((_, port)) = connected.get(&ip_str) {
-    //                     // Now you can use `port`
-    //                     println!(
-    //                         "[Orchestrator] Requesting P2P connection from Node {} on {} to Node {} on {}",
-    //                         conn.sender_id,
-    //                         ip_str,
-    //                         conn.receiver_id,
-    //                         ip_str,
-    //                     );
-
-    //                     let msg = Message::OrchestratorRequestNodeConnection(
-    //                         conn.sender_id,
-    //                         conn.receiver_id,
-    //                         *runtime_id,
-    //                         ip_str.clone(), // Clone if needed again later
-    //                         conn.send_out_idx,
-    //                         conn.recv_in_idx,
-    //                     );
-    //                     let mut sender = NetworkCommunicator::<String>::new()
-    //                         .await
-    //                         .map_err(|e| anyhow::Error::msg(e.to_string()))?;
-    //                     Communicator::connect_send(&mut sender, Some(ip_str.clone()), Some(*port))
-    //                         .await
-    //                         .map_err(|e| anyhow::Error::msg(e.to_string()))?;
-    //                     sender
-    //                         .send(msg)
-    //                         .await
-    //                         .map_err(|e| anyhow::Error::msg(e.to_string()))?;
-    //                 }
-    //             }
-    //             _ => {
-    //                 println!("[DEBUG] Skipping local or invalid connection {:?}", conn);
-    //             }
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
-
-    pub async fn wait_for_connection_acknowledgments(&self) -> Result<(), Error> {
-        let expected_acks = self.abstract_flow.get_connection_amount();
-
-        println!(
-            "[Orchestrator] Waiting for AcknowledgeConnectionSetup from {} connections...",
-            expected_acks
-        );
-
-        let mut received_acks = HashSet::new();
-        let start_time = Instant::now();
-        let timeout = Duration::from_secs(10);
-
-        while received_acks.len() < expected_acks {
-            if start_time.elapsed() > timeout {
-                break;
-            }
-
-            let msg = {
-                let mut rx = self.orch_channel_rx.lock().await;
-                tokio::select! {
-                    msg = rx.recv() => msg,
-                    _ = sleep(Duration::from_millis(50)) => continue,
-                }
-            };
-
-            match msg {
-                Some((
-                    runtime_id,
-                    Message::AcknowledgeConnectionSetup(
-                        sender_id,
-                        receiver_id,
-                        sender_out_idx,
-                        receiver_in_idx,
-                    ),
-                )) => {
-                    println!(
-                    "[Orchestrator] Received AcknowledgeConnectionSetup from sender {} to receiver {} (out_idx={}, in_idx={}) (runtime_id={})",
-                    sender_id, receiver_id, sender_out_idx, receiver_in_idx, runtime_id
-                );
-                    received_acks.insert((sender_id, receiver_id, sender_out_idx, receiver_in_idx));
-                }
-                Some(other) => {
-                    println!(
-                        "[Orchestrator] Unexpected message while waiting for connection acks: {:?}",
-                        other
-                    );
-                }
-                None => {
-                    println!("[Orchestrator] Channel closed unexpectedly.");
+        loop {
+            {
+                let acks = self.received_node_inits.lock().await;
+                if acks.len() >= expected_runtimes {
                     break;
                 }
             }
+
+            if Instant::now() >= deadline {
+                break;
+            }
+
+            let notified =
+                tokio::time::timeout_at(deadline.into(), self.init_notify.notified()).await;
+            if notified.is_err() {
+                break;
+            }
         }
 
-        if received_acks.len() < expected_acks {
-            return Err(anyhow!(
-                "Timeout: Only received {} out of {} connection acknowledgments",
-                received_acks.len(),
-                expected_acks
-            ));
+        let final_count = self.received_node_inits.lock().await.len();
+        if final_count < expected_runtimes {
+            Err(anyhow!(
+                "Timeout: Only received {} of {} expected AcknowledgeNodeInitialization messages",
+                final_count,
+                expected_runtimes
+            ))
+        } else {
+            Ok(())
         }
+    }
 
-        Ok(())
+    pub async fn wait_for_connection_acknowledgments(&self) -> Result<(), Error> {
+        let expected = self.abstract_flow.get_connection_amount();
+        println!(
+            "[Orchestrator] Waiting for AcknowledgeConnectionSetup from {} connections...",
+            expected
+        );
+
+        let timeout = Duration::from_secs(100);
+        let deadline = Instant::now() + timeout;
+
+        loop {
+            let current = {
+                let set = self.received_acks.lock().await;
+                set.len()
+            };
+
+            if current >= expected {
+                println!(
+                    "[Orchestrator] All {} connection acknowledgments received!",
+                    expected
+                );
+                return Ok(());
+            }
+
+            if Instant::now() >= deadline {
+                println!(
+                    "[Orchestrator] Timeout reached while waiting for acks: received {}/{}",
+                    current, expected
+                );
+                return Err(anyhow!(
+                    "Timeout: Only received {} of {} expected connection acknowledgments",
+                    current,
+                    expected
+                ));
+            }
+
+            // Wait for a new ack or until timeout
+            let notified =
+                tokio::time::timeout_at(deadline.into(), self.ack_notify.notified()).await;
+
+            if let Err(_) = notified {
+                println!(
+                    "[Orchestrator] Timeout error waiting for acks: received {}/{}",
+                    current, expected
+                );
+                return Err(anyhow!(
+                    "Timeout while waiting for connection acks: received {}/{}",
+                    current,
+                    expected
+                ));
+            }
+        }
     }
 
     async fn send_start_execution(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -811,50 +758,137 @@ impl Orchestrator {
 
         let mut connected = self.connected_runtimes.lock().await;
 
-        // Immutable phase
-        for (runtime_ip, (_, port)) in connected.iter() {
-            println!("[...] Will send to {}:{}", runtime_ip, port);
-        }
-
         // Mutable phase (in separate scope)
-        for (_runtime_ip, (sender, _)) in connected.iter_mut() {
+        for (runtime_ip, (sender, port)) in connected.iter_mut() {
+            println!(
+                "[Orchestrator] Senging StartExecution command to {}:{}",
+                runtime_ip, port
+            );
             let start_msg = Message::<String>::StartExecution;
             sender
                 .send(start_msg)
                 .await
                 .map_err(|e| anyhow::Error::msg(e.to_string()))?;
         }
-
+        println!("[Orchestrator] Sucessfully sent StartExecution to all connected runtimes!");
         Ok(())
     }
 
-    // async fn handle_ip_request(&self, sender: &mut NetworkCommunicator<String>, node_id: NodeId) {
-    //     println!("[Orchestrator] Received IP request for Node {}", node_id);
+    pub async fn message_loop(&self, receiver: Arc<Mutex<Receiver<(u128, Message<String>)>>>) {
+        loop {
+            println!("[DEBUG] new message in message_loop",);
+            let maybe_msg = {
+                let mut guard = receiver.lock().await;
+                guard.recv().await
+            };
 
-    //     // Find the runtime that owns this node
-    //     let runtime_ip = self.get_runtime_ip(node_id).await;
+            if let Some((runtime_id, msg)) = maybe_msg {
+                println!(
+                    "[DEBUG] Dispatching message from runtime {}: {:?}",
+                    runtime_id, msg
+                );
+                match msg {
+                    Message::RequestNodeRuntimeIP(target_runtime_id) => {
+                        println!(
+                            "[Orchestrator] Received IP request for Node {}",
+                            target_runtime_id
+                        );
 
-    //     if runtime_ip == "UNKNOWN_IP" {
-    //         println!(
-    //             "[Orchestrator] ERROR: Cannot find runtime IP for node {}",
-    //             node_id
-    //         );
-    //         return;
-    //     }
+                        // Try to look up the IP of the *target* runtime
+                        let runtime_ips = self.runtime_id_map.lock().await;
+                        if let Some(target_ip) = runtime_ips.get(&target_runtime_id) {
+                            println!(
+                                "[DEBUG] Found IP {} for runtime_id={}",
+                                target_ip, target_runtime_id
+                            );
 
-    //     // Send back the IP address to the requesting runtime
-    //     let response = Message::<String>::RespondNodeRuntimeIP(node_id, runtime_ip.clone());
+                            let respond_msg =
+                                Message::RespondNodeRuntimeIP(target_runtime_id, target_ip.clone());
 
-    //     if let Err(e) = sender.send(response).await {
-    //         println!(
-    //             "[Orchestrator] ERROR: Failed to send IP response to requesting runtime: {}",
-    //             e
-    //         );
-    //     } else {
-    //         println!(
-    //             "[Orchestrator] Sent IP response for Node {}: IP={}",
-    //             node_id, runtime_ip
-    //         );
-    //     }
-    // }
+                            // Now: we need to find the *sender's* IP to reply to
+                            if let Some(sender_ip) = runtime_ips.get(&runtime_id) {
+                                let mut runtimes = self.connected_runtimes.lock().await;
+                                if let Some((sender, _)) = runtimes.get_mut(sender_ip) {
+                                    if let Err(err) = sender.send(respond_msg).await {
+                                        println!(
+                                            "[Orchestrator] Failed to send IP ({} -> {}) response to runtime {}: {}",
+                                            target_ip, target_runtime_id, runtime_id, err
+                                        );
+                                    } else {
+                                        println!(
+                                            "[Orchestrator] Sent RespondNodeRuntimeIP({} -> {}) to runtime {}",
+                                            target_runtime_id, target_ip, runtime_id
+                                        );
+                                    }
+                                } else {
+                                    println!(
+                                        "[Orchestrator] ERROR: Could not find sender for runtime ID {} (IP: {})",
+                                        runtime_id, sender_ip
+                                    );
+                                }
+                            } else {
+                                println!(
+                                    "[Orchestrator] ERROR: Could not resolve sender IP for runtime ID {}",
+                                    runtime_id
+                                );
+                            }
+                        } else {
+                            println!(
+                                "[Orchestrator] ERROR: Could not resolve IP for target_runtime_id {}",
+                                target_runtime_id
+                            );
+                        }
+                    }
+                    Message::AcknowledgeNodeInitialization => {
+                        println!(
+                            "[Orchestrator] Received AcknowledgeNodeInitialization from runtime {}",
+                            runtime_id
+                        );
+                        let mut ack_count = self.received_node_inits.lock().await;
+                        ack_count.insert(runtime_id);
+                        self.init_notify.notify_waiters();
+                    }
+
+                    Message::AcknowledgeConnectionSetup(
+                        sender_id,
+                        receiver_id,
+                        sender_out_idx,
+                        receiver_in_idx,
+                    ) => {
+                        let key = (sender_id, receiver_id, sender_out_idx, receiver_in_idx);
+                        {
+                            let mut set = self.received_acks.lock().await;
+                            if set.insert(key) {
+                                println!(
+                                    "[Orchestrator] AcknowledgeConnectionSetup received: {} → {} ({} → {}) [{} total]",
+                                    sender_id,
+                                    receiver_id,
+                                    sender_out_idx,
+                                    receiver_in_idx,
+                                    set.len()
+                                );
+                            } else {
+                                println!(
+                                    "[Orchestrator] Duplicate AcknowledgeConnectionSetup ignored: {} → {} ({} → {})",
+                                    sender_id,
+                                    receiver_id,
+                                    sender_out_idx,
+                                    receiver_in_idx
+                                );
+                            }
+                        }
+
+                        self.ack_notify.notify_one();
+                    }
+                    other => {
+                        println!("[Orchestrator] Unhandled message: {:?}", other);
+                    }
+                }
+            } else {
+                println!("[Orchestrator] Channel closed. Exiting message loop.");
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+    }
 }

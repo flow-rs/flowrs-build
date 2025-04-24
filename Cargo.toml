@@ -11,6 +11,9 @@ documentation = "https://docs.rs/flowrs-wasm"
 keywords = ["flow", "fbp", "wasm"]
 categories = ["data-structures", "wasm"]
 
+[profile.release]
+debug = true
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 # [lib]
