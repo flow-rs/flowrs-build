@@ -299,7 +299,7 @@ mod tests {
         connect_fn(sender_id, receiver_id, 0, 0, sender_io, receiver_io);
         drop(registry);
 
-        tracing::debug!("[test] Successfully connected nodes.");
+        tracing::trace!("[test] Successfully connected nodes.");
 
         // 8. Poll input using POLL_REGISTRY
         let mut poll_registry = POLL_REGISTRY.lock().await;

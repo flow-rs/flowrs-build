@@ -89,7 +89,7 @@ impl NodeRuntime {
     }
 
     pub async fn run(&mut self, args: Arguments, orch_addr: SocketAddr) -> Result<(), Error> {
-        tracing::debug!(
+        tracing::info!(
             "[Node RT] Running as node runtime with flow file: {}",
             args.flow
         );
@@ -116,7 +116,7 @@ impl NodeRuntime {
         self.send_acknowledgment_to_orchestrator(assigned_port)
             .await?;
 
-        tracing::debug!(
+        tracing::info!(
             "[Node RT] Successfully connected to orchestrator on {}:{} (send) and {}:{} (receive)",
             orchestrator_ip,
             assigned_port,
@@ -147,7 +147,7 @@ impl NodeRuntime {
                     "[Node RT] Receiver successfully established on port {}",
                     port
                 ),
-                Err(e) => tracing::debug!(
+                Err(e) => tracing::error!(
                     "[Node RT] Receiver failed to bind or accept connection: {}",
                     e
                 ),
@@ -285,17 +285,17 @@ impl NodeRuntime {
                             }
 
                             Some(msg) => {
-                                tracing::debug!("[Node RT] [R2R] Unhandled message: {:?}", msg);
+                                tracing::warn!("[Node RT] [R2R] Unhandled message: {:?}", msg);
                             }
 
                             None => {
-                                eprintln!("[Node RT] [R2R] Failed to parse or read message.");
+                                tracing::error!("[Node RT] [R2R] Failed to parse or read message.");
                             }
                         }
                     }
 
                     Err(e) => {
-                        eprintln!("[Node RT] [R2R] Error accepting connection: {}", e);
+                        tracing::error!("[Node RT] [R2R] Error accepting connection: {}", e);
                         tokio::time::sleep(Duration::from_millis(100)).await;
                     }
                 }
@@ -325,7 +325,7 @@ impl NodeRuntime {
                     break;
                 }
                 Err(_) => {
-                    tracing::debug!("[Node RT] Failed to connect to orchestrator setup port. Retrying... ({}/10)", retries + 1);
+                    tracing::error!("[Node RT] Failed to connect to orchestrator setup port. Retrying... ({}/10)", retries + 1);
                     tokio::time::sleep(Duration::from_secs(1)).await;
                     retries += 1;
                 }
@@ -414,8 +414,8 @@ impl NodeRuntime {
                 Ok(Message::RespondNodeRuntimeIP(id, ip)) => {
                     self.handle_respond_node_runtime_ip(id, ip).await?;
                 }
-                Ok(m) => tracing::debug!("[Node RT] WARNING: Unexpected message: {:?}", m),
-                Err(e) => tracing::debug!("[Node RT] ERROR: Message receive failed: {}", e),
+                Ok(m) => tracing::warn!("[Node RT] WARNING: Unexpected message: {:?}", m),
+                Err(e) => tracing::error!("[Node RT] ERROR: Message receive failed: {}", e),
             }
         }
     }
@@ -505,15 +505,6 @@ impl NodeRuntime {
             {
                 let mut sender_guard = sender_exec_node.lock().await;
                 let mut receiver_guard = receiver_exec_node.lock().await;
-
-                // tracing::debug!(
-                //     "[DEBUG] Raw sender IO type: {:?}",
-                //     sender_guard.node.get_io_mut()
-                // );
-                // tracing::debug!(
-                //     "[DEBUG] Raw receiver IO type: {:?}",
-                //     receiver_guard.node.get_io_mut().type_id()
-                // );
 
                 let sender_io = sender_guard.node.get_io_mut();
                 let receiver_io = receiver_guard.node.get_io_mut();
@@ -615,6 +606,7 @@ impl NodeRuntime {
                 "[Node RT] Successfully connected nodes using the dynamic function lookup."
             );
         } else {
+            tracing::error!("No connection function found!");
             panic!(
                 "[Node RT] No connection function found for type ID {:?}",
                 type_id
@@ -623,18 +615,18 @@ impl NodeRuntime {
     }
 
     async fn start_execution(&self) -> Result<(), anyhow::Error> {
-        tracing::debug!("[Node RT] Starting execution of local nodes...");
+        tracing::info!("[Node RT] Starting execution of local nodes...");
         let executor = Arc::clone(&self.executor);
         let executor_guard = executor.lock().await;
         // Make sure nodes are ready
         if let Err(e) = executor_guard.ready_nodes().await {
-            tracing::debug!("[Node RT] ERROR: Node readiness failed: {}", e);
+            tracing::error!("[Node RT] ERROR: Node readiness failed: {}", e);
             return Err(e);
         }
 
         // Start execution through executor
         executor_guard.start_execution().await;
-        tracing::debug!("[Node RT] Execution started successfully.");
+        tracing::info!("[Node RT] Execution started successfully.");
         Ok(())
     }
 
@@ -676,7 +668,7 @@ impl NodeRuntime {
                     break Ok(());
                 }
                 Err(e) if attempt < max_attempts => {
-                    tracing::debug!(
+                    tracing::error!(
                         "[ACK] Failed to send acknowledgment on attempt {}: {}. Retrying...",
                         attempt,
                         e
@@ -708,19 +700,19 @@ impl NodeRuntime {
             .initialize_nodes(Arc::clone(&self.abstract_flow), &self.execution_config)
             .await
         {
-            tracing::debug!("[Node RT] ERROR: Failed to initialize nodes: {}", e);
+            tracing::error!("[Node RT] ERROR: Failed to initialize nodes: {}", e);
             return Err(anyhow::Error::msg("Node initialization failed"));
         }
 
-        tracing::debug!("[Node RT] Successfully initialized local nodes.");
-        tracing::debug!("[Node RT] All nodes are ready!");
+        tracing::info!("[Node RT] Successfully initialized local nodes.");
+        tracing::info!("[Node RT] All nodes are ready!");
 
         // Send acknowledgment back to the orchestrator
         let ack_message = Message::<String>::AcknowledgeNodeInitialization;
         {
             let mut sender_guard = self.orch_sender.lock().await;
             if let Err(e) = sender_guard.send(ack_message).await {
-                tracing::debug!(
+                tracing::error!(
                     "[Node RT] ERROR: Failed to send AcknowledgeNodeInitialization: {}",
                     e
                 );
@@ -767,7 +759,7 @@ impl NodeRuntime {
             .await
             .get_connection_type(&connection);
         if connection_type.is_none() {
-            tracing::debug!(
+            tracing::error!(
                 "[Node RT] WARNING: P2P request does not match any known connection: {} -> {}",
                 sender_id,
                 receiver_id
@@ -786,7 +778,7 @@ impl NodeRuntime {
             )
             .await
         {
-            tracing::debug!("[Node RT] ERROR: Failed to setup P2P connection: {}", e);
+            tracing::error!("[Node RT] ERROR: Failed to setup P2P connection: {}", e);
         }
 
         Ok(())
@@ -796,7 +788,7 @@ impl NodeRuntime {
         tracing::debug!("[Node RT] Received StartExecution command. Beginning execution...");
 
         if let Err(e) = self.start_execution().await {
-            tracing::debug!("[Node RT] ERROR: Execution failed: {}", e);
+            tracing::error!("[Node RT] ERROR: Execution failed: {}", e);
         } else {
             tracing::debug!("[Node RT] Execution completed successfully.");
         }
@@ -816,10 +808,10 @@ impl NodeRuntime {
             let response = Message::<String>::RespondNodeRuntimeIP(node_id, ip.clone());
             let mut sender_guard = self.orch_sender.lock().await;
             if let Err(e) = sender_guard.send(response).await {
-                tracing::debug!("[Node RT] ERROR: Failed to send IP response: {}", e);
+                tracing::error!("[Node RT] ERROR: Failed to send IP response: {}", e);
             }
         } else {
-            tracing::debug!("[Node RT] WARNING: No known IP for Node {}!", node_id);
+            tracing::warn!("[Node RT] WARNING: No known IP for Node {}!", node_id);
         }
     }
 
@@ -1043,7 +1035,7 @@ pub async fn handle_request_peer_connection_static(
         .is_some_and(|cfg| matches!(cfg, NodeConfig::LocalNodeConfig));
 
     if !is_local {
-        tracing::debug!(
+        tracing::warn!(
             "[Node RT] [R2R] WARNING: Target node is not local: {}",
             receiving_node_id
         );
@@ -1263,7 +1255,7 @@ async fn resolve_runtime_ip(
             let mut sender = orch_sender.lock().await;
             match sender.send(Message::RequestNodeRuntimeIP(node_id)).await {
                 Ok(_) => tracing::debug!("[DEBUG] Successfully sent RequestNodeRuntimeIP"),
-                Err(e) => tracing::debug!("[ERROR] Failed to send RequestNodeRuntimeIP: {:?}", e),
+                Err(e) => tracing::error!("[ERROR] Failed to send RequestNodeRuntimeIP: {:?}", e),
             }
         }
 

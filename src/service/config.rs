@@ -63,7 +63,7 @@ fn load_config(config_path: &str) -> FlowrsConfig {
             .expect(&format!("Failed to deserialize from {}", config_path).as_str())
     } else {
         // If the file doesn't exist, create a new FlowProjectManagerConfig with default values.
-        tracing::debug!(
+        tracing::info!(
             "-> Could not read config file '{}'. Creating default config.",
             config_path
         );
