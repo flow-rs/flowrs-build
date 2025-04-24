@@ -673,7 +673,7 @@ mod tests {
         pm.add_package(p);
 
         let rce = StandardCodeEmitter {};
-        println!(
+        tracing::debug!(
             "{}",
             rce.emit_flow_code(&flow_model, &pm)
                 .expect("flow code wrong.")

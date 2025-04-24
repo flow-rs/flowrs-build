@@ -89,7 +89,7 @@ impl NodeRuntime {
     }
 
     pub async fn run(&mut self, args: Arguments, orch_addr: SocketAddr) -> Result<(), Error> {
-        println!(
+        tracing::debug!(
             "[Node RT] Running as node runtime with flow file: {}",
             args.flow
         );
@@ -116,9 +116,12 @@ impl NodeRuntime {
         self.send_acknowledgment_to_orchestrator(assigned_port)
             .await?;
 
-        println!(
+        tracing::debug!(
             "[Node RT] Successfully connected to orchestrator on {}:{} (send) and {}:{} (receive)",
-            orchestrator_ip, assigned_port, orchestrator_ip, RUNTIME_PORT
+            orchestrator_ip,
+            assigned_port,
+            orchestrator_ip,
+            RUNTIME_PORT
         );
 
         self.message_loop(assigned_port).await
@@ -140,11 +143,11 @@ impl NodeRuntime {
                 .connect_recv(Some(orchestrator_ip), Some(port))
                 .await
             {
-                Ok(_) => println!(
+                Ok(_) => tracing::debug!(
                     "[Node RT] Receiver successfully established on port {}",
                     port
                 ),
-                Err(e) => println!(
+                Err(e) => tracing::debug!(
                     "[Node RT] Receiver failed to bind or accept connection: {}",
                     e
                 ),
@@ -159,7 +162,7 @@ impl NodeRuntime {
     /// accepts a single connection (from any IP), reads a single message, and then processes it.
     pub fn spawn_r2r_message_handler(runtime: Arc<Self>) {
         tokio::spawn(async move {
-            println!(
+            tracing::debug!(
                 "[Node RT] [R2R] Starting R2R message handler on port {}...",
                 R2R_PORT
             );
@@ -175,7 +178,7 @@ impl NodeRuntime {
             loop {
                 match listener.accept().await {
                     Ok((mut socket, addr)) => {
-                        println!("[NetworkCommunicator] Accepted R2R message from {}", addr);
+                        tracing::debug!("[NetworkCommunicator] Accepted R2R message from {}", addr);
 
                         let mut line = String::new();
                         let mut buffer = [0; 1];
@@ -209,7 +212,7 @@ impl NodeRuntime {
                                 receiver_in_idx,
                                 type_name,
                             )) => {
-                                println!(
+                                tracing::debug!(
                                 "[Node RT] [R2R] Received RequestPeerConnection: {} → {} ({} → {}) | Type: {}",
                                 sending_node_id, receiving_node_id, sender_out_idx, receiver_in_idx, type_name
                             );
@@ -257,7 +260,7 @@ impl NodeRuntime {
                                 receiver_in_idx,
                                 recv_port,
                             )) => {
-                                println!(
+                                tracing::debug!(
                                 "[Node RT] [R2R] Received AcceptPeerRequest: {} → {} ({} → {}) | Port: {}",
                                 sending_node_id, receiving_node_id, sender_out_idx, receiver_in_idx, recv_port
                             );
@@ -282,7 +285,7 @@ impl NodeRuntime {
                             }
 
                             Some(msg) => {
-                                println!("[Node RT] [R2R] Unhandled message: {:?}", msg);
+                                tracing::debug!("[Node RT] [R2R] Unhandled message: {:?}", msg);
                             }
 
                             None => {
@@ -312,16 +315,17 @@ impl NodeRuntime {
         while retries < 10 {
             match TcpStream::connect((orchestrator_ip, SETUP_PORT)).await {
                 Ok(mut stream) => {
-                    println!(
+                    tracing::debug!(
                         "[Node RT] Successfully signaled presence to orchestrator at {}:{}",
-                        orchestrator_ip, SETUP_PORT
+                        orchestrator_ip,
+                        SETUP_PORT
                     );
                     let id_msg = format!("RUNTIME_ID:{}", runtime_id);
                     stream.write_all(id_msg.as_bytes()).await?;
                     break;
                 }
                 Err(_) => {
-                    println!("[Node RT] Failed to connect to orchestrator setup port. Retrying... ({}/10)", retries + 1);
+                    tracing::debug!("[Node RT] Failed to connect to orchestrator setup port. Retrying... ({}/10)", retries + 1);
                     tokio::time::sleep(Duration::from_secs(1)).await;
                     retries += 1;
                 }
@@ -365,16 +369,17 @@ impl NodeRuntime {
             .connect_send(Some(orchestrator_ip.to_string()), Some(port))
             .await
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
-        println!(
+        tracing::debug!(
             "[Node RT] Sender established. Sending messages to orchestrator at {}:{}",
-            orchestrator_ip, port
+            orchestrator_ip,
+            port
         );
         Ok(())
     }
 
     async fn send_acknowledgment_to_orchestrator(&self, port: u16) -> Result<(), Error> {
         let msg = Message::<String>::AcknowledgeConnection;
-        println!(
+        tracing::debug!(
             "[Node RT] Sending acknowledgment message to orchestrator on port {}...",
             port
         );
@@ -409,8 +414,8 @@ impl NodeRuntime {
                 Ok(Message::RespondNodeRuntimeIP(id, ip)) => {
                     self.handle_respond_node_runtime_ip(id, ip).await?;
                 }
-                Ok(m) => println!("[Node RT] WARNING: Unexpected message: {:?}", m),
-                Err(e) => println!("[Node RT] ERROR: Message receive failed: {}", e),
+                Ok(m) => tracing::debug!("[Node RT] WARNING: Unexpected message: {:?}", m),
+                Err(e) => tracing::debug!("[Node RT] ERROR: Message receive failed: {}", e),
             }
         }
     }
@@ -423,9 +428,12 @@ impl NodeRuntime {
         recv_in_idx: u128,
         receiver_runtime_ip: String,
     ) -> Result<(), Error> {
-        println!(
+        tracing::debug!(
             "[Node RT] Handling P2P connection request: {} -> {} (Out {} -> In {})",
-            sender_id, receiver_id, sender_out_idx, recv_in_idx
+            sender_id,
+            receiver_id,
+            sender_out_idx,
+            recv_in_idx
         );
 
         // Step 1: Ensure the current runtime owns the sender node
@@ -464,9 +472,10 @@ impl NodeRuntime {
         }
 
         if is_local {
-            println!(
+            tracing::debug!(
                 "[Node RT] Establishing local connection between nodes {} and {}...",
-                sender_id, receiver_id
+                sender_id,
+                receiver_id
             );
 
             // Step 3A-2: Clone the sender and receiver node Arcs
@@ -497,11 +506,11 @@ impl NodeRuntime {
                 let mut sender_guard = sender_exec_node.lock().await;
                 let mut receiver_guard = receiver_exec_node.lock().await;
 
-                // println!(
+                // tracing::debug!(
                 //     "[DEBUG] Raw sender IO type: {:?}",
                 //     sender_guard.node.get_io_mut()
                 // );
-                // println!(
+                // tracing::debug!(
                 //     "[DEBUG] Raw receiver IO type: {:?}",
                 //     receiver_guard.node.get_io_mut().type_id()
                 // );
@@ -525,18 +534,20 @@ impl NodeRuntime {
                 .await;
             }
 
-            println!(
+            tracing::debug!(
                 "[Node RT] Successfully connected local nodes {} -> {}",
-                sender_id, receiver_id
+                sender_id,
+                receiver_id
             );
 
             // send acknoweldge message for local connections
             self.send_acknowledge_connection(sender_id, receiver_id, sender_out_idx, recv_in_idx)
                 .await?;
         } else {
-            println!(
+            tracing::debug!(
                 "[Node RT] Establishing remote connection between nodes {} and {}...",
-                sender_id, receiver_id
+                sender_id,
+                receiver_id
             );
 
             let mut setup_comm = NetworkCommunicator::<String>::new().await.unwrap();
@@ -566,7 +577,7 @@ impl NodeRuntime {
                 ))
             })?;
 
-            println!(
+            tracing::debug!(
                 "[Node RT] Sent RequestPeerConnection to {}. Waiting for peer port...",
                 receiver_runtime_ip
             );
@@ -590,7 +601,7 @@ impl NodeRuntime {
         };
 
         if let Some(connect_fn) = connect_fn_option {
-            println!("[DEBUG] Retrieved type ID for connection: {:?}", type_id);
+            tracing::debug!("[DEBUG] Retrieved type ID for connection: {:?}", type_id);
 
             connect_fn(
                 sender_id,
@@ -600,7 +611,9 @@ impl NodeRuntime {
                 sender_io,
                 receiver_io,
             );
-            println!("[Node RT] Successfully connected nodes using the dynamic function lookup.");
+            tracing::debug!(
+                "[Node RT] Successfully connected nodes using the dynamic function lookup."
+            );
         } else {
             panic!(
                 "[Node RT] No connection function found for type ID {:?}",
@@ -610,18 +623,18 @@ impl NodeRuntime {
     }
 
     async fn start_execution(&self) -> Result<(), anyhow::Error> {
-        println!("[Node RT] Starting execution of local nodes...");
+        tracing::debug!("[Node RT] Starting execution of local nodes...");
         let executor = Arc::clone(&self.executor);
         let executor_guard = executor.lock().await;
         // Make sure nodes are ready
         if let Err(e) = executor_guard.ready_nodes().await {
-            println!("[Node RT] ERROR: Node readiness failed: {}", e);
+            tracing::debug!("[Node RT] ERROR: Node readiness failed: {}", e);
             return Err(e);
         }
 
         // Start execution through executor
         executor_guard.start_execution().await;
-        println!("[Node RT] Execution started successfully.");
+        tracing::debug!("[Node RT] Execution started successfully.");
         Ok(())
     }
 
@@ -638,9 +651,10 @@ impl NodeRuntime {
         loop {
             attempt += 1;
 
-            println!(
+            tracing::debug!(
                 "[ACK] Attempt {}/{}: Sending AcknowledgeConnectionSetup...",
-                attempt, max_attempts
+                attempt,
+                max_attempts
             );
 
             let result = {
@@ -658,13 +672,14 @@ impl NodeRuntime {
 
             match result {
                 Ok(_) => {
-                    println!("[ACK] Successfully sent acknowledgment.");
+                    tracing::debug!("[ACK] Successfully sent acknowledgment.");
                     break Ok(());
                 }
                 Err(e) if attempt < max_attempts => {
-                    println!(
+                    tracing::debug!(
                         "[ACK] Failed to send acknowledgment on attempt {}: {}. Retrying...",
-                        attempt, e
+                        attempt,
+                        e
                     );
                     let backoff = Duration::from_millis(200 * attempt);
                     sleep(backoff).await;
@@ -685,7 +700,7 @@ impl NodeRuntime {
     ////////////////////////////////////////////////////////////
 
     pub async fn handle_initialize_local_nodes(&mut self) -> Result<(), anyhow::Error> {
-        println!("[Node RT] Received InitializeLocalNodes request...");
+        tracing::debug!("[Node RT] Received InitializeLocalNodes request...");
         let executor = Arc::clone(&self.executor);
         let mut executor_guard = executor.lock().await;
         // Perform actual node initialization
@@ -693,24 +708,24 @@ impl NodeRuntime {
             .initialize_nodes(Arc::clone(&self.abstract_flow), &self.execution_config)
             .await
         {
-            println!("[Node RT] ERROR: Failed to initialize nodes: {}", e);
+            tracing::debug!("[Node RT] ERROR: Failed to initialize nodes: {}", e);
             return Err(anyhow::Error::msg("Node initialization failed"));
         }
 
-        println!("[Node RT] Successfully initialized local nodes.");
-        println!("[Node RT] All nodes are ready!");
+        tracing::debug!("[Node RT] Successfully initialized local nodes.");
+        tracing::debug!("[Node RT] All nodes are ready!");
 
         // Send acknowledgment back to the orchestrator
         let ack_message = Message::<String>::AcknowledgeNodeInitialization;
         {
             let mut sender_guard = self.orch_sender.lock().await;
             if let Err(e) = sender_guard.send(ack_message).await {
-                println!(
+                tracing::debug!(
                     "[Node RT] ERROR: Failed to send AcknowledgeNodeInitialization: {}",
                     e
                 );
             } else {
-                println!("[Node RT] Sent AcknowledgeNodeInitialization.");
+                tracing::debug!("[Node RT] Sent AcknowledgeNodeInitialization.");
             }
         }
 
@@ -726,9 +741,12 @@ impl NodeRuntime {
         sender_out_idx: NodeIOIndex,
         recv_in_idx: NodeIOIndex,
     ) -> Result<(), anyhow::Error> {
-        println!(
+        tracing::debug!(
             "[Node RT] Received P2P connection request: {} -> {} (Out {} -> In {})",
-            sender_id, receiver_id, sender_out_idx, recv_in_idx
+            sender_id,
+            receiver_id,
+            sender_out_idx,
+            recv_in_idx
         );
 
         self.node_id_map
@@ -749,9 +767,10 @@ impl NodeRuntime {
             .await
             .get_connection_type(&connection);
         if connection_type.is_none() {
-            println!(
+            tracing::debug!(
                 "[Node RT] WARNING: P2P request does not match any known connection: {} -> {}",
-                sender_id, receiver_id
+                sender_id,
+                receiver_id
             );
             return Err(anyhow::Error::msg("Invalid P2P connection request"));
         }
@@ -767,40 +786,40 @@ impl NodeRuntime {
             )
             .await
         {
-            println!("[Node RT] ERROR: Failed to setup P2P connection: {}", e);
+            tracing::debug!("[Node RT] ERROR: Failed to setup P2P connection: {}", e);
         }
 
         Ok(())
     }
 
     pub async fn handle_start_execution(&mut self) -> Result<(), anyhow::Error> {
-        println!("[Node RT] Received StartExecution command. Beginning execution...");
+        tracing::debug!("[Node RT] Received StartExecution command. Beginning execution...");
 
         if let Err(e) = self.start_execution().await {
-            println!("[Node RT] ERROR: Execution failed: {}", e);
+            tracing::debug!("[Node RT] ERROR: Execution failed: {}", e);
         } else {
-            println!("[Node RT] Execution completed successfully.");
+            tracing::debug!("[Node RT] Execution completed successfully.");
         }
 
         Ok(())
     }
 
     pub async fn handle_request_node_runtime_ip(&mut self, node_id: NodeId) {
-        println!(
+        tracing::debug!(
             "[Node RT] Received request for Node {}'s IP from Orchestrator...",
             node_id
         );
 
         // Check if we already have the IP stored
         if let Some(ip) = self.node_id_map.lock().await.get(&node_id) {
-            println!("[Node RT] Sending cached IP for Node {}: {}", node_id, ip);
+            tracing::debug!("[Node RT] Sending cached IP for Node {}: {}", node_id, ip);
             let response = Message::<String>::RespondNodeRuntimeIP(node_id, ip.clone());
             let mut sender_guard = self.orch_sender.lock().await;
             if let Err(e) = sender_guard.send(response).await {
-                println!("[Node RT] ERROR: Failed to send IP response: {}", e);
+                tracing::debug!("[Node RT] ERROR: Failed to send IP response: {}", e);
             }
         } else {
-            println!("[Node RT] WARNING: No known IP for Node {}!", node_id);
+            tracing::debug!("[Node RT] WARNING: No known IP for Node {}!", node_id);
         }
     }
 
@@ -809,7 +828,7 @@ impl NodeRuntime {
         node_id: NodeId,
         ip: String,
     ) -> Result<(), Error> {
-        println!("[Node RT] Received IP for Node {}: {}", node_id, ip);
+        tracing::debug!("[Node RT] Received IP for Node {}: {}", node_id, ip);
         self.node_id_map.lock().await.insert(node_id, ip);
         Ok(())
     }
@@ -1009,9 +1028,12 @@ pub async fn handle_request_peer_connection_static(
     type_name: String,
     next_port: Arc<Mutex<u16>>,
 ) -> Result<(), anyhow::Error> {
-    println!(
+    tracing::debug!(
         "[Node RT] [R2R] Handling RequestPeerConnection: {} -> {} ({} -> {})",
-        sending_node_id, receiving_node_id, sender_out_idx, receiver_in_idx
+        sending_node_id,
+        receiving_node_id,
+        sender_out_idx,
+        receiver_in_idx
     );
 
     // Verify node locality
@@ -1021,14 +1043,14 @@ pub async fn handle_request_peer_connection_static(
         .is_some_and(|cfg| matches!(cfg, NodeConfig::LocalNodeConfig));
 
     if !is_local {
-        println!(
+        tracing::debug!(
             "[Node RT] [R2R] WARNING: Target node is not local: {}",
             receiving_node_id
         );
         return Ok(());
     }
 
-    println!(
+    tracing::debug!(
         "[Node RT] [R2R] establishing local receiver for node: {}",
         receiving_node_id
     );
@@ -1048,15 +1070,16 @@ pub async fn handle_request_peer_connection_static(
         )
     })?;
 
-    println!(
+    tracing::debug!(
         "[Node RT] [R2R] Resolved sender IP for node {}: {}",
-        sending_node_id, sender_ip
+        sending_node_id,
+        sender_ip
     );
     // Check TypeRegistry Contents
     {
         let registry_guard = TYPE_REGISTRY.lock().await;
         let keys: Vec<_> = registry_guard.name_to_id.keys().cloned().collect();
-        println!(
+        tracing::debug!(
             "[Node RT] [R2R] Registry keys before creating communicator: {:?}",
             keys
         );
@@ -1067,7 +1090,7 @@ pub async fn handle_request_peer_connection_static(
         let registry = TYPE_REGISTRY.lock().await;
 
         let keys: Vec<_> = registry.name_to_id.keys().cloned().collect();
-        println!(
+        tracing::debug!(
             "[DEBUG] Registry keys before create_communicator_by_name: {:?}",
             keys
         );
@@ -1078,7 +1101,7 @@ pub async fn handle_request_peer_connection_static(
             .map_err(|e| anyhow::anyhow!("Failed to create communicator: {}", e))?
     };
 
-    println!(
+    tracing::debug!(
     "[Node RT] [R2R] Successfully created communicator for type '{}' to connect with sender at {}",
     type_name, sender_ip
 );
@@ -1090,15 +1113,16 @@ pub async fn handle_request_peer_connection_static(
         port
     };
 
-    println!("[Node RT] [R2R] Connecting p2p receiver on port {}", port);
+    tracing::debug!("[Node RT] [R2R] Connecting p2p receiver on port {}", port);
 
     let mut return_comm = NetworkCommunicator::<String>::new()
         .await
         .map_err(|e| anyhow::Error::msg(e.to_string()))?;
 
-    println!(
+    tracing::debug!(
         "[Node RT] [R2R] Sending AcceptPeerConnection to {} on port {}",
-        sender_ip, R2R_PORT
+        sender_ip,
+        R2R_PORT
     );
 
     let mut attempt = 0;
@@ -1125,9 +1149,10 @@ pub async fn handle_request_peer_connection_static(
                         e
                     );
                 } else {
-                    println!(
+                    tracing::debug!(
                         "[Node RT] [R2R] Sent AcceptPeerConnection to {} on port {}",
-                        sender_ip, R2R_PORT
+                        sender_ip,
+                        R2R_PORT
                     );
                     success = true;
                     break;
@@ -1184,7 +1209,7 @@ pub async fn handle_request_peer_connection_static(
                             if let Err(e) = set_result {
                                 eprintln!("[Node RT] [R2R] Failed to inject communicator: {}", e);
                             } else {
-                                println!("[Node RT] [R2R] Receiver side established ...");
+                                tracing::debug!("[Node RT] [R2R] Receiver side established ...");
                             }
                         }
                         break;
@@ -1225,20 +1250,20 @@ async fn resolve_runtime_ip(
         {
             let map = node_id_map.lock().await;
             if let Some(ip) = map.get(&node_id) {
-                println!("[Node RT] Found runtime ip locally: {}", ip.clone());
+                tracing::debug!("[Node RT] Found runtime ip locally: {}", ip.clone());
                 return Ok(ip.clone());
             }
         }
 
         {
-            println!(
+            tracing::debug!(
                 "[Node RT] Couldn't find runtime ip locally, sending RequestNodeRuntimeIP({})",
                 node_id.clone()
             );
             let mut sender = orch_sender.lock().await;
             match sender.send(Message::RequestNodeRuntimeIP(node_id)).await {
-                Ok(_) => println!("[DEBUG] Successfully sent RequestNodeRuntimeIP"),
-                Err(e) => println!("[ERROR] Failed to send RequestNodeRuntimeIP: {:?}", e),
+                Ok(_) => tracing::debug!("[DEBUG] Successfully sent RequestNodeRuntimeIP"),
+                Err(e) => tracing::debug!("[ERROR] Failed to send RequestNodeRuntimeIP: {:?}", e),
             }
         }
 

@@ -15,6 +15,7 @@ use flowrs::sched::scheduling_config::SchedulingConfig;
 use flowrs::types::type_registry::PollFn;
 use flowrs::types::type_registry::POLL_REGISTRY;
 use flowrs::types::type_registry::TYPE_REGISTRY;
+use flowrs_build::logging;
 use flowrs_build::runtime::node_runtime::NodeRuntime;
 use flowrs_build::runtime::orchestrator::Orchestrator;
 use flowrs_build::runtime::runtime_args::Arguments;
@@ -34,7 +35,7 @@ macro_rules! generate_local_connection {
             sender_io: &mut dyn SetupIO,
             receiver_io: &mut dyn SetupIO,
         ) {
-            println!(
+            tracing::debug!(
                 "[DEBUG] Registering connection function for type ID: {:?} (type: {})",
                 TypeId::of::<$type>(),
                 stringify!($type)
@@ -53,7 +54,7 @@ macro_rules! generate_local_connection {
                                 sender_output.set_communicator(NodeCommunicator::ThreadComm(send_half));
                                 receiver_input.set_communicator(NodeCommunicator::ThreadComm(recv_half));
 
-                                println!(
+                                tracing::debug!(
                                     "[connect_nodes] Successfully connected nodes {} -> {} with type {}",
                                     sender_id,
                                     receiver_id,
@@ -109,7 +110,7 @@ macro_rules! generate_local_connection {
         let mut poll_registry = POLL_REGISTRY.lock().await;
         poll_registry.register_poll_fn::<$type>(poll_fn);
 
-        println!(
+        tracing::debug!(
             "[generate_local_connection] Fully registered type: {}",
             stringify!($type)
         );
@@ -133,15 +134,16 @@ async fn get_orchestrator_address() -> Result<SocketAddr, anyhow::Error> {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    logging::init_logging();
     // Define the CLI application using clap
     let args = Arguments::parse();
 
-    println!("Create Dummy Flow");
+    tracing::debug!("Create Dummy Flow");
 
     // Step 1: Create the flow definition
     let abstract_flow = return_dummy_flow().await?;
 
-    println!("Create Dummy Scheduling");
+    tracing::debug!("Create Dummy Scheduling");
     // Step 2: Generate the scheduling configuration (Global)
     let num_runtimes = 2; // Hardcoded for now, later can be dynamically set
     let scheduling_config = dummy_scheduling(&abstract_flow, num_runtimes);
@@ -149,7 +151,7 @@ async fn main() -> Result<(), Error> {
     // Step 3: Get the orchestrator's address
     let orchestrator_addr = get_orchestrator_address().await?;
 
-    println!(
+    tracing::debug!(
         "Orchestrator Address: {}",
         orchestrator_addr.ip().to_string()
     );
@@ -159,7 +161,7 @@ async fn main() -> Result<(), Error> {
         "orchestrator" => {
             //orchestrator = id 0
             let execution_config = ExecutionConfig::from_scheduling_config(&scheduling_config, 0);
-            println!("[Orchestrator] ExecutionConfig: {:?}", execution_config);
+            tracing::debug!("[Orchestrator] ExecutionConfig: {:?}", execution_config);
             let orchestrator = Arc::new(Orchestrator::new(abstract_flow, execution_config).await?);
             orchestrator.run(args, scheduling_config).await?;
         }
@@ -167,7 +169,7 @@ async fn main() -> Result<(), Error> {
             let runtime_id: RuntimeId = args.runtime_id.expect("Missing runtime ID");
             let execution_config =
                 ExecutionConfig::from_scheduling_config(&scheduling_config, runtime_id);
-            println!("[Node RT] ExecutionConfig: {:?}", execution_config);
+            tracing::debug!("[Node RT] ExecutionConfig: {:?}", execution_config);
             let mut node_runtime = NodeRuntime::new(
                 orchestrator_addr.ip().to_string(),
                 runtime_id,
@@ -303,7 +305,7 @@ mod tests {
         // 7. Call the connection function to connect the nodes
         connect_fn(sender_id, receiver_id, 0, 0, sender_io, receiver_io);
 
-        println!("[test_connect_nodes_with_execution_nodes] Successfully connected nodes.");
+        tracing::debug!("[test_connect_nodes_with_execution_nodes] Successfully connected nodes.");
 
         //8. Test polling function
         // Unlock registry again (separate scope since it's already locked above)
@@ -320,6 +322,8 @@ mod tests {
         // Call the poll function on the receiver (inputs are always polled)
         poll_fn(receiver_io).await.expect("Polling failed");
 
-        println!("[test_connect_nodes_with_execution_nodes] Successfully polled receiver node.");
+        tracing::debug!(
+            "[test_connect_nodes_with_execution_nodes] Successfully polled receiver node."
+        );
     }
 }

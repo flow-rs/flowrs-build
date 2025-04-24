@@ -190,8 +190,8 @@ impl FlowProjectManager {
             let modified_time_formatted = Self::format_timestamp(system_time);
 
             // Print the results
-            println!("File: {:?}", path_buf);
-            println!("Last Modified Time: {:?}", modified_time_formatted);
+            tracing::debug!("File: {:?}", path_buf);
+            tracing::debug!("Last Modified Time: {:?}", modified_time_formatted);
             // Return formatted times in a Result
             Ok(modified_time_formatted)
         } else {
@@ -629,7 +629,7 @@ impl FlowProjectManager {
 
         //TODO: better error reporting. also: make fmt optional and add the possibility to change its path.
         if status.status.code() != Some(0) {
-            println!(
+            tracing::debug!(
                 "An error occurred while formatting {}: {}",
                 file_path.to_string_lossy(),
                 String::from_utf8(status.stderr).expect("")

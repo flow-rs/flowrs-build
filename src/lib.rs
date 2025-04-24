@@ -1,5 +1,6 @@
 pub mod flow_model;
 pub mod flow_project;
+pub mod logging;
 pub mod api {
     pub mod rest_handlers;
 }

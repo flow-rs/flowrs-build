@@ -41,14 +41,14 @@ async fn main() -> Result<()> {
     //setup server
     let listener = TcpListener::bind(&addr).await.unwrap();
     let app = setup_server(config.clone()).context("Failed to setup server")?;
-    println!("-> Listening on {}", addr);
+    tracing::debug!("-> Listening on {}", addr);
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
 
-    println!("-> Service shut down.");
+    tracing::debug!("-> Service shut down.");
 
     Ok(())
 }
