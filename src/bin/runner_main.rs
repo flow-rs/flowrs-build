@@ -16,6 +16,7 @@ use flowrs::types::type_registry::PollFn;
 use flowrs::types::type_registry::POLL_REGISTRY;
 use flowrs::types::type_registry::TYPE_REGISTRY;
 use flowrs_build::logging;
+use flowrs_build::logging::print_startup_banner;
 use flowrs_build::runtime::node_runtime::NodeRuntime;
 use flowrs_build::runtime::orchestrator::Orchestrator;
 use flowrs_build::runtime::runtime_args::Arguments;
@@ -135,6 +136,7 @@ async fn get_orchestrator_address() -> Result<SocketAddr, anyhow::Error> {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     logging::init_logging();
+    print_startup_banner();
     // Define the CLI application using clap
     let args = Arguments::parse();
 
@@ -230,7 +232,6 @@ fn dummy_scheduling(abstract_flow: &AbstractFlow, num_runtimes: u128) -> Schedul
 
     scheduling_config
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -238,9 +239,10 @@ mod tests {
     use flowrs::comm::thread_communicator::ThreadCommunicator;
     use flowrs::connection::Edge;
     use flowrs::exec::execution_mode::ExecutionMode;
-    use flowrs::node::{ExecutionNode, Node};
-    use flowrs::types::type_registry::PollFn;
-    use flowrs::types::type_registry::TYPE_REGISTRY;
+    use flowrs::exec::execution_node::ExecutionNode;
+    use flowrs::node::Node;
+    use flowrs::types::type_registry::{POLL_REGISTRY, TYPE_REGISTRY};
+    use std::any::TypeId;
     use std::collections::HashMap;
     use std::sync::Arc;
     use tokio::sync::Mutex;
@@ -260,70 +262,54 @@ mod tests {
             let communicator =
                 ThreadCommunicator::<String>::new().expect("Failed to create communicator");
             let edge = Edge::new(NodeCommunicator::ThreadComm(communicator));
-            let execution_node = ExecutionNode::new(node, ExecutionMode::Continuous, edge);
+
+            let type_ids = HashMap::new(); // Add actual type info if needed
+            let execution_node =
+                ExecutionNode::new(node, node_id, ExecutionMode::Continuous, edge, type_ids);
             execution_nodes.insert(node_id, Arc::new(Mutex::new(execution_node)));
         }
 
-        // 4. Get the sender and receiver nodes from the execution nodes
+        // 4. Get the sender and receiver nodes
         let sender_id = 1;
         let receiver_id = 3;
-        let sender_node = execution_nodes
-            .get(&sender_id)
-            .expect("Sender node not found")
-            .clone();
-        let receiver_node = execution_nodes
-            .get(&receiver_id)
-            .expect("Receiver node not found")
-            .clone();
+        let sender_node = execution_nodes.get(&sender_id).unwrap().clone();
+        let receiver_node = execution_nodes.get(&receiver_id).unwrap().clone();
 
-        // 5. Lock the nodes and access their inner nodes
+        // 5. Lock and access IO
         let mut sender_guard = sender_node.lock().await;
         let mut receiver_guard = receiver_node.lock().await;
-
-        // // Extract the inner nodes from the ExecutionNode
-        // let sender_inner_node = &mut sender_guard.node;
-        // let receiver_inner_node = &mut receiver_guard.node;
-
-        // Access the IO from the inner node directly
         let sender_io = sender_guard.get_io_mut();
         let receiver_io = receiver_guard.get_io_mut();
 
-        // 6. Get the connection function from the registry using the correct type ID
+        // 6. Get connection type
         let connection = abstract_flow
             .get_connections()
             .next()
             .expect("No connections found in abstract flow");
-        let type_id = abstract_flow
+
+        let (_, type_id) = abstract_flow
             .get_connection_type(&connection)
             .expect("Connection type not found");
 
-        let registry = TYPE_REGISTRY.lock().unwrap();
-        let connect_fn = registry.get(type_id).expect(
-            "[test_connect_nodes_with_execution_nodes] Connection function not found in registry.",
-        );
-
-        // 7. Call the connection function to connect the nodes
+        // 7. Connect nodes using registered function
+        let registry = TYPE_REGISTRY.lock().await;
+        let connect_fn = registry
+            .get(type_id)
+            .expect("Connection function not found in registry.");
         connect_fn(sender_id, receiver_id, 0, 0, sender_io, receiver_io);
+        drop(registry);
 
-        tracing::debug!("[test_connect_nodes_with_execution_nodes] Successfully connected nodes.");
+        tracing::debug!("[test] Successfully connected nodes.");
 
-        //8. Test polling function
-        // Unlock registry again (separate scope since it's already locked above)
-        drop(registry); // drop first lock
+        // 8. Poll input using POLL_REGISTRY
+        let mut poll_registry = POLL_REGISTRY.lock().await;
+        let poll_fn = poll_registry
+            .get_mut(&TypeId::of::<String>())
+            .expect("Polling function for `String` not found");
 
-        let mut registry = TYPE_REGISTRY.lock().unwrap();
+        // Use the unified erased call for simplicity
+        poll_fn.poll(receiver_io, 0).await.expect("Polling failed");
 
-        let poll_fn = registry
-            .get_poll_fn::<String>()
-            .expect("Polling function for `String` not found")
-            .downcast_mut::<PollFn<String>>()
-            .expect("Failed to downcast polling function");
-
-        // Call the poll function on the receiver (inputs are always polled)
-        poll_fn(receiver_io).await.expect("Polling failed");
-
-        tracing::debug!(
-            "[test_connect_nodes_with_execution_nodes] Successfully polled receiver node."
-        );
+        tracing::debug!("[test] Successfully polled receiver node.");
     }
 }
