@@ -9,8 +9,10 @@ use axum::{
     Router,
 };
 use flowrs_package::flow_package::package_manager::PackageManager;
+#[cfg(not(target_arch = "wasm32"))]
 use tower_http::cors::CorsLayer;
 
+use crate::api::rest_handlers::AppState;
 use crate::{
     api::rest_handlers::{
         compile_project, create_project, delete_project, get_all_packages, get_all_projects,
@@ -33,6 +35,12 @@ pub fn setup_server(server_config: ServiceConfig) -> Result<Router, Error> {
     let project_manager = Arc::new(Mutex::new(FlowProjectManager::new(
         config.flow_project_manager_config,
     )));
+
+    // Setup State
+    let state = AppState {
+        project_manager: project_manager.clone(),
+        package_manager: package_manager.clone(),
+    };
 
     project_manager
     .lock()
@@ -57,12 +65,8 @@ pub fn setup_server(server_config: ServiceConfig) -> Result<Router, Error> {
 
     let app = Router::new()
         .route("/packages/:package_name", get(get_package_by_name))
-        //.with_state(package_manager.clone())
         .route("/packages/", get(get_all_packages))
-        .with_state(package_manager.clone())
-        //.route("/projects/:project_name", get(get_project_by_name))
         .route("/projects/", post(create_project))
-        .with_state((project_manager.clone(), package_manager.clone()))
         .route("/projects/", get(get_all_projects))
         .route("/projects/:project_name/", delete(delete_project))
         .route("/projects/:project_name/compile", post(compile_project))
@@ -73,7 +77,7 @@ pub fn setup_server(server_config: ServiceConfig) -> Result<Router, Error> {
         .route("/projects/:project_name/run", post(run_project))
         .route("/processes/:process_id/stop", post(stop_process))
         .route("/processes/:process_id/logs", get(get_process_logs))
-        .with_state(project_manager.clone())
+        .with_state(state) // ✅ one call only
         .layer(CorsLayer::permissive());
 
     Ok(Router::new().nest("/api", app))

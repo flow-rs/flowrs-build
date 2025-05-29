@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["wuermseer.florian@gmail.com", "markus.friedrich@hm.edu"]
 description = "Build tools for the flowrs library."
 repository = "https://github.com/flow-rs/flowrs-build"
-license-file = "LICENSE"
+license = "Apache-2.0"
 readme = "README.md"
 documentation = "https://docs.rs/flowrs-wasm"
 keywords = ["flow", "fbp", "wasm"]
@@ -26,7 +26,6 @@ name = "runner_main"
 path = "src/bin/runner_main.rs"
 
 # ────── Shared dependencies ──────
-
 [dependencies]
 anyhow = "1.0.83"
 serde = { version = "1.0.201", features = ["derive"] }
@@ -38,7 +37,6 @@ mime_guess = "2.0.4"
 handlebars = "5.1.2"
 libloading = "0.8.3"
 clap = { version = "4.5.4", features = ["derive"] }
-ctrlc = "3.4.4"
 dotenv = "0.15.0"
 chrono = { version = "0.4", features = ["serde"] }
 paste = "1.0"
@@ -47,23 +45,35 @@ proc-macro2 = "1.0"
 syn = "2.0.61"
 wasm-bindgen = "0.2"
 
-# ────── flowrs ──────
 flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "mtMophima-exec", default-features = false }
-flowrs-std = { git = "https://github.com/flow-rs/flowrs-std", branch = "mtMophima-dev" }
+flowrs-std = { git = "https://github.com/flow-rs/flowrs-std", branch = "mtMophima-dev", default-features = false }
 flowrs-package = { git = "https://github.com/flow-rs/flowrs-package", branch = "main" }
+
+[dependencies.web-sys]
+version = "0.3"
+features = ["console"]
 
 # ────── Native-only dependencies ──────
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.37.0", features = ["full"] }
 axum = { version = "0.7", features = ["macros"] }
 tower = "0.4"
 tower-http = { version = "0.5.2", features = ["cors"] }
-tokio = { version = "1.37.0", features = ["full"] }
-flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "mtMophima-exec", features = ["tracing", "metrics"] }
+ctrlc = "3.4.4"
 
-# ────── WASM-safe tokio and getrandom ──────
+flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "mtMophima-exec", features = ["native"], default-features = false }
+flowrs-std = { git = "https://github.com/flow-rs/flowrs-std", branch = "mtMophima-dev", features = ["native"], default-features = false }
+
+# ────── WASM-only dependencies ──────
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tokio = { version = "1.37.0", features = ["rt", "macros", "time", "sync"] }
+# Safe Tokio config for WASM (no "time" feature!)
+tokio = { version = "1.37.0", default-features = false, features = ["rt", "macros", "sync"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
 getrandom = { version = "0.2", features = ["js"] }
+console_error_panic_hook = "0.1.7"
+tracing-wasm = "0.2"
+gloo-timers = { version = "0.3.0", features = ["futures"] }
 
 # ────── Dev & build dependencies ──────
 [dev-dependencies]
@@ -76,6 +86,10 @@ syn = { version = "2.0.61", features = ["full"] }
 proc-macro2 = "1.0"
 serde = { version = "1.0.201", features = ["derive"] }
 serde_json = "1.0.117"
+flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "mtMophima-exec", features = ["native"], default-features = false }
+flowrs-std = { git = "https://github.com/flow-rs/flowrs-std", branch = "mtMophima-dev", features = ["native"], default-features = false }
 flowrs-package = { git = "https://github.com/flow-rs/flowrs-package", branch = "main" }
-flowrs-std = { git = "https://github.com/flow-rs/flowrs-std", branch = "mtMophima-dev" }
-flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "mtMophima-exec" }
+
+[features]
+default = ["native"]
+native = []

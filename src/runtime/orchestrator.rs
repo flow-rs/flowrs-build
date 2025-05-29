@@ -5,17 +5,20 @@ use anyhow::Error;
 use anyhow::Result;
 use flowrs::comm::communication::Communicator;
 use flowrs::comm::messages::Message;
+#[cfg(not(target_arch = "wasm32"))]
 use flowrs::comm::network_communicator::NetworkCommunicator;
 use flowrs::exec::execution_configuration::ExecutionConfig;
 use flowrs::exec::execution_configuration::NodeConfig;
-use flowrs::flow::abstract_flow::AbstractFlow;
+use flowrs::flow::flow::Flow;
 use flowrs::flow::flow_types::{NodeIOIndex, NodeId};
 use flowrs::sched::scheduling_config::{RuntimeId, SchedulingConfig};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::io::AsyncReadExt;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::{oneshot, Mutex, Notify};
@@ -27,23 +30,12 @@ type AckKey = (NodeId, NodeId, NodeIOIndex, NodeIOIndex);
 
 pub struct Orchestrator {
     //_listener: TcpListener,
-    connected_runtimes: Arc<
-        Mutex<
-            HashMap<
-                String,
-                (
-                    NetworkCommunicator<String>,
-                    //NetworkCommunicator<String>,
-                    u16,
-                ),
-            >,
-        >,
-    >,
+    #[cfg(not(target_arch = "wasm32"))]
+    connected_runtimes: Arc<Mutex<HashMap<String, (NetworkCommunicator<String>, u16)>>>,
     runtime_id_map: Arc<Mutex<HashMap<u128, String>>>,
     next_port: Arc<Mutex<u16>>,
-    abstract_flow: AbstractFlow,
+    abstract_flow: Flow,
     execution_config: ExecutionConfig,
-    // orch_receiver: Arc<Mutex<NetworkCommunicator<String>>>,
     orch_channel_tx: Sender<(RuntimeId, Message<String>)>,
     orch_channel_rx: Arc<Mutex<Receiver<(RuntimeId, Message<String>)>>>,
     pending_connections: Arc<Mutex<HashMap<NodeId, (NodeId, NodeIOIndex, NodeIOIndex)>>>,
@@ -55,13 +47,14 @@ pub struct Orchestrator {
 
 impl Orchestrator {
     pub async fn new(
-        abstract_flow: AbstractFlow,
+        abstract_flow: Flow,
         execution_config: ExecutionConfig,
     ) -> Result<Self, anyhow::Error> {
         // Bind the orchestrator's listener to the specified port
         //let listener = TcpListener::bind(format!("0.0.0.0:{}", SETUP_PORT)).await?;
 
         // Initialize shared structures
+        #[cfg(not(target_arch = "wasm32"))]
         let connected_runtimes = Arc::new(Mutex::new(HashMap::new()));
         let runtime_id_map = Arc::new(Mutex::new(HashMap::new()));
         let _next_port = Arc::new(Mutex::new(SETUP_PORT + 1)); // Start assigning ports from the next available port
@@ -76,6 +69,7 @@ impl Orchestrator {
 
         Ok(Self {
             //_listener,
+            #[cfg(not(target_arch = "wasm32"))]
             connected_runtimes,
             runtime_id_map,
             next_port,
@@ -91,6 +85,7 @@ impl Orchestrator {
         })
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn run(
         self: Arc<Self>,
         args: Arguments,
@@ -157,6 +152,7 @@ impl Orchestrator {
     }
 
     /// Sets up peer-to-peer connections between nodes based on the abstract flow.
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn setup_p2p_connections(self: Arc<Self>) -> Result<(), anyhow::Error> {
         tracing::debug!("[Orchestrator] Starting P2P node connections...");
 
@@ -273,6 +269,7 @@ impl Orchestrator {
         "UNKNOWN_IP".to_string()
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn accept_runtime_connections(
         self: Arc<Self>,
         number_of_runtimes_expected: usize,
@@ -405,6 +402,7 @@ impl Orchestrator {
         Ok(())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     async fn handle_runtime_connection(
         &self,
         runtime_id: RuntimeId,
@@ -597,6 +595,7 @@ impl Orchestrator {
         Ok(())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn initialize_remote_nodes(&self) -> Result<(), Error> {
         let mut connected_runtimes = self.connected_runtimes.lock().await;
 
@@ -772,6 +771,7 @@ impl Orchestrator {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     async fn send_start_execution(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         tracing::debug!("[Orchestrator] Sending StartExecution command to all runtimes...");
 
@@ -796,6 +796,7 @@ impl Orchestrator {
         Ok(())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn message_loop(&self, receiver: Arc<Mutex<Receiver<(u128, Message<String>)>>>) {
         loop {
             tracing::debug!("[DEBUG] new message in message_loop",);
@@ -914,5 +915,49 @@ impl Orchestrator {
             }
             tokio::task::yield_now().await;
         }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl Orchestrator {
+    pub async fn run_in_memory(self: Arc<Self>) -> Result<(), anyhow::Error> {
+        tracing::info!("[Orchestrator] Running in in-memory mode (Wasm)");
+
+        // === Step 1: Skip accept_runtime_connections()
+        // All runtime(s) should already be instantiated and running
+
+        // === Step 2: Launch centralized message loop
+        let message_receiver = Arc::clone(&self.orch_channel_rx);
+        let orchestrator_for_messages = Arc::clone(&self);
+        tokio::spawn(async move {
+            orchestrator_for_messages
+                .message_loop(message_receiver)
+                .await;
+        });
+
+        // === Step 3: Initialize local nodes on the single runtime
+        self.initialize_remote_nodes().await?;
+
+        // === Step 4: Wait for all node initialization acks
+        self.wait_for_node_initialization().await?;
+        tracing::info!("[Orchestrator] All nodes initialized successfully.");
+
+        // === Step 5: Setup peer-to-peer (in-memory) connections
+        self.setup_p2p_connections().await?;
+
+        // === Step 6: Wait for all connection acks
+        self.wait_for_connection_acknowledgments().await?;
+
+        // === Step 7: Start execution
+        self.send_start_execution().await?;
+
+        // === Step 8: Optionally wait
+        tracing::info!("[Orchestrator] Execution started. Idle loop begins.");
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+        }
+
+        #[allow(unreachable_code)]
+        Ok(())
     }
 }

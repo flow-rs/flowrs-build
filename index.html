@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <title>FlowRS WASM Demo</title>
+    </head>
+
+    <body>
+        <h1>FlowRS In-Memory Flow (WASM)</h1>
+        <button id="run-btn">Run Flow</button>
+        <pre id="output"></pre>
+
+        <script type="module">
+            import init, { run_browser_flow } from "./pkg/flowrs_build.js";
+
+            async function main() {
+                await init(); // initializes the wasm module
+                const output = document.getElementById("output");
+
+                try {
+                    await run_browser_flow();
+                    output.textContent = "Flow executed successfully!";
+                } catch (err) {
+                    output.textContent = "Error: " + err;
+                    console.error("Execution failed:", err);
+                }
+            }
+
+            document.getElementById("run-btn").addEventListener("click", main);
+        </script>
+    </body>
+
+</html>

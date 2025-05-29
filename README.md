@@ -189,3 +189,9 @@ for wasm, an execution with wasm is currently not possible. To enable the execut
 ### flowrs-std:
 1. flowrs-std / Cargo.toml: Replace the line `flowrs = {git = "https://github.com/flow-rs/flowrs", branch = "feature-project7"}` in the Cargo.toml with
    `flowrs = { git = "https://github.com/flow-rs/flowrs", branch = "dev"}`. --> Setting the dependency to dev.
+
+
+
+npm install -g http-server
+cd your-project
+http-server -p 8080

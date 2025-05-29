@@ -3,10 +3,11 @@ use anyhow::anyhow;
 use anyhow::Error;
 use flowrs::comm::communication::Communicator;
 use flowrs::comm::messages::Message;
+#[cfg(not(target_arch = "wasm32"))]
 use flowrs::comm::network_communicator::NetworkCommunicator;
 use flowrs::exec::execution::StandardExecutor;
 use flowrs::exec::execution_configuration::{ExecutionConfig, NodeConfig};
-use flowrs::flow::abstract_flow::AbstractFlow;
+use flowrs::flow::flow::Flow;
 use flowrs::flow::flow_connection::FlowNodeConnection;
 use flowrs::flow::flow_types::{NodeIOIndex, NodeId};
 use flowrs::node::Node;
@@ -14,13 +15,19 @@ use flowrs::nodes::node_io::SetupIO;
 use flowrs::types::type_registry::TYPE_REGISTRY;
 use std::any::TypeId;
 use std::collections::HashMap;
+#[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::io::AsyncBufReadExt;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::io::AsyncWriteExt;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::io::BufReader;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::net::TcpListener;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio::task::yield_now;
@@ -29,23 +36,26 @@ use tokio::time::{sleep, timeout};
 use super::runtime_args::Arguments;
 
 pub struct NodeRuntime {
-    abstract_flow: Arc<Mutex<AbstractFlow>>,
+    abstract_flow: Arc<Mutex<Flow>>,
     orchestrator_ip: String,
     _runtime_id: u128,
     assigned_port: Option<u16>,
     execution_config: ExecutionConfig,
     executor: Arc<Mutex<StandardExecutor>>,
+    #[cfg(not(target_arch = "wasm32"))]
     orch_sender: Arc<Mutex<NetworkCommunicator<String>>>,
+    #[cfg(not(target_arch = "wasm32"))]
     orch_receiver: Arc<Mutex<NetworkCommunicator<String>>>,
     node_id_map: Arc<Mutex<HashMap<NodeId, String>>>,
     next_port: Arc<Mutex<u16>>,
 }
 
 impl NodeRuntime {
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn new(
         orchestrator_ip: String,
         _runtime_id: u128,
-        abstract_flow: AbstractFlow,
+        abstract_flow: Flow,
         execution_config: ExecutionConfig,
     ) -> Result<Self, Error> {
         let orch_sender = Arc::new(Mutex::new(
@@ -73,6 +83,7 @@ impl NodeRuntime {
         })
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn clone_runtime_handle(&self) -> Self {
         Self {
             abstract_flow: Arc::clone(&self.abstract_flow),
@@ -88,6 +99,7 @@ impl NodeRuntime {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn run(&mut self, args: Arguments, orch_addr: SocketAddr) -> Result<(), Error> {
         tracing::info!(
             "[Node RT] Running as node runtime with flow file: {}",
@@ -127,6 +139,7 @@ impl NodeRuntime {
         self.message_loop(assigned_port).await
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     async fn spawn_receiver_task(
         &self,
         receiver_shared: Arc<Mutex<NetworkCommunicator<String>>>,
@@ -160,6 +173,7 @@ impl NodeRuntime {
     /// then processes it.
     /// Spawns the R2R message handler that continuously listens on R2R_PORT,
     /// accepts a single connection (from any IP), reads a single message, and then processes it.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn spawn_r2r_message_handler(runtime: Arc<Self>) {
         tokio::spawn(async move {
             tracing::debug!(
@@ -305,6 +319,7 @@ impl NodeRuntime {
         });
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     async fn perform_orchestrator_handshake(
         &mut self,
         orchestrator_ip: &str,
@@ -356,6 +371,7 @@ impl NodeRuntime {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     async fn setup_sender_to_orchestrator(
         &self,
         orchestrator_ip: &str,
@@ -419,7 +435,9 @@ impl NodeRuntime {
             }
         }
     }
+
     /// Handles the incoming P2P connection request from the orchestrator
+    #[cfg(not(target_arch = "wasm32"))]
     async fn handle_p2p_connection(
         &mut self,
         sender_id: NodeId,
@@ -724,6 +742,7 @@ impl NodeRuntime {
         Ok(())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn handle_orchestrator_request_connection(
         &mut self,
         sender_id: NodeId,
@@ -914,10 +933,11 @@ impl NodeRuntime {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn handle_accept_peer_connection_static(
     executor: Arc<Mutex<StandardExecutor>>,
     node_id_map: Arc<Mutex<HashMap<NodeId, String>>>,
-    abstract_flow: Arc<Mutex<AbstractFlow>>,
+    abstract_flow: Arc<Mutex<Flow>>,
     orch_sender: Arc<Mutex<NetworkCommunicator<String>>>,
     sending_node_id: NodeId,
     receiving_node_id: NodeId,
@@ -1006,10 +1026,11 @@ pub async fn handle_accept_peer_connection_static(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn handle_request_peer_connection_static(
     executor: Arc<Mutex<StandardExecutor>>,
     node_id_map: Arc<Mutex<HashMap<NodeId, String>>>,
-    _abstract_flow: Arc<Mutex<AbstractFlow>>,
+    _abstract_flow: Arc<Mutex<Flow>>,
     execution_config: ExecutionConfig,
     orch_sender: Arc<Mutex<NetworkCommunicator<String>>>, // not used in this handler
     _orchestrator_ip: String,
@@ -1230,6 +1251,7 @@ pub async fn handle_request_peer_connection_static(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 async fn resolve_runtime_ip(
     node_id: NodeId,
     node_id_map: Arc<Mutex<HashMap<NodeId, String>>>,
@@ -1267,10 +1289,11 @@ async fn resolve_runtime_ip(
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn handle_peer_connection_spawn(
     executor: Arc<Mutex<StandardExecutor>>,
     node_id_map: Arc<Mutex<HashMap<NodeId, String>>>,
-    abstract_flow: Arc<Mutex<AbstractFlow>>,
+    abstract_flow: Arc<Mutex<Flow>>,
     execution_config: ExecutionConfig,
     orch_sender: Arc<Mutex<NetworkCommunicator<String>>>,
     orchestrator_ip: String,
@@ -1298,5 +1321,52 @@ pub async fn handle_peer_connection_spawn(
     .await
     {
         eprintln!("[Node RT] [R2R] Error: {}", e);
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl NodeRuntime {
+    pub async fn new_in_memory(
+        execution_config: ExecutionConfig,
+        orch_rx: tokio::sync::mpsc::Receiver<Message<String>>,
+        orch_tx: tokio::sync::mpsc::Sender<Message<String>>,
+    ) -> Result<Self, Error> {
+        use flowrs::comm::communication::Communicator;
+        use flowrs::comm::thread_communicator::ThreadCommunicator;
+
+        let executor = Arc::new(Mutex::new(StandardExecutor::new()));
+        let node_id_map = Arc::new(Mutex::new(HashMap::new()));
+        let abstract_flow = Arc::new(Mutex::new(Flow::new_empty()));
+        let next_port = Arc::new(Mutex::new(6000));
+
+        // Wrap the sender and receiver in ThreadCommunicator
+        let mut orch_sender = ThreadCommunicator::new()?;
+        orch_sender = orch_sender.clone_send();
+        orch_sender.sender = orch_tx;
+
+        let mut orch_receiver = ThreadCommunicator::new()?;
+        orch_receiver.receiver = Some(orch_rx);
+
+        Ok(Self {
+            abstract_flow,
+            orchestrator_ip: "localhost".to_string(),
+            _runtime_id: execution_config.runtime_id,
+            assigned_port: None,
+            execution_config,
+            executor,
+            orch_sender: Arc::new(Mutex::new(orch_sender)),
+            orch_receiver: Arc::new(Mutex::new(orch_receiver)),
+            node_id_map,
+            next_port,
+        })
+    }
+
+    pub async fn run_in_memory(&mut self) -> Result<(), Error> {
+        tracing::info!("[Node RT] Running in in-memory mode (Wasm)");
+
+        self.handle_initialize_local_nodes().await?;
+        self.handle_start_execution().await?;
+
+        Ok(())
     }
 }

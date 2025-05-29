@@ -1,131 +1,37 @@
 use anyhow::Error;
 use clap::Parser;
-use flowrs::comm::communication::Communicator;
-use flowrs::comm::communication::NodeCommunicator;
+use flowrs::connect_nodes;
 use flowrs::exec::execution_configuration::ExecutionConfig;
-use flowrs::flow::abstract_flow::AbstractFlow;
-use flowrs::flow::flow_types::NodeIOIndex;
+use flowrs::flow::flow::Flow;
 use flowrs::flow::flow_types::NodeId;
-use flowrs::node::ReceiveError;
-use flowrs::nodes::node_io::SetupIO;
-use flowrs::nodes::node_io::TypedInput;
-use flowrs::nodes::node_io::TypedOutput;
+use flowrs::generate_local_connection;
 use flowrs::sched::scheduling_config::RuntimeId;
 use flowrs::sched::scheduling_config::SchedulingConfig;
-use flowrs::types::type_registry::PollFn;
-use flowrs::types::type_registry::POLL_REGISTRY;
-use flowrs::types::type_registry::TYPE_REGISTRY;
 use flowrs_build::logging;
 use flowrs_build::logging::print_startup_banner;
 use flowrs_build::runtime::node_runtime::NodeRuntime;
 use flowrs_build::runtime::orchestrator::Orchestrator;
 use flowrs_build::runtime::runtime_args::Arguments;
-use std::any::TypeId;
+#[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::sync::Arc;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::net::lookup_host;
 
-#[macro_export]
-macro_rules! generate_local_connection {
-    ($type:ty) => {
-        fn connect_nodes(
-            sender_id: NodeId,
-            receiver_id: NodeId,
-            sender_out_idx: NodeIOIndex,
-            recv_in_idx: NodeIOIndex,
-            sender_io: &mut dyn SetupIO,
-            receiver_io: &mut dyn SetupIO,
-        ) {
-            tracing::debug!(
-                "[DEBUG] Registering connection function for type ID: {:?} (type: {})",
-                TypeId::of::<$type>(),
-                stringify!($type)
-            );
+use flowrs::comm::communication::Communicator;
+use flowrs::comm::communication::NodeCommunicator;
+use flowrs::flow::flow_types::NodeIOIndex;
+use flowrs::node::ReceiveError;
+use flowrs::nodes::node_io::SetupIO;
+use flowrs::nodes::node_io::TypedInput;
+use flowrs::nodes::node_io::TypedOutput;
+use flowrs::types::type_registry::register_flush_fn;
+use flowrs::types::type_registry::PollFn;
+use flowrs::types::type_registry::POLL_REGISTRY;
+use flowrs::types::type_registry::TYPE_REGISTRY;
+use std::any::TypeId;
 
-            if let Some(sender_output_any) = sender_io.get_output_communicator(sender_out_idx) {
-                if let Some(sender_output_wrapper) = sender_output_any.downcast_mut::<TypedOutput<$type>>() {
-                    let sender_output = &mut sender_output_wrapper.output;
-                    if let Some(receiver_input_any) = receiver_io.get_input_communicator(recv_in_idx) {
-                        if let Some(receiver_input_wrapper) = receiver_input_any.downcast_mut::<TypedInput<$type>>() {
-                            let receiver_input = &mut receiver_input_wrapper.input;
-                            if let Some(existing_comm) = sender_output.get_communicator_mut() {
-                                let send_half = existing_comm.clone_send();
-                                let recv_half = existing_comm.move_recv().expect("Failed to move receiver");
-
-                                sender_output.set_communicator(NodeCommunicator::ThreadComm(send_half));
-                                receiver_input.set_communicator(NodeCommunicator::ThreadComm(recv_half));
-
-                                tracing::debug!(
-                                    "[connect_nodes] Successfully connected nodes {} -> {} with type {}",
-                                    sender_id,
-                                    receiver_id,
-                                    stringify!($type)
-                                );
-                            } else {
-                                panic!("[connect_nodes] No communicator to split!");
-                            }
-                        } else {
-                            panic!("[connect_nodes] Receiver IO type mismatch");
-                        }
-                    } else {
-                        panic!("[connect_nodes] Failed to get input communicator");
-                    }
-                } else {
-                    panic!("[connect_nodes] Sender IO type mismatch");
-                }
-            } else {
-                panic!("[connect_nodes] Failed to get output communicator");
-            }
-        }
-
-        // Register both local and dynamic factory/setup functions
-        let mut registry = TYPE_REGISTRY.lock().await;
-        registry.register::<$type>(connect_nodes);                    // local connection
-        registry.register_communicator::<$type>(stringify!($type));  // P2P factory + IO setup
-
-         // Register polling function in the separate registry
-        let poll_fn: PollFn<$type> = Box::new(|io, idx| {
-            Box::pin(async move {
-                if let Some(edge_any) = io.get_input_communicator(idx) {
-                    let typed_input = edge_any
-                        .downcast_mut::<TypedInput<$type>>()
-                        .ok_or_else(|| ReceiveError::<$type>::Other(anyhow::anyhow!(
-                            "Downcast to TypedInput<{}> failed at index {}",
-                            stringify!($type),
-                            idx
-                        )))?;
-
-                    typed_input.input.edge.poll_and_buffer().await?;
-                } else {
-                    return Err(ReceiveError::<$type>::Other(anyhow::anyhow!(
-                        "No input communicator found at index {}",
-                        idx
-                    )));
-                }
-
-                Ok(())
-            })
-        });
-
-
-        let mut poll_registry = POLL_REGISTRY.lock().await;
-        poll_registry.register_poll_fn::<$type>(poll_fn);
-
-        tracing::debug!(
-            "[generate_local_connection] Fully registered type: {}",
-            stringify!($type)
-        );
-    };
-}
-
-#[macro_export]
-macro_rules! connect_nodes {
-    ($type:ty, $flow:expr, $sender_id:expr, $receiver_id:expr, $sender_out_idx:expr, $recv_in_idx:expr) => {{
-        generate_local_connection!($type);
-        $flow.connect_nodes::<$type>($sender_id, $receiver_id, $sender_out_idx, $recv_in_idx)
-    }};
-}
-
+#[cfg(not(target_arch = "wasm32"))]
 async fn get_orchestrator_address() -> Result<SocketAddr, anyhow::Error> {
     let mut addrs = lookup_host("orchestrator:5000").await?;
     addrs
@@ -133,6 +39,7 @@ async fn get_orchestrator_address() -> Result<SocketAddr, anyhow::Error> {
         .ok_or_else(|| anyhow::Error::msg("No valid IP found for orchestrator"))
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     logging::init_logging();
@@ -191,12 +98,13 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-async fn return_dummy_flow() -> Result<AbstractFlow, Error> {
+#[cfg(not(target_arch = "wasm32"))]
+async fn return_dummy_flow() -> Result<Flow, Error> {
     use flowrs_std::add::SimpleAddNode;
     use flowrs_std::debug::DebugNode;
     use flowrs_std::value::ValueNode;
 
-    let mut flow = AbstractFlow::new_empty();
+    let mut flow = Flow::new_empty();
 
     // Define and add nodes
     let number_node_1 = ValueNode::<u32>::new(3);
@@ -218,7 +126,8 @@ async fn return_dummy_flow() -> Result<AbstractFlow, Error> {
     Ok(flow)
 }
 
-fn dummy_scheduling(abstract_flow: &AbstractFlow, num_runtimes: u128) -> SchedulingConfig {
+#[cfg(not(target_arch = "wasm32"))]
+fn dummy_scheduling(abstract_flow: &Flow, num_runtimes: u128) -> SchedulingConfig {
     let mut scheduling_config = SchedulingConfig::new();
 
     let mut runtime_id = 1;

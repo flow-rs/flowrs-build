@@ -176,6 +176,14 @@ impl FlowProjectManager {
             let duration = Duration::from_nanos((file_time as u64) * 100);
             Ok(SystemTime::UNIX_EPOCH + duration)
         }
+
+        #[cfg(not(any(unix, windows)))]
+        {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "get_modified_time is not supported on this platform",
+            ))
+        }
     }
 
     fn get_and_format_metadata(path: Option<String>) -> Result<String, anyhow::Error> {

@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+#[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 
 use flowrs_build::{
@@ -32,6 +33,7 @@ async fn shutdown_signal() {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]
 async fn main() -> Result<()> {
     //loads arguments, environment and config

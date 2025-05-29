@@ -10,28 +10,40 @@ use axum::{
 };
 use flowrs_package::flow_package::{package::Package, package_manager::PackageManager};
 
-pub async fn get_all_packages(
-    State(package_manager): State<Arc<Mutex<PackageManager>>>,
-) -> Json<Vec<Package>> {
-    let all_packages: Vec<Package> = package_manager.lock().unwrap().get_all_packages();
+#[derive(Clone)]
+pub(crate) struct AppState {
+    pub project_manager: Arc<Mutex<FlowProjectManager>>,
+    pub package_manager: Arc<Mutex<PackageManager>>,
+}
+
+#[axum::debug_handler]
+pub async fn get_all_packages(State(state): State<AppState>) -> Json<Vec<Package>> {
+    let all_packages = state.package_manager.lock().unwrap().get_all_packages();
     Json(all_packages)
 }
 
+#[axum::debug_handler]
 pub async fn get_package_by_name(
     Path(package_name): Path<String>,
-    State(package_manager): State<Arc<Mutex<PackageManager>>>,
+    State(state): State<AppState>,
 ) -> Result<Json<Option<Package>>, StatusCode> {
-    if let Some(package) = package_manager.lock().unwrap().get_package(&package_name) {
-        return Ok(Json(Some(package.clone())));
-    }
+    let package_manager = &state.package_manager;
 
-    Err(StatusCode::NOT_FOUND)
+    let result = {
+        let pm = package_manager.lock().unwrap();
+        pm.get_package(&package_name).cloned()
+    };
+
+    match result {
+        Some(pkg) => Ok(Json(Some(pkg))),
+        None => Err(StatusCode::NOT_FOUND),
+    }
 }
 
-pub async fn get_all_projects(
-    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
-) -> Json<Vec<FlowProject>> {
-    let all_projects: Vec<FlowProject> = project_manager
+#[axum::debug_handler]
+pub async fn get_all_projects(State(state): State<AppState>) -> Json<Vec<FlowProject>> {
+    let all_projects: Vec<FlowProject> = state
+        .project_manager
         .lock()
         .unwrap()
         .projects
@@ -41,209 +53,200 @@ pub async fn get_all_projects(
     Json(all_projects)
 }
 
+#[axum::debug_handler]
 pub async fn create_project(
-    State((project_manager, package_manager)): State<(
-        Arc<Mutex<FlowProjectManager>>,
-        Arc<Mutex<PackageManager>>,
-    )>,
+    State(state): State<AppState>,
     Json(flow_project): Json<FlowProject>,
 ) -> Result<Response<Body>, StatusCode> {
+    let project_manager = &state.project_manager;
+    let package_manager = &state.package_manager;
+
     match project_manager
         .lock()
         .unwrap()
         .create_flow_project(flow_project, &package_manager.lock().unwrap())
     {
         Ok(flow_project) => {
-            // Return a success response with the created object in the body
             let response = Response::builder()
                 .status(StatusCode::CREATED)
                 .body(Body::from(serde_json::to_string(&flow_project).unwrap()))
                 .unwrap();
-
             Ok(response)
         }
         Err(err) => {
-            // Return an error response with status code and error message in the body
             let response = Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Body::from(err.to_string()))
                 .unwrap();
-
             Ok(response)
         }
     }
 }
 
+#[axum::debug_handler]
 pub async fn delete_project(
     Path(project_name): Path<String>,
-    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
+    State(state): State<AppState>,
 ) -> Result<Response<Body>, StatusCode> {
+    let project_manager = &state.project_manager;
+
     match project_manager
         .lock()
         .unwrap()
         .delete_flow_project(project_name.as_str())
     {
         Ok(result) => {
-            // Return a success response with the created object in the body
             let response = Response::builder()
                 .status(StatusCode::OK)
                 .body(Body::from(result))
                 .unwrap();
-
             Ok(response)
         }
         Err(err) => {
-            // Return an error response with status code and error message in the body
             let response = Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Body::from(err.to_string()))
                 .unwrap();
-
             Ok(response)
         }
     }
 }
 
+#[axum::debug_handler]
 pub async fn compile_project(
     Path(project_name): Path<String>,
-    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
-    build_type: Query<BuildType>,
+    State(state): State<AppState>,
+    Query(build_type): Query<BuildType>,
 ) -> Result<Response<Body>, StatusCode> {
+    let project_manager = &state.project_manager;
+
     match project_manager
         .lock()
         .unwrap()
-        .compile_flow_project(project_name.as_str(), build_type.0.build_type)
+        .compile_flow_project(project_name.as_str(), build_type.build_type)
     {
         Ok(result) => {
-            // Return a success response with the created object in the body
             let response = Response::builder()
                 .status(StatusCode::OK)
                 .body(Body::from(result))
                 .unwrap();
-
             Ok(response)
         }
         Err(err) => {
-            // Return an error response with status code and error message in the body
             let response = Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Body::from(err.to_string()))
                 .unwrap();
-
             Ok(response)
         }
     }
 }
 
+#[axum::debug_handler]
 pub async fn last_compile_project(
     Path(project_name): Path<String>,
-    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
-    build_type: Query<BuildType>,
+    State(state): State<AppState>,
+    Query(build_type): Query<BuildType>,
 ) -> Result<Response<Body>, StatusCode> {
+    let project_manager = &state.project_manager;
+
     match project_manager
         .lock()
         .unwrap()
-        .last_compile_flow_project(project_name.as_str(), build_type.0.build_type)
+        .last_compile_flow_project(project_name.as_str(), build_type.build_type)
     {
         Ok(result) => {
-            // Return a success response with the created object in the body
             let response = Response::builder()
                 .status(StatusCode::OK)
                 .body(Body::from(result))
                 .unwrap();
-
             Ok(response)
         }
         Err(err) => {
-            // Return an error response with status code and error message in the body
             let response = Response::builder()
                 .status(StatusCode::OK)
                 .body(Body::from(err.to_string()))
                 .unwrap();
-
             Ok(response)
         }
     }
 }
 
+#[axum::debug_handler]
 pub async fn run_project(
     Path(project_name): Path<String>,
-    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
-    build_type: Query<BuildType>,
+    State(state): State<AppState>,
+    Query(build_type): Query<BuildType>,
 ) -> Result<Response<Body>, StatusCode> {
+    let project_manager = &state.project_manager;
+
     match project_manager
         .lock()
         .unwrap()
-        .run_flow_project(project_name.as_str(), build_type.0.build_type)
+        .run_flow_project(project_name.as_str(), build_type.build_type)
     {
         Ok(process) => {
-            // Return a success response with the created object in the body
             let response = Response::builder()
                 .status(StatusCode::CREATED)
                 .body(Body::from(serde_json::to_string(&process).unwrap()))
                 .unwrap();
-
             Ok(response)
         }
         Err(err) => {
-            // Return an error response with status code and error message in the body
             let response = Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Body::from(err.to_string()))
                 .unwrap();
-
             Ok(response)
         }
     }
 }
 
+#[axum::debug_handler]
 pub async fn stop_process(
     Path(process_id): Path<String>,
-    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
+    State(state): State<AppState>,
 ) -> Result<Response<Body>, StatusCode> {
+    let project_manager = &state.project_manager;
+
     match project_manager.lock().unwrap().stop_process(process_id) {
         Ok(result) => {
-            // Return a success response with the created object in the body
             let response = Response::builder()
                 .status(StatusCode::CREATED)
                 .body(Body::from(result))
                 .unwrap();
-
             Ok(response)
         }
         Err(err) => {
-            // Return an error response with status code and error message in the body
             let response = Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Body::from(err.to_string()))
                 .unwrap();
-
             Ok(response)
         }
     }
 }
 
+#[axum::debug_handler]
 pub async fn get_process_logs(
     Path(process_id): Path<String>,
-    State(project_manager): State<Arc<Mutex<FlowProjectManager>>>,
+    State(state): State<AppState>,
 ) -> Result<Response<Body>, StatusCode> {
+    let project_manager = &state.project_manager;
+
     match project_manager.lock().unwrap().get_process_logs(process_id) {
         Ok(result) => {
-            // Return a success response with the created object in the body
             let response = Response::builder()
                 .status(StatusCode::CREATED)
                 .body(Body::from(serde_json::to_string(&result).unwrap()))
                 .unwrap();
-
             Ok(response)
         }
         Err(err) => {
-            // Return an error response with status code and error message in the body
             let response = Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Body::from(err.to_string()))
                 .unwrap();
-
             Ok(response)
         }
     }
@@ -266,6 +269,7 @@ mod tests {
             Process,
         },
     };
+    #[cfg(not(target_arch = "wasm32"))]
     use tokio::time::{sleep, Duration};
 
     // Create mock data for PackageManager
