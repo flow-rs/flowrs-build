@@ -5,7 +5,7 @@ use flowrs::exec::execution_configuration::ExecutionConfig;
 use flowrs::flow::flow::Flow;
 use flowrs::flow::flow_types::NodeId;
 use flowrs::generate_local_connection;
-use flowrs::sched::scheduling_config::RuntimeId;
+use flowrs::sched::infrastructure_config::MachineConfig;
 use flowrs::sched::scheduling_config::SchedulingConfig;
 use flowrs_build::logging;
 use flowrs_build::logging::print_startup_banner;
@@ -25,10 +25,13 @@ use flowrs::node::ReceiveError;
 use flowrs::nodes::node_io::SetupIO;
 use flowrs::nodes::node_io::TypedInput;
 use flowrs::nodes::node_io::TypedOutput;
+use flowrs::sched::infrastructure_config::InfrastructureConfig;
+use flowrs::sched::round_robin::RoundRobinScheduler;
 use flowrs::types::type_registry::register_flush_fn;
 use flowrs::types::type_registry::PollFn;
 use flowrs::types::type_registry::POLL_REGISTRY;
 use flowrs::types::type_registry::TYPE_REGISTRY;
+
 use std::any::TypeId;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -39,9 +42,39 @@ async fn get_orchestrator_address() -> Result<SocketAddr, anyhow::Error> {
         .ok_or_else(|| anyhow::Error::msg("No valid IP found for orchestrator"))
 }
 
+/// This is only meant for the docker test setup right now. use yml infrastructure file instead.
+pub async fn build_default_infrastructure_config(
+    args: &Arguments,
+) -> Result<InfrastructureConfig, anyhow::Error> {
+    let orchestrator_ip = lookup_host("orchestrator:5000")
+        .await?
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("Could not resolve orchestrator IP"))?
+        .ip()
+        .to_string();
+
+    let mut machines = vec![MachineConfig {
+        ip: orchestrator_ip,
+        runtime_id: 0,
+        capabilities: vec!["orchestrator".to_string()],
+    }];
+
+    for i in 1..=args.workers {
+        machines.push(MachineConfig {
+            ip: "0.0.0.0".to_string(), // placeholder IP
+            runtime_id: i,
+            capabilities: vec!["worker".to_string()],
+        });
+    }
+
+    Ok(InfrastructureConfig { machines })
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    use flowrs::{sched::scheduling_types::RuntimeId, scheduler::Scheduler};
+
     logging::init_logging();
     print_startup_banner();
     // Define the CLI application using clap
@@ -54,8 +87,14 @@ async fn main() -> Result<(), Error> {
 
     tracing::debug!("Create Dummy Scheduling");
     // Step 2: Generate the scheduling configuration (Global)
-    let num_runtimes = 2; // Hardcoded for now, later can be dynamically set
-    let scheduling_config = dummy_scheduling(&abstract_flow, num_runtimes);
+
+    // Uncomment below to use infrastructure.yml file. Example can be found in flowrs_build/example_infrastructure.yml
+    //let infra_config = InfrastructureConfig::from_yaml_file(&args.infra)
+    //    .expect("Failed to load infrastructure config yml file");
+
+    let infra_config = build_default_infrastructure_config(&args).await?;
+    let scheduler = RoundRobinScheduler::new(infra_config);
+    let scheduling_config: SchedulingConfig = scheduler.schedule(&abstract_flow);
 
     // Step 3: Get the orchestrator's address
     let orchestrator_addr = get_orchestrator_address().await?;
@@ -126,21 +165,22 @@ async fn return_dummy_flow() -> Result<Flow, Error> {
     Ok(flow)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn dummy_scheduling(abstract_flow: &Flow, num_runtimes: u128) -> SchedulingConfig {
-    let mut scheduling_config = SchedulingConfig::new();
+// #[cfg(not(target_arch = "wasm32"))]
+// fn dummy_scheduling(abstract_flow: &Flow, num_runtimes: u128) -> SchedulingConfig {
+//     let mut scheduling_config = SchedulingConfig::new();
 
-    let mut runtime_id = 1;
-    let mut nodes: Vec<NodeId> = abstract_flow.get_nodes().map(|(id, _)| *id).collect();
-    nodes.sort(); // Ensure consistent ordering
+//     let mut runtime_id = 1;
+//     let mut nodes: Vec<NodeId> = abstract_flow.get_nodes().map(|(id, _)| *id).collect();
+//     nodes.sort(); // Ensure consistent ordering
 
-    for node_id in nodes {
-        scheduling_config.assign_node(runtime_id, node_id);
-        runtime_id = ((runtime_id) % num_runtimes) + 1;
-    }
+//     for node_id in nodes {
+//         scheduling_config.assign_node(runtime_id, node_id);
+//         runtime_id = ((runtime_id) % num_runtimes) + 1;
+//     }
 
-    scheduling_config
-}
+//     scheduling_config
+// }
+
 #[cfg(test)]
 mod tests {
     use super::*;
