@@ -2,7 +2,7 @@
 # will have compiled files and executables
 debug/
 target/
-flow-projects/*
+#flow-projects/*
 flow-projects - Kopie/
 !flow-projects/dummy.txt
 
