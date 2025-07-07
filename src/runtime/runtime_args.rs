@@ -18,4 +18,8 @@ pub struct Arguments {
     /// Runtime ID (only required for node runtimes)
     #[arg(long)]
     pub runtime_id: Option<u128>,
+
+    /// Path to the infrastructure YAML file
+    #[arg(long, default_value = "infrastructure.yml")]
+    pub infra: String,
 }
